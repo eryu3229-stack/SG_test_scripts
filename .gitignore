@@ -1,0 +1,22 @@
+# 测试结果文件
+*_results_*.xlsx
+*_results_*.csv
+
+# 压缩文件
+*.zip
+
+# IDE文件
+.idea/
+
+# 临时文件
+nul
+
+# Python缓存
+__pycache__/
+*.pyc
+
+# 环境文件
+.env
+
+# 日志文件
+*.log
