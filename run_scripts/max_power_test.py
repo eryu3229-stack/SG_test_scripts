@@ -9,13 +9,11 @@ sys.path.append(parent_dir)  # 项目根目录
 sys.path.append(os.path.join(parent_dir, 'instruments'))
 sys.path.append(os.path.join(parent_dir, 'procedures'))
 sys.path.append(os.path.join(parent_dir, 'configs'))
-sys.path.append(os.path.join(parent_dir, 'utils'))
 
 from instrument_manager import InstrumentManager
 from signal_generator import SignalGenerator
 from power_meter import PowerMeter
 from max_power_procedure import MaxPowerProcedure
-from project_manager import ProjectManager
 from datetime import datetime
 from max_power_config import project_name, test_configs
 
@@ -65,51 +63,9 @@ def main():
         manager.disconnect_all()
         return
 
-    # 初始化项目管理器
-    project_manager = ProjectManager()
-
-    # 显示已有项目
-    project_manager.list_projects()
-
-    # 选择使用已有项目还是创建新项目
-    print("\n请选择:")
-    print("1. 使用已有项目")
-    print("2. 创建新项目")
-
-    choice = input("请输入选择 (1或2): ")
-
-    selected_configs = None
-    selected_project_name = None
-
-    if choice == "1" and project_manager.projects:
-        # 使用已有项目
-        project_index = input(f"请输入项目编号 (1-{len(project_manager.projects)}): ")
-        try:
-            project_index = int(project_index)
-            project = project_manager.get_project(project_index)
-            if project:
-                selected_configs = project['test_configs']
-                selected_project_name = project['project_name']
-                print(f"已选择项目: {selected_project_name}")
-            else:
-                print("无效的项目编号，将创建新项目")
-                choice = "2"  # 回退到创建新项目
-        except ValueError:
-            print("无效的输入，将创建新项目")
-            choice = "2"
-
-    if choice == "2" or not selected_configs:
-        # 创建新项目
-        user_project_name = input("请输入测试项目名称 (按Enter使用默认名称): ")
-        if user_project_name:
-            selected_project_name = user_project_name
-        else:
-            selected_project_name = project_name
-
-        selected_configs = test_configs
-
-        # 保存新项目
-        project_manager.add_project(selected_project_name, selected_configs)
+    # 使用默认测试配置
+    selected_configs = test_configs
+    selected_project_name = project_name
 
     # 运行测试
     test_procedure = MaxPowerProcedure(manager)
