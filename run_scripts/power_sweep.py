@@ -106,14 +106,27 @@ def main():
                 print(f"  - 使用固定衰减器，衰减值: {attenuator_value}dB")
         else:
             print(f"  - 未使用衰减器")
+        
+        # 显示功率设置
+        power_settings = sorted(list(set(config['power'] for config in selected_configs)))
+        print(f"\n功率设置: {power_settings} dBm")
+        print(f"测试顺序: 先完成一个功率级别的所有频率点，再进行下一个功率级别")
     else:
         print("时间参数: 使用默认值（信号源稳定时间2.0秒，功率计频率切换稳定时间0.5秒）")
 
     print("\n开始测试...")
 
     try:
+        current_power = None
         for i, test_config in enumerate(selected_configs):
             is_last_point = (i == len(selected_configs) - 1)
+
+            # 检查是否进入新的功率级别
+            if test_config['power'] != current_power:
+                current_power = test_config['power']
+                print(f"\n{'=' * 60}")
+                print(f"开始功率级别: {current_power} dBm")
+                print(f"{'=' * 60}")
 
             # 最后一个点测量后关闭输出，其他点保持输出
             keep_output = not is_last_point
