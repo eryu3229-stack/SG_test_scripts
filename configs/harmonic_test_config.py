@@ -17,24 +17,23 @@ TEST_DESCRIPTION = "测试信号源的二次谐波性能，记录基波和二次
 
 # 频率扫描配置
 FREQUENCY_SWEEP_CONFIG = {
-    'start_frequency': 100e6,      # 起始频率: 100MHz
-    'end_frequency': 10e9,         # 结束频率: 10GHz
-    'step_frequency': 100e6,       # 频率步进: 100MHz
+    'start_frequency': 3e3,      # 起始频率: 100MHz
+    'end_frequency': 1e6,         # 结束频率: 10GHz
+    'step_frequency': 1e3,       # 频率步进: 100MHz
     'fixed_power': 5,              # 固定输出功率: 5dBm
-    'settling_time': 2.0,          # 仪器稳定时间: 2秒
+    'settling_time': 1.0,          # 仪器稳定时间: 2秒
 }
 
 # ==================== 频谱仪配置 ====================
 
 # 频谱仪测量配置
 SPECTRUM_ANALYZER_CONFIG = {
-    'span': 10e3,                  # 频率跨度: 10MHz
-    'rbw': 100,                  # 分辨率带宽: 100kHz
-    'vbw': 100,                  # 视频带宽: 100kHz
+    'span': 2e3,                  # 频率跨度: 10MHz (修正：原来是10e3=10kHz)
+    'rbw': 50,                  # 分辨率带宽: 100kHz (修正：原来是100Hz)
+    'vbw': 50,                  # 视频带宽: 100kHz (修正：原来是100Hz)
     'reference_level': 10,         # 参考电平: 10dBm
-    'attenuation': 40,             # 衰减: 10dB
-    'sweep_time': 0.8,             # 扫描时间: 0.5秒
-    'peak_search_range': 5e3,      # 峰值搜索范围: 5MHz
+    'attenuation': 30,             # 衰减: 40dB
+    'sweep_time': 0.5,             # 扫描时间: 0.5秒
 }
 
 # ==================== 谐波测量配置 ====================
@@ -44,7 +43,6 @@ HARMONIC_MEASUREMENT_CONFIG = {
     'fundamental_marker': 1,       # 基波标记器编号
     'harmonic_order': 2,           # 谐波阶数: 2 (二次谐波)
     'measurement_average': 3,      # 测量平均次数
-    'harmonic_search_offset': 1e6, # 谐波搜索偏移: 1MHz
 }
 
 # ==================== 输出配置 ====================
@@ -110,7 +108,6 @@ def get_test_config_summary():
 3. 谐波测量配置:
    - 谐波阶数: {harmonic_config['harmonic_order']}
    - 测量平均次数: {harmonic_config['measurement_average']}
-   - 谐波搜索偏移: {harmonic_config['harmonic_search_offset']/1e6:.1f} MHz
 
 预计测试点数: {len(generate_frequency_points())}
 """

@@ -72,7 +72,8 @@ class SpectrumAnalyzer:
     def peak_search(self):
         """执行峰值搜索"""
         try:
-            self.instrument.write("CALC:MARK:MAX:PEAK")
+            # 使用更通用的峰值搜索命令
+            self.instrument.write("CALC:MARK:MAX")
             print("执行峰值搜索")
         except Exception as e:
             print(f"峰值搜索失败: {e}")
@@ -105,6 +106,23 @@ class SpectrumAnalyzer:
             return power
         except Exception as e:
             print(f"测量标记器功率失败: {e}")
+            return None
+    
+    def get_marker_frequency(self, marker_num):
+        """获取标记器频率
+        
+        Args:
+            marker_num: 标记器编号
+            
+        Returns:
+            标记器频率值，单位Hz
+        """
+        try:
+            frequency = float(self.instrument.query(f"CALC:MARK{marker_num}:X?"))
+            print(f"标记器{marker_num}频率: {frequency} Hz")
+            return frequency
+        except Exception as e:
+            print(f"获取标记器频率失败: {e}")
             return None
     
     def set_rbw(self, rbw):

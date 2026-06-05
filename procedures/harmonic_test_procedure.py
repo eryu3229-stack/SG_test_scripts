@@ -101,16 +101,20 @@ class HarmonicTestProcedure:
         # 设置中心频率为基波频率
         self.setup_spectrum_analyzer(spectrum_analyzer, frequency, sa_config)
 
-        # 执行峰值搜索
-        if hasattr(spectrum_analyzer, 'peak_search'):
-            spectrum_analyzer.peak_search()
-
         # 使用同一个标记器（固定为1）测量基波功率
         marker_num = 1
 
-        # 设置标记器到中心频率
-        if hasattr(spectrum_analyzer, 'set_marker_frequency'):
-            spectrum_analyzer.set_marker_frequency(marker_num, frequency)
+        # 执行峰值搜索
+        if hasattr(spectrum_analyzer, 'peak_search'):
+            spectrum_analyzer.peak_search()
+            # 等待频谱仪完成扫描和峰值搜索
+            time.sleep(0.5)
+        else:
+            # 如果没有峰值搜索功能，设置标记器到中心频率
+            if hasattr(spectrum_analyzer, 'set_marker_frequency'):
+                spectrum_analyzer.set_marker_frequency(marker_num, frequency)
+                # 等待标记器设置生效
+                time.sleep(0.2)
 
         # 测量标记器功率
         if hasattr(spectrum_analyzer, 'measure_marker_power'):
@@ -162,18 +166,48 @@ class HarmonicTestProcedure:
         # 设置中心频率为谐波频率
         self.setup_spectrum_analyzer(spectrum_analyzer, harmonic_freq, sa_config)
 
-        # 执行峰值搜索
-        if hasattr(spectrum_analyzer, 'peak_search'):
-            spectrum_analyzer.peak_search()
-
         # 使用同一个标记器（固定为1）测量谐波功率
         marker_num = 1
 
-        # 设置标记器到谐波频率
-        if hasattr(spectrum_analyzer, 'set_marker_frequency'):
-            spectrum_analyzer.set_marker_frequency(marker_num, harmonic_freq)
+        # 执行峰值搜索
+        if hasattr(spectrum_analyzer, 'peak_search'):
+            spectrum_analyzer.peak_search()
+            # 等待频谱仪完成扫描和峰值搜索
+            time.sleep(0.5)
+        else:
+            # 如果没有峰值搜索功能，设置标记器到谐波频率
+            if hasattr(spectrum_analyzer, 'set_marker_frequency'):
+                spectrum_analyzer.set_marker_frequency(marker_num, harmonic_freq)
+                # 等待标记器设置生效
+                time.sleep(0.2)
 
-        # 测量谐波功率
+        # 检查峰值是否在理论谐波频率附近
+        harmonic_detected = False
+        peak_frequency = None
+        
+        # 获取峰值频率（如果支持）
+        if hasattr(spectrum_analyzer, 'get_marker_frequency'):
+            peak_frequency = spectrum_analyzer.get_marker_frequency(marker_num)
+            
+            # 计算频率容差（例如理论频率的0.1%）
+            frequency_tolerance = harmonic_freq * 0.001
+            
+            # 检查峰值是否在理论谐波频率附近
+            if peak_frequency is not None and abs(peak_frequency - harmonic_freq) <= frequency_tolerance:
+                harmonic_detected = True
+                print(f"检测到{harmonic_order}次谐波，频率: {peak_frequency / 1e6:.2f}MHz (理论: {harmonic_freq / 1e6:.2f}MHz)")
+            else:
+                print(f"未检测到明显的{harmonic_order}次谐波，将使用理论频率点的底噪")
+        
+        # 如果没有检测到明显的谐波，设置标记器到理论谐波频率
+        if not harmonic_detected:
+            if hasattr(spectrum_analyzer, 'set_marker_frequency'):
+                spectrum_analyzer.set_marker_frequency(marker_num, harmonic_freq)
+                # 等待标记器设置生效
+                time.sleep(0.2)
+                print(f"设置标记器到理论{harmonic_order}次谐波频率: {harmonic_freq / 1e6:.2f}MHz")
+
+        # 测量功率
         if hasattr(spectrum_analyzer, 'measure_marker_power'):
             power = spectrum_analyzer.measure_marker_power(marker_num)
         else:
@@ -196,10 +230,16 @@ class HarmonicTestProcedure:
 
         if measurements:
             avg_power = sum(measurements) / len(measurements)
-            print(f"{harmonic_order}次谐波功率: {avg_power:.2f} dBm (平均{len(measurements)}次)")
+            if harmonic_detected:
+                print(f"{harmonic_order}次谐波功率: {avg_power:.2f} dBm (平均{len(measurements)}次)")
+            else:
+                print(f"{harmonic_order}次谐波底噪: {avg_power:.2f} dBm (平均{len(measurements)}次)")
             return avg_power
         elif power is not None:
-            print(f"{harmonic_order}次谐波功率: {power:.2f} dBm")
+            if harmonic_detected:
+                print(f"{harmonic_order}次谐波功率: {power:.2f} dBm")
+            else:
+                print(f"{harmonic_order}次谐波底噪: {power:.2f} dBm")
             return power
         else:
             print(f"{harmonic_order}次谐波功率测量失败")
@@ -266,6 +306,11 @@ class HarmonicTestProcedure:
             'harmonic_power_dbm': harmonic_power,
             'harmonic_suppression_dbc': harmonic_suppression,
             'harmonic_order': harmonic_order,
+            'sa_attenuation_db': sa_config.get('attenuation', 10),
+            'sa_reference_level_db': sa_config.get('reference_level', 10),
+            'sa_span_hz': sa_config.get('span', 10e6),
+            'sa_rbw_hz': sa_config.get('rbw', 100e3),
+            'sa_vbw_hz': sa_config.get('vbw', 100e3),
         }
 
         self.test_results.append(result)
@@ -302,6 +347,11 @@ class HarmonicTestProcedure:
                     'harmonic_power_dbm',
                     'harmonic_suppression_dbc',
                     'harmonic_order',
+                    'sa_attenuation_db',
+                    'sa_reference_level_db',
+                    'sa_span_hz',
+                    'sa_rbw_hz',
+                    'sa_vbw_hz',
                     'test_duration_sec'
                 ]
 
@@ -336,6 +386,13 @@ class HarmonicTestProcedure:
             df = pd.DataFrame(self.test_results)
 
             # 添加摘要信息
+            # 获取频谱仪参数（使用第一个测试点的配置）
+            sa_attenuation = df['sa_attenuation_db'].iloc[0] if not df.empty else 'N/A'
+            sa_reference_level = df['sa_reference_level_db'].iloc[0] if not df.empty else 'N/A'
+            sa_span = df['sa_span_hz'].iloc[0] if not df.empty else 'N/A'
+            sa_rbw = df['sa_rbw_hz'].iloc[0] if not df.empty else 'N/A'
+            sa_vbw = df['sa_vbw_hz'].iloc[0] if not df.empty else 'N/A'
+            
             summary_data = {
                 '测试项目': ['谐波测试'],
                 '测试时间': [datetime.now().strftime('%Y-%m-%d %H:%M:%S')],
@@ -343,6 +400,11 @@ class HarmonicTestProcedure:
                 '频率范围': [f"{df['frequency_mhz'].min():.0f}-{df['frequency_mhz'].max():.0f} MHz"],
                 '平均谐波抑制': [f"{df['harmonic_suppression_dbc'].mean():.2f} dBc" if not df[
                     'harmonic_suppression_dbc'].isnull().all() else 'N/A'],
+                '频谱仪衰减': [f"{sa_attenuation} dB" if sa_attenuation != 'N/A' else 'N/A'],
+                '频谱仪参考电平': [f"{sa_reference_level} dBm" if sa_reference_level != 'N/A' else 'N/A'],
+                '频谱仪跨度': [f"{sa_span/1e6:.1f} MHz" if sa_span != 'N/A' else 'N/A'],
+                '频谱仪分辨率带宽': [f"{sa_rbw/1e3:.0f} kHz" if sa_rbw != 'N/A' else 'N/A'],
+                '频谱仪视频带宽': [f"{sa_vbw/1e3:.0f} kHz" if sa_vbw != 'N/A' else 'N/A'],
             }
             summary_df = pd.DataFrame(summary_data)
 
