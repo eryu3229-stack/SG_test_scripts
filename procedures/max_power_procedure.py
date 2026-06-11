@@ -120,6 +120,10 @@ class MaxPowerProcedure:
         # 2. 设置功率计频率
         power_meter.set_frequency(frequency)
         
+        # 等待功率计频率切换稳定
+        print(f"等待功率计稳定 {pm_settling_time}秒...")
+        time.sleep(pm_settling_time)
+        
         # 3. 配置衰减器（如果使用）
         if use_attenuator and hasattr(power_meter, 'set_input_attenuation'):
             power_meter.set_input_attenuation(attenuator_value)
@@ -158,6 +162,9 @@ class MaxPowerProcedure:
             
             # 测量功率
             measured_power = power_meter.measure_power(times=measurement_times)
+            
+            # 检查功率计错误队列
+            power_meter.check_errors()
             
             if measured_power is None:
                 print("警告: 功率计测量失败，跳过此点")

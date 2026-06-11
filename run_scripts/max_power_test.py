@@ -63,6 +63,9 @@ def main():
         manager.disconnect_all()
         return
 
+    # 等待用户确认重新连接功率计
+    input("\n请重新连接功率计输入信号，然后按 Enter 键继续...")
+
     # 使用默认测试配置
     selected_configs = test_configs
     selected_project_name = project_name

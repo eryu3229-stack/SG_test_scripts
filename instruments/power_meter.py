@@ -11,8 +11,18 @@ class PowerMeter:
         self.instrument = instrument
         # 初始化时设置功率单位为dBm
         self.set_power_unit("DBM")
+        # 禁用连续测量模式，使用单次触发
+        self.instrument.write("INIT:CONT OFF")
         # 默认设置为立即触发，确保后续测量无需等待外部信号
         self.instrument.write("TRIGger:SOURce IMMediate")
+    
+    def check_errors(self):
+        """检查并打印错误队列中的所有错误"""
+        while True:
+            err = self.instrument.query("SYST:ERR?")
+            print(err.strip())
+            if err.startswith("0"):
+                break
 
     def set_frequency(self, frequency):
         """设置功率计测量频率
@@ -43,8 +53,9 @@ class PowerMeter:
         try:
             self.instrument.write("*RST")
             print("复位功率计到默认状态")
-            # 复位后重新设置功率单位和触发源
+            # 复位后重新设置功率单位、连续测量禁用和触发源
             self.set_power_unit("DBM")
+            self.instrument.write("INIT:CONT OFF")
             self.instrument.write("TRIGger:SOURce IMMediate")
         except Exception as e:
             print(f"复位功率计失败: {e}")
@@ -79,8 +90,12 @@ class PowerMeter:
 
             results = []
             for i in range(times):
-                # 启动测量并等待结果（FETCh?会阻塞直到测量完成）
-                result_str = self.instrument.query("INITiate;FETCh?")
+                # 先触发测量
+                self.instrument.write("INITiate")
+                # 等待测量完成（同步查询）
+                self.instrument.query("*OPC?")
+                # 读取结果
+                result_str = self.instrument.query("FETCh?")
                 power = float(result_str.strip())
                 results.append(power)
 

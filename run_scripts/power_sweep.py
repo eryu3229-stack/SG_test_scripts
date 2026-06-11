@@ -78,6 +78,12 @@ def main():
         manager.disconnect_all()
         return
 
+    # 等待用户确认重新连接功率计
+    print("\n" + "="*60)
+    print("请重新连接功率计输入信号")
+    print("="*60)
+    input("连接完成后按 Enter 键继续...")
+
     # 使用配置文件中的设置
     selected_project_name = project_name
     selected_configs = test_configs
