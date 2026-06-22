@@ -35,6 +35,7 @@ class MaxPowerProcedure:
         self.instrument_manager = instrument_manager
         self.test_results = []  # 每个频点的最大功率结果
         self.power_sweep_data = []  # 详细的功率扫描数据（用于调试和分析）
+        self.csv_sweep_streamer = None
 
     def add_test_result(self, frequency, max_power, max_measured_power, 
                        attenuation, saturation_point, steps, notes):
@@ -81,6 +82,8 @@ class MaxPowerProcedure:
             'status': status,
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         })
+        if self.csv_sweep_streamer:
+            self.csv_sweep_streamer.append(self.power_sweep_data[-1])
 
     def run_test(self, signal_generator, power_meter, test_config, keep_output=False):
         """运行最大功率测试
@@ -275,6 +278,46 @@ class MaxPowerProcedure:
             time.sleep(test_config['post_close_wait'])
         else:
             print("保持信号源输出状态")
+
+    def start_csv_stream(self, csv_path):
+        """开启 CSV 流式写入"""
+        from utils.csv_streamer import CsvStreamer
+        self.csv_sweep_streamer = CsvStreamer(
+            csv_path.replace(".csv", "_sweep.csv"), [
+                "frequency", "set_power", "measured_power", "actual_power",
+                "step_index", "status", "timestamp",
+            ]
+        )
+
+    def finish_xlsx(self, xlsx_path):
+        """关闭 CSV 流并转为 XLSX"""
+        if not self.csv_sweep_streamer:
+            return self.save_results(xlsx_path)
+        import pandas as pd
+        import openpyxl
+        from openpyxl.styles import Font, Alignment
+        df_sweep = pd.read_csv(self.csv_sweep_streamer.filepath, encoding="utf-8-sig")
+        self.csv_sweep_streamer.close()
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "最大功率摘要"
+        for col, h in enumerate(["频率 (Hz)", "最大实际功率 (dBm)", "最大测量功率 (dBm)", "衰减值 (dB)", "是否饱和", "步进数", "备注", "时间戳"], 1):
+            c = ws.cell(row=3, column=col, value=h)
+            c.font = Font(bold=True)
+            c.alignment = Alignment(horizontal="center")
+        for r, row in pd.DataFrame(self.test_results).iterrows():
+            for c, val in enumerate(row, 1):
+                ws.cell(row=r+4, column=c, value=val)
+        ws2 = wb.create_sheet(title="详细功率扫描数据")
+        for col, h in enumerate(["频率 (Hz)", "设定功率 (dBm)", "测量功率 (dBm)", "实际功率 (dBm)", "步进索引", "状态", "时间戳"], 1):
+            c = ws2.cell(row=1, column=col, value=h)
+            c.font = Font(bold=True)
+            c.alignment = Alignment(horizontal="center")
+        for r, row in df_sweep.iterrows():
+            for c, val in enumerate(row, 1):
+                ws2.cell(row=r+2, column=c, value=val)
+        wb.save(xlsx_path)
+        print(f"Excel 已保存: {xlsx_path}")
 
     def save_results(self, filename):
         """保存测试结果

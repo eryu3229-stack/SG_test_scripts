@@ -120,6 +120,10 @@ def run_subharmonic_test():
 
     # 4. 初始化测试流程
     test_procedure = SubharmonicTestProcedure(manager)
+    output_dir = os.path.join(parent_dir, "output")
+    timestamp = datetime.now().strftime("%S%M%H_%d-%y")
+    csv_path = os.path.join(output_dir, f"{PROJECT_NAME}_{timestamp}.csv")
+    test_procedure.start_csv_stream(csv_path)
 
     # 5. 运行测试
     print("\n" + "=" * 60)
@@ -150,7 +154,7 @@ def run_subharmonic_test():
         filename = f"subharmonic_test_results_{timestamp}.csv"
     
     filepath = os.path.join(output_dir, filename)
-    test_procedure.save_results(filepath)
+    test_procedure.finish_xlsx(filepath)
 
     # 7. 打印测试摘要
     test_procedure.print_summary()

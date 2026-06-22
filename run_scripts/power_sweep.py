@@ -183,8 +183,7 @@ def main():
     output_dir = os.path.join(parent_dir, 'output')
     filename = f"功率扫描_{timestamp}.xlsx"
     filepath = os.path.join(output_dir, filename)
-    test_procedure.save_results(filepath, test_configs=selected_configs)
-    print(f"测试结果已保存到: {filepath}")
+    test_procedure.finish_xlsx(filepath, test_configs=selected_configs)
 
     # 断开所有仪器连接USB0::0x0AAD::0x015F::101930::0::INSTR
     manager.disconnect_all()

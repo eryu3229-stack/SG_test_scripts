@@ -16,6 +16,7 @@ class TestProcedure:
         """
         self.instrument_manager = instrument_manager
         self.test_results = []
+        self.csv_streamer = None
         self.test_prepared = False  # 标记是否已完成测试准备
 
     def add_test_result(self, frequency, set_power, measured_power, attenuator_value=0):
@@ -38,6 +39,8 @@ class TestProcedure:
             'attenuator_value': attenuator_value,
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         })
+        if self.csv_streamer:
+            self.csv_streamer.append(self.test_results[-1])
 
     def prepare_test(self, signal_generator, power_meter):
         """测试前准备步骤
@@ -109,6 +112,37 @@ class TestProcedure:
             time.sleep(post_close_wait)
 
         print(f"测试完成: {test_config['test_name']}")
+
+    def start_csv_stream(self, csv_path):
+        """开启 CSV 流式写入"""
+        from utils.csv_streamer import CsvStreamer
+        self.csv_streamer = CsvStreamer(csv_path, [
+            "frequency", "set_power", "measured_power", "compensated_power",
+            "attenuator_value", "timestamp",
+        ])
+
+    def finish_xlsx(self, xlsx_path):
+        """关闭 CSV 流并转为 XLSX"""
+        if not self.csv_streamer:
+            return self.save_results(xlsx_path)
+        import pandas as pd
+        df = pd.read_csv(self.csv_streamer.filepath, encoding="utf-8-sig")
+        self.csv_streamer.close()
+        import openpyxl
+        from openpyxl.styles import Font, Alignment
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "测试数据"
+        ws.cell(row=1, column=1, value="测试总结").font = Font(bold=True, size=14)
+        for col, h in enumerate(["测量频率", "设定功率", "实际功率", "补偿功率", "衰减器值", "时间戳"], 1):
+            c = ws.cell(row=3, column=col, value=h)
+            c.font = Font(bold=True)
+            c.alignment = Alignment(horizontal="center")
+        for r, row in df.iterrows():
+            for c, val in enumerate(row, 1):
+                ws.cell(row=r+4, column=c, value=val)
+        wb.save(xlsx_path)
+        print(f"Excel 已保存: {xlsx_path}")
 
     def save_results(self, filename, test_configs=None):
         """保存测试结果

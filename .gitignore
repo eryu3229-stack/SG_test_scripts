@@ -1,6 +1,10 @@
-# 测试结果文件
-*_results_*.xlsx
-*_results_*.csv
+﻿# 测试结果文件
+output/
+
+# 噪声曲线数据（wideband.py 生成）
+noise_curve_data.csv
+noise_only_curve.png
+noise_*.png
 
 # 压缩文件
 *.zip

@@ -23,6 +23,7 @@ class HarmonicTestProcedure:
         """
         self.instrument_manager = instrument_manager
         self.test_results = []
+        self.csv_streamer = None
         self.current_frequency = None
         self.current_power = None
 
@@ -314,6 +315,8 @@ class HarmonicTestProcedure:
         }
 
         self.test_results.append(result)
+        if self.csv_streamer:
+            self.csv_streamer.append(result)
 
         print(f"测试完成: {frequency / 1e6:.2f}MHz")
         print(f"基波功率: {fundamental_power:.2f} dBm")
@@ -425,6 +428,25 @@ class HarmonicTestProcedure:
         except Exception as e:
             print(f"保存Excel文件失败: {e}")
             return False
+
+    def start_csv_stream(self, csv_path):
+        """开启 CSV 流式写入"""
+        from utils.csv_streamer import CsvStreamer
+        fieldnames = [
+            "timestamp", "frequency_hz", "frequency_mhz", "set_power_dbm",
+            "fundamental_power_dbm", "harmonic_power_dbm",
+            "harmonic_suppression_dbc", "harmonic_order",
+            "sa_attenuation_db", "sa_reference_level_db",
+            "sa_span_hz", "sa_rbw_hz", "sa_vbw_hz",
+        ]
+        self.csv_streamer = CsvStreamer(csv_path, fieldnames)
+
+    def finish_xlsx(self, xlsx_path):
+        """关闭 CSV 流并转为 XLSX"""
+        if not self.csv_streamer:
+            return self.save_results(xlsx_path)
+        self.csv_streamer.to_xlsx(xlsx_path, sheet_name="详细数据")
+
 
     def save_results(self, filename):
         """根据文件扩展名保存测试结果

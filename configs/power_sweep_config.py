@@ -7,7 +7,7 @@ project_name = "扫频测试"
 test_configs = []
 start_freq = 30e9      # 10MHz (科学计数法)
 end_freq = 40e9        # 10GHz (科学计数法)
-step_freq = 50e6      # 100MHz (科学计数法)
+step_freq = 100e6      # 100MHz (科学计数法)
 
 # 多个功率设置（dBm）
 power_settings = [13]  # 可以添加更多功率值

@@ -17,10 +17,10 @@ TEST_DESCRIPTION = "测试信号源的二次谐波性能，记录基波和二次
 
 # 频率扫描配置
 FREQUENCY_SWEEP_CONFIG = {
-    'start_frequency': 1e9,      # 起始频率: 9kHz
-    'end_frequency': 20e9,         # 结束频率: 50MHz
-    'step_frequency': 100e6,       # 频率步进: 100kHz
-    'fixed_power': 10,              # 固定输出功率: 5dBm
+    'start_frequency': 1e9,      # 起始频率: 1 GHz
+    'end_frequency': 20e9,         # 结束频率: 20 GHz
+    'step_frequency': 100e6,       # 频率步进: 100 MHz
+    'fixed_power': 10,              # 固定输出功率: 10 dBm
     'settling_time': 2.0,          # 仪器稳定时间: 2秒
 }
 
@@ -28,10 +28,10 @@ FREQUENCY_SWEEP_CONFIG = {
 
 # 频谱仪测量配置
 SPECTRUM_ANALYZER_CONFIG = {
-    'span': 5e3,                  # 频率跨度: 10MHz (修正：原来是10e3=10kHz)
-    'rbw': 200,                  # 分辨率带宽: 100kHz (修正：原来是100Hz)n
-    'vbw': 200,                  # 视频带宽: 100kHz (修正：原来是100Hz)
-    'reference_level': 20,         # 参考电平: 10dBm
+    'span': 5e3,                  # 频率跨度: 5 kHz
+    'rbw': 200,                   # 分辨率带宽: 200 Hz
+    'vbw': 200,                   # 视频带宽: 200 Hz
+    'reference_level': 20,        # 参考电平: 20 dBm
     'attenuation': 40,             # 衰减: 40dB
     'sweep_time': 0.5,             # 扫描时间: 0.5秒
 }

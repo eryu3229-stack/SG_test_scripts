@@ -122,6 +122,10 @@ def run_harmonic_test():
 
     # 4. 初始化测试流程
     test_procedure = HarmonicTestProcedure(manager)
+    output_dir = os.path.join(parent_dir, "output")
+    timestamp = datetime.now().strftime("%S%M%H_%d-%y")
+    csv_path = os.path.join(output_dir, f"{PROJECT_NAME}_{timestamp}.csv")
+    test_procedure.start_csv_stream(csv_path)
 
     # 5. 运行测试
     print("\n" + "=" * 60)
@@ -181,8 +185,7 @@ def run_harmonic_test():
     output_dir = os.path.join(parent_dir, 'output')
     filename = f"harmonic_test_results_{timestamp}.xlsx"
     filepath = os.path.join(output_dir, filename)
-    test_procedure.save_results(filepath)
-    print(f"测试结果已保存到: {filepath}")
+    test_procedure.finish_xlsx(filepath)
     # 7. 打印测试摘要
     test_procedure.print_summary()
 

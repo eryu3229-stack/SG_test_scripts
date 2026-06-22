@@ -61,6 +61,10 @@ def main():
 
     # 运行测试
     test_procedure = LowFreqMaxPowerProcedure(manager)
+    output_dir = os.path.join(parent_dir, "output")
+    timestamp = datetime.now().strftime("%S%M%H_%d-%y")
+    csv_path = os.path.join(output_dir, f"{project_name}_{timestamp}.csv")
+    test_procedure.start_csv_stream(csv_path)
 
     print(f"\n开始测试项目: {selected_project_name}")
     print(f"测试点数: {len(selected_configs)}")
@@ -128,8 +132,7 @@ def main():
     output_dir = os.path.join(parent_dir, 'output')
     filename = f"低频段最大功率测试_{timestamp}.xlsx"
     filepath = os.path.join(output_dir, filename)
-    test_procedure.save_results(filepath)
-    print(f"测试结果已保存到: {filepath}")
+    test_procedure.finish_xlsx(filepath)
 
     # 断开所有仪器连接
     manager.disconnect_all()
