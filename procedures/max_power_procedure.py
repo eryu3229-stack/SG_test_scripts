@@ -3,27 +3,10 @@ import csv
 import openpyxl
 from openpyxl.styles import Font, Alignment
 from datetime import datetime
-
-def format_frequency(frequency):
-    """格式化频率显示，根据频率大小自动选择合适的单位
-    
-    Args:
-        frequency: 频率值，单位Hz
-        
-    Returns:
-        str: 格式化后的频率字符串
-    """
-    if frequency < 1e3:
-        return f"{frequency:.0f}Hz"
-    elif frequency < 1e6:
-        return f"{frequency/1e3:.2f}kHz"
-    elif frequency < 1e9:
-        return f"{frequency/1e6:.2f}MHz"
-    else:
-        return f"{frequency/1e9:.2f}GHz"
+from base_test_procedure import BaseTestProcedure, format_frequency
 
 
-class MaxPowerProcedure:
+class MaxPowerProcedure(BaseTestProcedure):
     """最大功率测试流程类"""
 
     def __init__(self, instrument_manager):
@@ -32,8 +15,7 @@ class MaxPowerProcedure:
         Args:
             instrument_manager: 仪器管理器对象
         """
-        self.instrument_manager = instrument_manager
-        self.test_results = []  # 每个频点的最大功率结果
+        super().__init__(instrument_manager)
         self.power_sweep_data = []  # 详细的功率扫描数据（用于调试和分析）
         self.csv_sweep_streamer = None
 
@@ -205,7 +187,7 @@ class MaxPowerProcedure:
                 
                 if power_increase < power_tolerance:
                     saturation_detected = True
-                    stop_reason = f"检测到饱和 (功率增加仅 {power_increase:.2f} dB < 容差 {power_tolerance} dB)"
+                    stop_reason = f"检测到饱和 (功率增加仅{power_increase:.2f} dB < 容差 {power_tolerance} dB)"
                     print(f"停止条件: {stop_reason}")
                     stop_scan = True
             

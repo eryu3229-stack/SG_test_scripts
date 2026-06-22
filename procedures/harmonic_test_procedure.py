@@ -6,13 +6,13 @@
 """
 
 import time
-import csv
 import os
 from datetime import datetime
 import pandas as pd
+from base_test_procedure import BaseTestProcedure, format_frequency
 
 
-class HarmonicTestProcedure:
+class HarmonicTestProcedure(BaseTestProcedure):
     """谐波测试流程类"""
 
     def __init__(self, instrument_manager):
@@ -21,133 +21,7 @@ class HarmonicTestProcedure:
         Args:
             instrument_manager: 仪器管理器对象
         """
-        self.instrument_manager = instrument_manager
-        self.test_results = []
-        self.csv_streamer = None
-        self.current_frequency = None
-        self.current_power = None
-
-    def setup_signal_generator(self, signal_gen, frequency, power):
-        """设置信号源
-
-        Args:
-            signal_gen: 信号源对象
-            frequency: 频率 (Hz)
-            power: 功率 (dBm)
-        """
-        print(f"设置信号源: {frequency / 1e6:.2f}MHz, {power}dBm")
-
-        # 设置频率
-        signal_gen.set_frequency(frequency)
-
-        # 设置功率
-        signal_gen.set_power(power)
-
-        # 启用输出
-        signal_gen.enable_output(True)
-
-        self.current_frequency = frequency
-        self.current_power = power
-
-        # 等待信号稳定
-        time.sleep(1)
-
-    def setup_spectrum_analyzer(self, spectrum_analyzer, center_frequency, config):
-        """设置频谱仪
-
-        Args:
-            spectrum_analyzer: 频谱仪对象
-            center_frequency: 中心频率 (Hz)
-            config: 频谱仪配置字典
-        """
-        print(f"设置频谱仪中心频率: {center_frequency / 1e6:.2f}MHz")
-
-        # 设置中心频率
-        spectrum_analyzer.set_center_frequency(center_frequency)
-
-        # 设置频率跨度
-        spectrum_analyzer.set_span(config.get('span', 10e6))
-
-        # 设置参考电平
-        spectrum_analyzer.set_reference_level(config.get('reference_level', 10))
-
-        # 设置分辨率带宽
-        if hasattr(spectrum_analyzer, 'set_rbw'):
-            spectrum_analyzer.set_rbw(config.get('rbw', 100e3))
-
-        # 设置视频带宽
-        if hasattr(spectrum_analyzer, 'set_vbw'):
-            spectrum_analyzer.set_vbw(config.get('vbw', 100e3))
-
-        # 设置衰减
-        if hasattr(spectrum_analyzer, 'set_attenuation'):
-            spectrum_analyzer.set_attenuation(config.get('attenuation', 10))
-
-        # 等待设置生效
-        time.sleep(0.5)
-
-    def measure_fundamental_power(self, spectrum_analyzer, frequency, sa_config):
-        """测量基波功率
-
-        Args:
-            spectrum_analyzer: 频谱仪对象
-            frequency: 基波频率 (Hz)
-            sa_config: 频谱仪配置
-
-        Returns:
-            float: 基波功率 (dBm)
-        """
-        print(f"测量基波功率 @ {frequency / 1e6:.2f}MHz")
-
-        # 设置中心频率为基波频率
-        self.setup_spectrum_analyzer(spectrum_analyzer, frequency, sa_config)
-
-        # 使用同一个标记器（固定为1）测量基波功率
-        marker_num = 1
-
-        # 执行峰值搜索
-        if hasattr(spectrum_analyzer, 'peak_search'):
-            spectrum_analyzer.peak_search()
-            # 等待频谱仪完成扫描和峰值搜索
-            time.sleep(0.5)
-        else:
-            # 如果没有峰值搜索功能，设置标记器到中心频率
-            if hasattr(spectrum_analyzer, 'set_marker_frequency'):
-                spectrum_analyzer.set_marker_frequency(marker_num, frequency)
-                # 等待标记器设置生效
-                time.sleep(0.2)
-
-        # 测量标记器功率
-        if hasattr(spectrum_analyzer, 'measure_marker_power'):
-            power = spectrum_analyzer.measure_marker_power(marker_num)
-        else:
-            # 备用方法：使用通用功率测量
-            power = spectrum_analyzer.measure_power()
-
-        # 多次测量取平均
-        average_count = sa_config.get('measurement_average', 3)
-        measurements = []
-
-        for i in range(average_count):
-            if hasattr(spectrum_analyzer, 'measure_marker_power'):
-                measurement = spectrum_analyzer.measure_marker_power(marker_num)
-            else:
-                measurement = spectrum_analyzer.measure_power()
-
-            if measurement is not None:
-                measurements.append(measurement)
-            time.sleep(0.3)
-
-        if measurements:
-            avg_power = sum(measurements) / len(measurements)
-            print(f"基波功率: {avg_power:.2f} dBm (平均{len(measurements)}次)")
-            return avg_power
-        elif power is not None:
-            print(f"基波功率: {power:.2f} dBm")
-            return power
-        else:
-            print("基波功率测量失败")
-            return None
+        super().__init__(instrument_manager)
 
     def measure_harmonic_power(self, spectrum_analyzer, fundamental_freq, harmonic_order, sa_config):
         """测量谐波功率
@@ -164,47 +38,33 @@ class HarmonicTestProcedure:
         harmonic_freq = fundamental_freq * harmonic_order
         print(f"测量{harmonic_order}次谐波功率 @ {harmonic_freq / 1e6:.2f}MHz")
 
-        # 设置中心频率为谐波频率
         self.setup_spectrum_analyzer(spectrum_analyzer, harmonic_freq, sa_config)
 
-        # 使用同一个标记器（固定为1）测量谐波功率
         marker_num = 1
 
-        # 执行峰值搜索
         if hasattr(spectrum_analyzer, 'peak_search'):
             spectrum_analyzer.peak_search()
-            # 等待频谱仪完成扫描和峰值搜索
             time.sleep(0.5)
         else:
-            # 如果没有峰值搜索功能，设置标记器到谐波频率
             if hasattr(spectrum_analyzer, 'set_marker_frequency'):
                 spectrum_analyzer.set_marker_frequency(marker_num, harmonic_freq)
-                # 等待标记器设置生效
                 time.sleep(0.2)
 
         # 检查峰值是否在理论谐波频率附近
         harmonic_detected = False
-        peak_frequency = None
-        
-        # 获取峰值频率（如果支持）
         if hasattr(spectrum_analyzer, 'get_marker_frequency'):
             peak_frequency = spectrum_analyzer.get_marker_frequency(marker_num)
-            
-            # 计算频率容差（例如理论频率的0.1%）
             frequency_tolerance = harmonic_freq * 0.001
-            
-            # 检查峰值是否在理论谐波频率附近
+
             if peak_frequency is not None and abs(peak_frequency - harmonic_freq) <= frequency_tolerance:
                 harmonic_detected = True
                 print(f"检测到{harmonic_order}次谐波，频率: {peak_frequency / 1e6:.2f}MHz (理论: {harmonic_freq / 1e6:.2f}MHz)")
             else:
                 print(f"未检测到明显的{harmonic_order}次谐波，将使用理论频率点的底噪")
-        
-        # 如果没有检测到明显的谐波，设置标记器到理论谐波频率
+
         if not harmonic_detected:
             if hasattr(spectrum_analyzer, 'set_marker_frequency'):
                 spectrum_analyzer.set_marker_frequency(marker_num, harmonic_freq)
-                # 等待标记器设置生效
                 time.sleep(0.2)
                 print(f"设置标记器到理论{harmonic_order}次谐波频率: {harmonic_freq / 1e6:.2f}MHz")
 
@@ -212,7 +72,6 @@ class HarmonicTestProcedure:
         if hasattr(spectrum_analyzer, 'measure_marker_power'):
             power = spectrum_analyzer.measure_marker_power(marker_num)
         else:
-            # 备用方法：使用通用功率测量
             power = spectrum_analyzer.measure_power()
 
         # 多次测量取平均
@@ -268,18 +127,16 @@ class HarmonicTestProcedure:
         print(f"开始测试: {frequency / 1e6:.2f}MHz")
         print(f"{'=' * 60}")
 
-        # 1. 设置信号源
-        self.setup_signal_generator(signal_gen, frequency, set_power)
-
-        # 等待信号稳定
+        # 1. 设置信号源（使用基类方法，settling_time 由 run_harmonic_test 自己控制）
+        self.setup_signal_generator(signal_gen, frequency, set_power, settling_time=0)
         time.sleep(settling_time)
 
-        # 2. 测量基波功率
+        # 2. 测量基波功率（使用基类方法）
         fundamental_power = self.measure_fundamental_power(
             spectrum_analyzer, frequency, sa_config
         )
 
-        # 3. 测量二次谐波功率
+        # 3. 测量谐波功率
         harmonic_order = harmonic_config.get('harmonic_order', 2)
         harmonic_power = self.measure_harmonic_power(
             spectrum_analyzer, frequency, harmonic_order, sa_config
@@ -287,7 +144,7 @@ class HarmonicTestProcedure:
 
         # 4. 计算谐波抑制比 (dBc)
         if fundamental_power is not None and harmonic_power is not None:
-            harmonic_suppression = harmonic_power - fundamental_power  # dBc
+            harmonic_suppression = harmonic_power - fundamental_power
             print(f"二次谐波抑制: {harmonic_suppression:.2f} dBc")
         else:
             harmonic_suppression = None
@@ -326,112 +183,8 @@ class HarmonicTestProcedure:
 
         return result
 
-    def save_results_to_csv(self, filename):
-        """保存测试结果到CSV文件
-
-        Args:
-            filename: 输出文件名
-        """
-        if not self.test_results:
-            print("没有测试结果可保存")
-            return False
-
-        try:
-            # 确保目录存在
-            os.makedirs(os.path.dirname(os.path.abspath(filename)), exist_ok=True)
-
-            with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
-                fieldnames = [
-                    'timestamp',
-                    'frequency_hz',
-                    'frequency_mhz',
-                    'set_power_dbm',
-                    'fundamental_power_dbm',
-                    'harmonic_power_dbm',
-                    'harmonic_suppression_dbc',
-                    'harmonic_order',
-                    'sa_attenuation_db',
-                    'sa_reference_level_db',
-                    'sa_span_hz',
-                    'sa_rbw_hz',
-                    'sa_vbw_hz',
-                    'test_duration_sec'
-                ]
-
-                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-                writer.writeheader()
-
-                for result in self.test_results:
-                    writer.writerow(result)
-
-            print(f"测试结果已保存到CSV文件: {filename}")
-            return True
-
-        except Exception as e:
-            print(f"保存CSV文件失败: {e}")
-            return False
-
-    def save_results_to_excel(self, filename):
-        """保存测试结果到Excel文件
-
-        Args:
-            filename: 输出文件名
-        """
-        if not self.test_results:
-            print("没有测试结果可保存")
-            return False
-
-        try:
-            # 确保目录存在
-            os.makedirs(os.path.dirname(os.path.abspath(filename)), exist_ok=True)
-
-            # 转换为DataFrame
-            df = pd.DataFrame(self.test_results)
-
-            # 添加摘要信息
-            # 获取频谱仪参数（使用第一个测试点的配置）
-            sa_attenuation = df['sa_attenuation_db'].iloc[0] if not df.empty else 'N/A'
-            sa_reference_level = df['sa_reference_level_db'].iloc[0] if not df.empty else 'N/A'
-            sa_span = df['sa_span_hz'].iloc[0] if not df.empty else 'N/A'
-            sa_rbw = df['sa_rbw_hz'].iloc[0] if not df.empty else 'N/A'
-            sa_vbw = df['sa_vbw_hz'].iloc[0] if not df.empty else 'N/A'
-            
-            summary_data = {
-                '测试项目': ['谐波测试'],
-                '测试时间': [datetime.now().strftime('%Y-%m-%d %H:%M:%S')],
-                '总测试点数': [len(self.test_results)],
-                '频率范围': [f"{df['frequency_mhz'].min():.0f}-{df['frequency_mhz'].max():.0f} MHz"],
-                '平均谐波抑制': [f"{df['harmonic_suppression_dbc'].mean():.2f} dBc" if not df[
-                    'harmonic_suppression_dbc'].isnull().all() else 'N/A'],
-                '频谱仪衰减': [f"{sa_attenuation} dB" if sa_attenuation != 'N/A' else 'N/A'],
-                '频谱仪参考电平': [f"{sa_reference_level} dBm" if sa_reference_level != 'N/A' else 'N/A'],
-                '频谱仪跨度': [f"{sa_span/1e6:.1f} MHz" if sa_span != 'N/A' else 'N/A'],
-                '频谱仪分辨率带宽': [f"{sa_rbw/1e3:.0f} kHz" if sa_rbw != 'N/A' else 'N/A'],
-                '频谱仪视频带宽': [f"{sa_vbw/1e3:.0f} kHz" if sa_vbw != 'N/A' else 'N/A'],
-            }
-            summary_df = pd.DataFrame(summary_data)
-
-            # 创建Excel写入器
-            with pd.ExcelWriter(filename, engine='openpyxl') as writer:
-                # 写入摘要
-                summary_df.to_excel(writer, sheet_name='测试摘要', index=False)
-
-                # 写入详细数据
-                df.to_excel(writer, sheet_name='详细数据', index=False)
-
-            print(f"测试结果已保存到Excel文件: {filename}")
-            return True
-
-        except ImportError:
-            print("未安装pandas/openpyxl，无法保存为Excel格式")
-            return False
-        except Exception as e:
-            print(f"保存Excel文件失败: {e}")
-            return False
-
     def start_csv_stream(self, csv_path):
         """开启 CSV 流式写入"""
-        from utils.csv_streamer import CsvStreamer
         fieldnames = [
             "timestamp", "frequency_hz", "frequency_mhz", "set_power_dbm",
             "fundamental_power_dbm", "harmonic_power_dbm",
@@ -439,31 +192,14 @@ class HarmonicTestProcedure:
             "sa_attenuation_db", "sa_reference_level_db",
             "sa_span_hz", "sa_rbw_hz", "sa_vbw_hz",
         ]
-        self.csv_streamer = CsvStreamer(csv_path, fieldnames)
+        super().start_csv_stream(csv_path, fieldnames)
 
     def finish_xlsx(self, xlsx_path):
         """关闭 CSV 流并转为 XLSX"""
-        if not self.csv_streamer:
-            return self.save_results(xlsx_path)
-        self.csv_streamer.to_xlsx(xlsx_path, sheet_name="详细数据")
-
-
-    def save_results(self, filename):
-        """根据文件扩展名保存测试结果
-
-        Args:
-            filename: 输出文件名
-        """
-        if filename.lower().endswith('.xlsx') or filename.lower().endswith('.xls'):
-            return self.save_results_to_excel(filename)
-        else:
-            # 默认保存为CSV
-            if not filename.lower().endswith('.csv'):
-                filename += '.csv'
-            return self.save_results_to_csv(filename)
+        super().finish_xlsx(xlsx_path, sheet_name="详细数据")
 
     def print_summary(self):
-        """打印测试摘要"""
+        """打印测试摘要（谐波专项）"""
         if not self.test_results:
             print("没有测试结果")
             return
