@@ -20,3 +20,8 @@ __pycache__/
 
 # 日志文件
 *.log
+
+# wideband 生成的噪声文件
+noise_curve_data.csv
+noise_only_curve.png
+wideband.py
