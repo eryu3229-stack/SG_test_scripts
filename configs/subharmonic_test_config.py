@@ -33,8 +33,7 @@ SPECTRUM_ANALYZER_CONFIG = {
     'reference_level': 10,         # 参考电平: 10dBm
     'attenuation': 40,             # 衰减: 10dB
     'peak_search_range': 5e3,
-    'sweep_time': 1.0,               # 扫描时间: 1.0秒
-    'sa_settling_time': 0.5,          # 频谱仪稳定等待时间: 0.5秒
+        'sa_settling_time': 0.5,          # 频谱仪稳定等待时间: 0.5秒
 }
 
 # ==================== 分谐波测量配置 ====================

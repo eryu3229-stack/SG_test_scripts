@@ -23,7 +23,7 @@ class HarmonicTestProcedure(BaseTestProcedure):
         """
         super().__init__(instrument_manager)
 
-    def measure_harmonic_power(self, spectrum_analyzer, fundamental_freq, harmonic_order, sa_config):
+    def measure_harmonic_power(self, spectrum_analyzer, fundamental_freq, harmonic_order, sa_config, average_count=3):
         """测量谐波功率
 
         Args:
@@ -75,7 +75,7 @@ class HarmonicTestProcedure(BaseTestProcedure):
             power = spectrum_analyzer.measure_power()
 
         # 多次测量取平均
-        average_count = sa_config.get('measurement_average', 3)
+        # average_count is now a parameter with default=3
         measurements = []
 
         for i in range(average_count):
@@ -133,13 +133,15 @@ class HarmonicTestProcedure(BaseTestProcedure):
 
         # 2. 测量基波功率（使用基类方法）
         fundamental_power = self.measure_fundamental_power(
-            spectrum_analyzer, frequency, sa_config
+            spectrum_analyzer, frequency, sa_config,
+            average_count=harmonic_config.get('measurement_average', 3)
         )
 
         # 3. 测量谐波功率
         harmonic_order = harmonic_config.get('harmonic_order', 2)
         harmonic_power = self.measure_harmonic_power(
-            spectrum_analyzer, frequency, harmonic_order, sa_config
+            spectrum_analyzer, frequency, harmonic_order, sa_config,
+            average_count=harmonic_config.get('measurement_average', 3)
         )
 
         # 4. 计算谐波抑制比 (dBc)

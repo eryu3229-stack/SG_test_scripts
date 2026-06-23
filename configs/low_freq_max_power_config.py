@@ -36,8 +36,7 @@ spectrum_analyzer_config = {
     'vbw': 100,                   # 视频带宽：100Hz
     'reference_level': 10,         # 参考电平：20dBm
     'attenuation': 10,             # 衰减：10dB
-    'sweep_time': None,            # 扫描时间：自动
-}
+    }
 
 # 生成测试配置
 test_configs = []

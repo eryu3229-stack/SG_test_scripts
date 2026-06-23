@@ -117,15 +117,11 @@ class BaseTestProcedure:
             spectrum_analyzer.set_attenuation(attenuation)
             print(f"设置衰减: {attenuation} dB")
 
-        if hasattr(spectrum_analyzer, 'set_sweep_time'):
-            sweep_time = config.get('sweep_time', 1)
-            spectrum_analyzer.set_sweep_time(sweep_time)
-            print(f"设置扫描时间: {sweep_time}秒")
 
         print(f"等待频谱仪设置生效 {sa_settling_time}秒...")
         time.sleep(sa_settling_time)
 
-    def measure_fundamental_power(self, spectrum_analyzer, frequency, sa_config):
+    def measure_fundamental_power(self, spectrum_analyzer, frequency, sa_config, average_count=3):
         """测量基波功率
 
         Args:
@@ -158,7 +154,7 @@ class BaseTestProcedure:
             power = spectrum_analyzer.measure_power()
 
         # 多次测量取平均
-        average_count = sa_config.get('measurement_average', 3)
+        # average_count is now a parameter with default=3
         measurements = []
 
         for i in range(average_count):

@@ -23,7 +23,7 @@ class SubharmonicTestProcedure(BaseTestProcedure):
         """
         super().__init__(instrument_manager)
 
-    def measure_subharmonic_power(self, spectrum_analyzer, fundamental_freq, subharmonic_order, sa_config):
+    def measure_subharmonic_power(self, spectrum_analyzer, fundamental_freq, subharmonic_order, sa_config, average_count=3):
         """测量分谐波功率
 
         Args:
@@ -55,7 +55,7 @@ class SubharmonicTestProcedure(BaseTestProcedure):
             power = spectrum_analyzer.measure_power()
 
         # 多次测量取平均
-        average_count = sa_config.get('measurement_average', 3)
+        # average_count is now a parameter with default=3
         measurements = []
 
         for i in range(average_count):
@@ -107,7 +107,8 @@ class SubharmonicTestProcedure(BaseTestProcedure):
 
         # 2. 测量基波功率（使用基类方法）
         fundamental_power = self.measure_fundamental_power(
-            spectrum_analyzer, frequency, sa_config
+            spectrum_analyzer, frequency, sa_config,
+            average_count=subharmonic_config.get('measurement_average', 3)
         )
 
         # 3. 测量分谐波功率
@@ -117,7 +118,8 @@ class SubharmonicTestProcedure(BaseTestProcedure):
 
         for order in subharmonic_orders:
             subharmonic_power = self.measure_subharmonic_power(
-                spectrum_analyzer, frequency, order, sa_config
+                spectrum_analyzer, frequency, order, sa_config,
+                average_count=subharmonic_config.get('measurement_average', 3)
             )
             subharmonic_powers[order] = subharmonic_power
 

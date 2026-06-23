@@ -32,8 +32,7 @@ SPECTRUM_ANALYZER_CONFIG = {
     'vbw': 200,                   # 视频带宽: 200 Hz
     'reference_level': 20,        # 参考电平: 20 dBm
     'attenuation': 40,            # 衰减: 40dB
-    'sweep_time': 0.5,
-    'sa_settling_time': 0.5,      # 频谱仪稳定等待时间: 0.5秒
+        'sa_settling_time': 0.5,      # 频谱仪稳定等待时间: 0.5秒
 }
 
 # ==================== 谐波测量配置 ====================
@@ -103,7 +102,6 @@ def get_test_config_summary():
    - 频率跨度: {sa_config['span']/1e6:.1f} MHz
    - 分辨率带宽: {sa_config['rbw']/1e3:.0f} kHz
    - 参考电平: {sa_config['reference_level']} dBm
-   - 扫描时间: {sa_config['sweep_time']} 秒
 
 3. 谐波测量配置:
    - 谐波阶数: {harmonic_config['harmonic_order']}
