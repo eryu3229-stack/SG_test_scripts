@@ -13,6 +13,8 @@
 - **CSV 流式写入**：测量一点即写入一点，中途中断不丢数据，测试完成后自动转为 XLSX
 - **统一继承架构**：所有 Procedure 类继承自 `BaseTestProcedure`，消除 ~700 行冗余代码
 - **双格式输出**：支持 CSV / Excel，含摘要 + 详细数据双工作表
+- **进一步消除重复**：抽取 PowerSweepBaseProcedure 公共基类，减少 ~250 行重复代码
+- **配置键名对齐**：SPECTRUM_ANALYZER_CONFIG 增加 sa_settling_time，配置与实际读取一致
 
 ---
 
@@ -35,8 +37,9 @@ SG_test_scripts/
 │   ├── base_test_procedure.py            # ★ 基础测试流程（通用功能基类）
 │   ├── harmonic_test_procedure.py        # 谐波测试 (extends BaseTestProcedure)
 │   ├── subharmonic_test_procedure.py     # 分谐波测试 (extends BaseTestProcedure)
-│   ├── max_power_procedure.py            # 最大功率测试 (extends BaseTestProcedure)
-│   ├── low_freq_max_power_procedure.py   # 低频段最大功率 (extends BaseTestProcedure)
+│   ├── power_sweep_base.py               # ★ 最大/低频功率测试公共基类（新增）
+│   ├── max_power_procedure.py            # 最大功率测试 (extends PowerSweepBaseProcedure)
+│   ├── low_freq_max_power_procedure.py   # 低频段最大功率 (extends PowerSweepBaseProcedure)
 │   └── power_sweep_procedure.py          # 功率扫描 (extends BaseTestProcedure)
 ├── run_scripts/                     # 可执行入口脚本
 │   ├── harmonic_test.py                 # 谐波测试入口
@@ -45,8 +48,7 @@ SG_test_scripts/
 │   ├── low_freq_max_power_test.py       # 低频段最大功率测试入口
 │   └── power_sweep.py                   # 功率扫描测试入口
 ├── utils/                           # 工具模块
-│   ├── csv_streamer.py                  # CSV 流式写入工具
-│   └── project_manager.py               # 项目配置管理
+│   └── csv_streamer.py                  # CSV 流式写入工具
 ├── output/                          # 测试结果输出目录（.gitignore 排除）
 ├── wideband.py                      # 宽带噪声曲线生成工具
 └── README.md
@@ -59,12 +61,13 @@ SG_test_scripts/
 ### 继承体系
 
 ```
-BaseTestProcedure          ← 所有通用方法
-├── HarmonicTestProcedure      ← measure_harmonic_power / run_harmonic_test
-├── SubharmonicTestProcedure   ← measure_subharmonic_power / run_subharmonic_test
-├── MaxPowerProcedure          ← 功率扫描循环 + 双工作表 Excel
-├── LowFreqMaxPowerProcedure   ← DC 耦合频谱仪低频测量
-└── TestProcedure              ← 功率扫描（功率计 + 频率相关衰减器）
+BaseTestProcedure                ← 所有通用方法
+├── HarmonicTestProcedure            ← measure_harmonic_power / run_harmonic_test
+├── SubharmonicTestProcedure         ← measure_subharmonic_power / run_subharmonic_test
+├── PowerSweepBaseProcedure          ← 最大/低频功率测试公共基类
+│   ├── MaxPowerProcedure            ← 功率扫描循环 + 双工作表 Excel
+│   └── LowFreqMaxPowerProcedure     ← DC 耦合频谱仪低频测量
+└── TestProcedure                    ← 功率扫描（功率计 + 频率相关衰减器）
 ```
 
 ### 基类公共方法
@@ -197,7 +200,17 @@ pip install pyvisa pyvisa-py pandas openpyxl numpy scipy matplotlib
 
 ## 变更记录
 
-**streaming（当前）**
+**v2.0（当前）**
+- 重构：抽取 PowerSweepBaseProcedure，消除 max_power_procedure.py 和 low_freq_max_power_procedure.py 之间约 250 行重复代码
+- 修复：harmonic_test_config.py 中 point['duration'] 键名错误导致的 KeyError
+- 修复：4 个入口脚本中 CSV 文件时间戳格式从反人类的 %S%M%H 改为 %Y%m%d_%H%M%S
+- 修复：谐波/分谐波配置中缺失 sa_settling_time 键，配置值此前未生效
+- 清理：移除未使用的 utils/project_manager.py（死代码）
+- 清理：移除 Windows 项目多余的 #!/usr/bin/env python3 shebang
+- 清理：移除所有形同虚设的 __init__.py（项目使用 sys.path.append + 直接 import）
+- 清理：删除残余 VISA 硬件地址注释
+
+**streaming**
 - 重构：Procedure 继承体系统一，消除 ~700 行重复代码
 - 新增：CsvStreamer 流式写入，支持中断保护
 - 改进：format_frequency 全局统一
