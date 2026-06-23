@@ -123,7 +123,7 @@ def run_harmonic_test():
     # 4. 初始化测试流程
     test_procedure = HarmonicTestProcedure(manager)
     output_dir = os.path.join(parent_dir, "output")
-    timestamp = datetime.now().strftime("%S%M%H_%d-%y")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     csv_path = os.path.join(output_dir, f"{PROJECT_NAME}_{timestamp}.csv")
     test_procedure.start_csv_stream(csv_path)
 

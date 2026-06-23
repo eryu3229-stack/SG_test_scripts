@@ -1,52 +1,14 @@
 import time
-import csv
-import openpyxl
-from openpyxl.styles import Font, Alignment
 from datetime import datetime
-from base_test_procedure import BaseTestProcedure, format_frequency
+from base_test_procedure import format_frequency
+from power_sweep_base import PowerSweepBaseProcedure
 
 
-class LowFreqMaxPowerProcedure(BaseTestProcedure):
+class LowFreqMaxPowerProcedure(PowerSweepBaseProcedure):
     """低频段最大功率测试流程类"""
 
     def __init__(self, instrument_manager):
-        """初始化测试流程
-
-        Args:
-            instrument_manager: 仪器管理器对象
-        """
         super().__init__(instrument_manager)
-        self.power_sweep_data = []
-        self.csv_sweep_streamer = None
-
-    def add_test_result(self, frequency, max_power, max_measured_power, 
-                       attenuation, saturation_point, steps, notes):
-        """添加测试结果"""
-        self.test_results.append({
-            'frequency': frequency,
-            'max_power': max_power,
-            'max_measured_power': max_measured_power,
-            'attenuation': attenuation,
-            'saturation_point': saturation_point,
-            'steps': steps,
-            'notes': notes,
-            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        })
-
-    def add_power_sweep_point(self, frequency, set_power, measured_power, 
-                             actual_power, step_index, status):
-        """添加功率扫描数据点"""
-        self.power_sweep_data.append({
-            'frequency': frequency,
-            'set_power': set_power,
-            'measured_power': measured_power,
-            'actual_power': actual_power,
-            'step_index': step_index,
-            'status': status,
-            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        })
-        if self.csv_sweep_streamer:
-            self.csv_sweep_streamer.append(self.power_sweep_data[-1])
 
     def run_test(self, signal_generator, spectrum_analyzer, test_config, keep_output=False):
         """运行低频段最大功率测试"""
@@ -213,127 +175,3 @@ class LowFreqMaxPowerProcedure(BaseTestProcedure):
             time.sleep(test_config['post_close_wait'])
         else:
             print("保持信号源输出状态")
-
-    def start_csv_stream(self, csv_path):
-        """开启 CSV 流式写入"""
-        from utils.csv_streamer import CsvStreamer
-        self.csv_sweep_streamer = CsvStreamer(
-            csv_path.replace(".csv", "_sweep.csv"), [
-                "frequency", "set_power", "measured_power", "actual_power",
-                "step_index", "status", "timestamp",
-            ]
-        )
-
-    def finish_xlsx(self, xlsx_path):
-        """关闭 CSV 流并转为 XLSX"""
-        if not self.csv_sweep_streamer:
-            return self.save_results(xlsx_path)
-        import pandas as pd
-        import openpyxl
-        from openpyxl.styles import Font, Alignment
-        df_sweep = pd.read_csv(self.csv_sweep_streamer.filepath, encoding="utf-8-sig")
-        self.csv_sweep_streamer.close()
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "最大功率摘要"
-        for col, h in enumerate(["频率 (Hz)", "最大实际功率 (dBm)", "最大测量功率 (dBm)", "衰减值 (dB)", "是否饱和", "步进数", "备注", "时间戳"], 1):
-            c = ws.cell(row=3, column=col, value=h)
-            c.font = Font(bold=True)
-            c.alignment = Alignment(horizontal="center")
-        for r, row in pd.DataFrame(self.test_results).iterrows():
-            for c, val in enumerate(row, 1):
-                ws.cell(row=r+4, column=c, value=val)
-        ws2 = wb.create_sheet(title="详细功率扫描数据")
-        for col, h in enumerate(["频率 (Hz)", "设定功率 (dBm)", "测量功率 (dBm)", "实际功率 (dBm)", "步进索引", "状态", "时间戳"], 1):
-            c = ws2.cell(row=1, column=col, value=h)
-            c.font = Font(bold=True)
-            c.alignment = Alignment(horizontal="center")
-        for r, row in df_sweep.iterrows():
-            for c, val in enumerate(row, 1):
-                ws2.cell(row=r+2, column=c, value=val)
-        wb.save(xlsx_path)
-        print(f"Excel 已保存: {xlsx_path}")
-
-    def save_results(self, filename):
-        """保存测试结果"""
-        if not self.test_results:
-            print("没有测试结果可保存")
-            return
-
-        try:
-            if filename.endswith('.xlsx'):
-                wb = openpyxl.Workbook()
-                ws_summary = wb.active
-                ws_summary.title = "最大功率摘要"
-                
-                headers = ['频率 (Hz)', '频率显示', '最大实际功率 (dBm)', '最大测量功率 (dBm)', 
-                          '衰减值 (dB)', '是否饱和', '功率步进数', '备注', '时间戳']
-                for col, header in enumerate(headers, 1):
-                    cell = ws_summary.cell(row=1, column=col)
-                    cell.value = header
-                    cell.font = Font(bold=True)
-                    cell.alignment = Alignment(horizontal='center')
-                
-                for row, result in enumerate(self.test_results, 2):
-                    ws_summary.cell(row=row, column=1).value = result['frequency']
-                    ws_summary.cell(row=row, column=2).value = format_frequency(result['frequency'])
-                    ws_summary.cell(row=row, column=3).value = result['max_power']
-                    ws_summary.cell(row=row, column=4).value = result['max_measured_power']
-                    ws_summary.cell(row=row, column=5).value = result['attenuation']
-                    ws_summary.cell(row=row, column=6).value = '是' if result['saturation_point'] else '否'
-                    ws_summary.cell(row=row, column=7).value = result['steps']
-                    ws_summary.cell(row=row, column=8).value = result['notes']
-                    ws_summary.cell(row=row, column=9).value = result['timestamp']
-                
-                for col in range(1, len(headers) + 1):
-                    ws_summary.column_dimensions[openpyxl.utils.get_column_letter(col)].width = 15
-                
-                ws_detail = wb.create_sheet(title="详细功率扫描数据")
-                detail_headers = ['频率 (Hz)', '设定功率 (dBm)', '测量功率 (dBm)', 
-                                '实际功率 (dBm)', '步进索引', '状态', '时间戳']
-                for col, header in enumerate(detail_headers, 1):
-                    cell = ws_detail.cell(row=1, column=col)
-                    cell.value = header
-                    cell.font = Font(bold=True)
-                    cell.alignment = Alignment(horizontal='center')
-                
-                for row, data in enumerate(self.power_sweep_data, 2):
-                    ws_detail.cell(row=row, column=1).value = data['frequency']
-                    ws_detail.cell(row=row, column=2).value = data['set_power']
-                    ws_detail.cell(row=row, column=3).value = data['measured_power']
-                    ws_detail.cell(row=row, column=4).value = data['actual_power']
-                    ws_detail.cell(row=row, column=5).value = data['step_index']
-                    ws_detail.cell(row=row, column=6).value = data['status']
-                    ws_detail.cell(row=row, column=7).value = data['timestamp']
-                
-                for col in range(1, len(detail_headers) + 1):
-                    ws_detail.column_dimensions[openpyxl.utils.get_column_letter(col)].width = 15
-                
-                wb.save(filename)
-                print(f"测试结果已保存到Excel文件: {filename}")
-            else:
-                base_name = filename.replace('.csv', '')
-                summary_file = f"{base_name}_summary.csv"
-                detail_file = f"{base_name}_detail.csv"
-                
-                with open(summary_file, 'w', newline='') as csvfile:
-                    fieldnames = ['frequency', 'max_power', 'max_measured_power', 
-                                 'attenuation', 'saturation_point', 'steps', 'notes', 'timestamp']
-                    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-                    writer.writeheader()
-                    for result in self.test_results:
-                        writer.writerow(result)
-                
-                with open(detail_file, 'w', newline='') as csvfile:
-                    fieldnames = ['frequency', 'set_power', 'measured_power', 
-                                 'actual_power', 'step_index', 'status', 'timestamp']
-                    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-                    writer.writeheader()
-                    for data in self.power_sweep_data:
-                        writer.writerow(data)
-                
-                print(f"测试结果已保存到CSV文件:")
-                print(f"  摘要: {summary_file}")
-                print(f"  详细数据: {detail_file}")
-        except Exception as e:
-            print(f"保存测试结果失败: {e}")

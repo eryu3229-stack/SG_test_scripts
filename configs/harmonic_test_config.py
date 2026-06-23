@@ -18,10 +18,10 @@ TEST_DESCRIPTION = "测试信号源的二次谐波性能，记录基波和二次
 # 频率扫描配置
 FREQUENCY_SWEEP_CONFIG = {
     'start_frequency': 1e9,      # 起始频率: 1 GHz
-    'end_frequency': 20e9,         # 结束频率: 20 GHz
-    'step_frequency': 100e6,       # 频率步进: 100 MHz
-    'fixed_power': 10,              # 固定输出功率: 10 dBm
-    'settling_time': 2.0,          # 仪器稳定时间: 2秒
+    'end_frequency': 20e9,       # 结束频率: 20 GHz
+    'step_frequency': 100e6,     # 频率步进: 100 MHz
+    'fixed_power': 10,           # 固定输出功率: 10 dBm
+    'settling_time': 2.0,        # 仪器稳定时间: 2秒
 }
 
 # ==================== 频谱仪配置 ====================
@@ -32,8 +32,8 @@ SPECTRUM_ANALYZER_CONFIG = {
     'rbw': 200,                   # 分辨率带宽: 200 Hz
     'vbw': 200,                   # 视频带宽: 200 Hz
     'reference_level': 20,        # 参考电平: 20 dBm
-    'attenuation': 40,             # 衰减: 40dB
-    'sweep_time': 0.5,             # 扫描时间: 0.5秒
+    'attenuation': 40,            # 衰减: 40dB
+    'sweep_time': 0.5,            # 扫描时间: 0.5秒
 }
 
 # ==================== 谐波测量配置 ====================
@@ -124,7 +124,7 @@ if __name__ == "__main__":
     test_points = generate_frequency_points()
     print(f"\n生成的测试点 ({len(test_points)}个):")
     for i, point in enumerate(test_points[:5]):  # 只显示前5个
-        print(f"  {i+1}. {point['frequency']/1e6:.0f}MHz, {point['set_power']}dBm, {point['duration']}秒")
+        print(f"  {i+1}. {point['frequency']/1e6:.0f}MHz, {point['set_power']}dBm, {point['settling_time']}秒")
     if len(test_points) > 5:
         print(f"  ... 还有 {len(test_points) - 5} 个测试点")
     
