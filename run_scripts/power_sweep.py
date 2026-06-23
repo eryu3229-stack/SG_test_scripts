@@ -185,7 +185,7 @@ def main():
     filepath = os.path.join(output_dir, filename)
     test_procedure.finish_xlsx(filepath, test_configs=selected_configs)
 
-    # 断开所有仪器连接USB0::0x0AAD::0x015F::101930::0::INSTR
+    # 断开所有仪器连接
     manager.disconnect_all()
 
 
