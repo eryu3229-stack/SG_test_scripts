@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 class PowerMeter:
     """功率计控制类"""

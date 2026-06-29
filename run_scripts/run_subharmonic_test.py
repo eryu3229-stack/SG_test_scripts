@@ -1,18 +1,18 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-鍒嗚皭娉㈡祴璇曚富绋嬪簭
-杩愯淇″彿婧愮殑鍒嗚皭娉㈡祴璇?
+谐波测试主程序
+运行信号源的二分谐波测试
 """
 
 import sys
 import os
 from datetime import datetime
 
-# 娣诲姞椤圭洰鐩綍鍒癙ython璺緞
+# 添加项目根目录到Python路径
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
-sys.path.append(parent_dir)  # 椤圭洰鏍圭洰褰?
+sys.path.append(parent_dir)  # 项目根目录
 sys.path.append(os.path.join(parent_dir, 'instruments'))
 sys.path.append(os.path.join(parent_dir, 'procedures'))
 sys.path.append(os.path.join(parent_dir, 'configs'))
@@ -34,10 +34,10 @@ from subharmonic_test_config import (
 
 
 def connect_instruments():
-    """杩炴帴浠櫒"""
+    """连接仪器"""
     manager = InstrumentManager()
 
-    print("鍙敤浠櫒:")
+    print("可用仪器:")
     instruments = manager.list_instruments()
     for i, instrument in enumerate(instruments):
         print(f"{i + 1}. {instrument}")
@@ -45,49 +45,49 @@ def connect_instruments():
     signal_gen = None
     spectrum_analyzer = None
 
-    # 杩炴帴淇″彿婧?
-    sg_resource = input("\n璇疯緭鍏ヤ俊鍙锋簮鐨勮祫婧愬悕绉?(鎸塃nter璺宠繃): ").strip()
+    # 连接信号源
+    sg_resource = input("\n请输入信号源的资源名称(按Enter跳过): ").strip()
     if sg_resource:
         sg_instrument = manager.connect_instrument(sg_resource, 'signal_generator')
         if sg_instrument:
             signal_gen = SignalGenerator(sg_instrument)
-            print(f"淇″彿婧怚D: {signal_gen.get_idn()}")
+            print(f"信号源ID: {signal_gen.get_idn()}")
         else:
-            print("淇″彿婧愯繛鎺ュけ璐?)
+            print("信号源连接失败")
     else:
-        print("鏈繛鎺ヤ俊鍙锋簮")
+        print("未连接信号源")
 
-    # 杩炴帴棰戣氨浠?
-    sa_resource = input("\n璇疯緭鍏ラ璋变华鐨勮祫婧愬悕绉?(鎸塃nter璺宠繃): ").strip()
+    # 连接频谱仪
+    sa_resource = input("\n请输入频谱仪的资源名称(按Enter跳过): ").strip()
     if sa_resource:
         sa_instrument = manager.connect_instrument(sa_resource, 'spectrum_analyzer')
         if sa_instrument:
             spectrum_analyzer = SpectrumAnalyzer(sa_instrument)
-            print(f"棰戣氨浠狪D: {spectrum_analyzer.get_idn()}")
+            print(f"频谱仪ID: {spectrum_analyzer.get_idn()}")
         else:
-            print("棰戣氨浠繛鎺ュけ璐?)
+            print("频谱仪连接失败")
     else:
-        print("鏈繛鎺ラ璋变华")
+        print("未连接频谱仪")
 
     return manager, signal_gen, spectrum_analyzer
 
 
 def configure_test():
-    """閰嶇疆娴嬭瘯鍙傛暟"""
+    """配置测试参数"""
     print("\n" + "=" * 60)
-    print("鍒嗚皭娉㈡祴璇曢厤缃?)
+    print("分谐波测试配置")
     print("=" * 60)
 
-    # 鏄剧ず榛樿閰嶇疆
+    # 显示默认配置
     print(get_test_config_summary())
 
-    # 璇㈤棶鏄惁淇敼閰嶇疆
-    modify = input("\n鏄惁淇敼閰嶇疆? (y/N): ").strip().lower()
+    # 询问是否修改配置
+    modify = input("是否修改配置? (y/N): ").strip().lower()
     
-    # 杩欓噷鍙互娣诲姞閰嶇疆淇敼閫昏緫
-    # 鏆傛椂浣跨敤榛樿閰嶇疆
-    if modify == 'y':
-        print("閰嶇疆淇敼鍔熻兘鏆傛湭瀹炵幇锛屼娇鐢ㄩ粯璁ら厤缃?)
+    # 这里可以添加配置修改逻辑
+    # 暂时使用默认配置
+    print("配置修改功能暂未实现，使用默认配置")
+    print("配置修改功能暂未实现，使用默认配置")
     
     return {
         'frequency_sweep_config': FREQUENCY_SWEEP_CONFIG,
@@ -96,43 +96,43 @@ def configure_test():
         'output_config': OUTPUT_CONFIG
     }
 
-
 def run_subharmonic_test():
-    """杩愯鍒嗚皭娉㈡祴璇?""
-    print("\n" + "=" * 60)
-    print("鍒嗚皭娉㈡祴璇?)
+    """运行分谐波测试"""
+
+
+    print("分谐波测试")
     print("=" * 60)
 
-    # 1. 杩炴帴浠櫒
+    # 1. 连接仪器
     manager, signal_gen, spectrum_analyzer = connect_instruments()
 
     if not signal_gen or not spectrum_analyzer:
-        print("\n閿欒: 淇″彿婧愬拰棰戣氨浠兘蹇呴』杩炴帴")
+        print("错误: 信号源和频谱仪都必须连接")
         manager.disconnect_all()
         return
 
-    # 2. 閰嶇疆娴嬭瘯
+    # 2. 配置测试
     test_config = configure_test()
 
-    # 3. 鐢熸垚娴嬭瘯鐐?
+    # 3. 生成测试点
     test_points = generate_frequency_points()
-    print(f"\n鐢熸垚 {len(test_points)} 涓祴璇曠偣")
+    print(f"生成 {len(test_points)} 个测试点")
 
-    # 4. 鍒濆鍖栨祴璇曟祦绋?
+    # 4. 初始化测试流程
     test_procedure = SubharmonicTestProcedure(manager)
     output_dir = os.path.join(parent_dir, "output")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     csv_path = os.path.join(output_dir, f"{PROJECT_NAME}_{timestamp}.csv")
     test_procedure.start_csv_stream(csv_path)
 
-    # 5. 杩愯娴嬭瘯
+    # 5. 运行测试
     print("\n" + "=" * 60)
-    print("寮€濮嬫祴璇?)
+    print("开始测试")
     print("=" * 60)
 
-    # 杩愯娴嬭瘯锛屾渶鍚庝竴涓祴璇曠偣涔嬪墠淇濇寔杈撳嚭寮€鍚?
+    # 运行测试，最后一个测试点之前保持输出开启
     for i, test_point in enumerate(test_points):
-        # 鏈€鍚庝竴涓祴璇曠偣涓嶄繚鎸佽緭鍑猴紝鍏朵粬娴嬭瘯鐐逛繚鎸佽緭鍑?
+        # 最后一个测试点不保持输出，其他测试点保持输出
         keep_output = (i < len(test_points) - 1)
         test_procedure.run_subharmonic_test(
             signal_gen,
@@ -143,7 +143,7 @@ def run_subharmonic_test():
             keep_output=keep_output
         )
 
-    # 6. 淇濆瓨娴嬭瘯缁撴灉
+    # 6. 保存测试结果
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     output_dir = os.path.join(parent_dir, 'output')
     output_format = test_config['output_config'].get('output_format', 'excel')
@@ -156,16 +156,16 @@ def run_subharmonic_test():
     filepath = os.path.join(output_dir, filename)
     test_procedure.finish_xlsx(filepath)
 
-    # 7. 鎵撳嵃娴嬭瘯鎽樿
+    # 7. 打印测试摘要
     test_procedure.print_summary()
 
-    # 8. 鏂紑浠櫒杩炴帴
+    # 8. 断开仪器连接
     print("\n" + "=" * 60)
-    print("鏂紑浠櫒杩炴帴")
+    print("断开仪器连接")
     print("=" * 60)
     manager.disconnect_all()
 
-    print("\n娴嬭瘯瀹屾垚锛?)
+    print("测试完成!")
 
 
 if __name__ == "__main__":

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 class SpectrumAnalyzer:
     """频谱仪控制类"""
     

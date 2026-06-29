@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 class SignalGenerator:
     """信号源控制类"""
     

@@ -23,7 +23,7 @@ from instrument_manager import InstrumentManager
 from signal_generator import SignalGenerator
 from spectrum_analyzer import SpectrumAnalyzer
 from harmonic_test_procedure import HarmonicTestProcedure
-from base_test_procedure import format_frequency
+print(f"频率: {format_frequency(test_point['frequency'])}, 功率: {test_point['set_power']}dBm")
 from harmonic_test_config import (
     PROJECT_NAME,
     FREQUENCY_SWEEP_CONFIG,
@@ -48,7 +48,7 @@ def connect_instruments():
     spectrum_analyzer = None
 
     # 连接信号源
-    sg_resource = input("\n请输入信号源的资源名称 (按Enter跳过): ").strip()
+    sg_resource = input("\n请输入信号源的资源名称?(按Enter跳过): ").strip()
     if sg_resource:
         sg_instrument = manager.connect_instrument(sg_resource, 'signal_generator')
         if sg_instrument:
@@ -60,7 +60,7 @@ def connect_instruments():
         print("未连接信号源")
 
     # 连接频谱仪
-    sa_resource = input("\n请输入频谱仪的资源名称 (按Enter跳过): ").strip()
+    sa_resource = input("\n请输入频谱仪的资源名称?(按Enter跳过): ").strip()
     if sa_resource:
         sa_instrument = manager.connect_instrument(sa_resource, 'spectrum_analyzer')
         if sa_instrument:
@@ -86,7 +86,7 @@ def configure_test():
     # 询问是否修改配置
     modify = input("\n是否修改配置? (y/N): ").strip().lower()
     
-    # 这里可以添加配置修改逻辑
+    print("配置修改功能暂未实现，使用默认配置")
     # 暂时使用默认配置
     if modify == 'y':
         print("配置修改功能暂未实现，使用默认配置")
@@ -118,7 +118,7 @@ def run_harmonic_test():
 
     # 3. 生成测试点
     test_points = generate_frequency_points()
-    print(f"\n生成 {len(test_points)} 个测试点")
+    print(f"\n--- 测试点 {i+1}/{len(test_points)} ---")
 
     # 4. 初始化测试流程
     test_procedure = HarmonicTestProcedure(manager)
@@ -132,20 +132,20 @@ def run_harmonic_test():
     print("开始测试")
     print("=" * 60)
 
-    # 显示时间参数配置
+    print(f"时间参数配置:")
     if test_points and len(test_points) > 0:
-        # 使用第一个测试点的配置作为参考
+        print(f"\n--- 测试点 {i+1}/{len(test_points)} ---")
         sample_config = test_points[0]
-        settling_time = sample_config.get('settling_time', 0.5)  # 从测试点获取信号源稳定时间
+        print(f"  - 信号源稳定时间: {settling_time}秒")
         post_close_wait = test_config['harmonic_measurement_config'].get('post_close_wait', 0.1)  # 从谐波配置获取关闭后等待时间
 
         print(f"时间参数配置:")
         print(f"  - 信号源稳定时间: {settling_time}秒")
         print(f"  - 信号源关闭后等待时间: {post_close_wait}秒")
     else:
-        print("时间参数: 使用默认值（信号源稳定时间0.5秒）")
+        print(f"  - 信号源稳定时间: {settling_time}秒")
 
-    print("测试模式: 信号源在测试过程中保持开启，最后一个频点测试完成后关闭")
+    print("测试模式: 信号源在测试过程中保持开启，最后一个频率点测试完成后关闭")
     print("频谱仪输入耦合: 10MHz以下自动切换为DC耦合，10MHz以上使用AC耦合")
     print("\n开始测试...")
 
@@ -176,7 +176,7 @@ def run_harmonic_test():
             # 这里可以添加一个短暂的延时，确保仪器准备好
             time.sleep(0.1)
 
-    # 所有测试点完成后，确保信号源输出关闭
+    print("\n所有测试点完成，关闭信号源输出...")
     print("\n所有测试点完成，关闭信号源输出...")
     signal_gen.enable_output(False)
 
@@ -189,7 +189,7 @@ def run_harmonic_test():
     # 7. 打印测试摘要
     test_procedure.print_summary()
 
-    # 8. 断开仪器连接
+    print("断开仪器连接")
     print("\n" + "=" * 60)
     print("断开仪器连接")
     print("=" * 60)
