@@ -152,6 +152,7 @@ class LowFreqMaxPowerProcedure:
         overload_detected = False
         limit_reached = False
         step_count = 0
+        consecutive_failures = 0
         stop_reason = "正常完成"
         
         # 5. 功率扫描循环
@@ -177,11 +178,20 @@ class LowFreqMaxPowerProcedure:
             if measurements:
                 measured_power = sum(measurements) / len(measurements)
                 print(f"测量功率 (平均{len(measurements)}次): {measured_power:.2f} dBm")
+                consecutive_failures = 0  # 测量成功，重置连续失败计数器
             else:
-                print("警告: 频谱仪测量失败，跳过此点")
+                print("警告: 频谱仪测量失败，跳过此功率步进")
                 self.add_power_sweep_point(frequency, current_power, None, None, step_count, '测量失败')
-                # 尝试继续，但可能意味着有问题
-                measured_power = prev_measured_power if prev_measured_power is not None else -float('inf')
+                consecutive_failures += 1
+                if consecutive_failures >= 3:
+                    stop_reason = f"连续{consecutive_failures}次测量失败，终止扫描"
+                    print(f"停止条件: {stop_reason}")
+                    stop_scan = True
+                # 重置前值并跳过后续比例对比，避免基于失效数据的误判
+                prev_measured_power = None
+                if not stop_scan:
+                    current_power += power_step
+                continue
             
             # 计算实际功率（考虑衰减器补偿）
             if use_attenuator:

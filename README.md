@@ -4,7 +4,7 @@
 
 本项目是一套用于**信号源（Signal Generator）自动化测试**的 Python 脚本集合，通过 PyVISA 库控制矢量信号发生器、频谱分析仪、功率计等射频/微波仪器，实现对信号源多项关键性能指标的自动测量与数据记录。
 
-覆盖的测试类型包括谐波测试、分谐波测试、最大输出功率测试、功率扫描测试等，频率范围从 **3 kHz 到 40 GHz**，测试结果导出为 Excel（.xlsx）或 CSV 格式。
+覆盖的测试类型包括谐波测试、分谐波测试、最大输出功率测试、功率扫描测试等，测试结果导出为 Excel（.xlsx）或 CSV 格式。
 
 ---
 
@@ -52,7 +52,6 @@ SG_test_scripts/
 - [pandas](https://pandas.pydata.org/) — 数据处理与 Excel 输出
 - [openpyxl](https://openpyxl.readthedocs.io/) — Excel 文件读写
 - [NumPy](https://numpy.org/) + [SciPy](https://scipy.org/) — 数值计算与曲线插值
-- [Matplotlib](https://matplotlib.org/) — 数据可视化（仅 `wideband.py` 使用）
 - VISA 驱动后端（NI-VISA 或 pyvisa-py）
 
 ### 安装依赖
@@ -100,7 +99,7 @@ pip install pyvisa pyvisa-py pandas openpyxl numpy scipy matplotlib
 
 ### 谐波测试 — `HarmonicTestProcedure`
 
-测量信号源的二次谐波（2nd Harmonic）抑制度。
+测量信号源的二次谐波（2nd Harmonic）抑制程度。
 
 | 项目 | 说明 |
 |------|------|
@@ -210,8 +209,7 @@ pip install pyvisa pyvisa-py pandas openpyxl numpy scipy matplotlib
 
 ### 文件管理
 - 输出文件按 `测试类型_时间戳.xlsx` 命名，不会自动覆盖
-- `output/` 目录已在 `.gitignore` 中排除
-- 全频段扫描会产生较大数据量，注意磁盘空间
+- `output/` 目录已在 `.gitignore` 中排除，不会上传git
 
 ---
 

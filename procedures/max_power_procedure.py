@@ -147,6 +147,7 @@ class MaxPowerProcedure:
         overload_detected = False
         limit_reached = False
         step_count = 0
+        consecutive_failures = 0
         stop_reason = "正常完成"
         
         # 6. 功率扫描循环
@@ -160,17 +161,38 @@ class MaxPowerProcedure:
             # 等待稳定
             time.sleep(settling_time)
             
-            # 测量功率
-            measured_power = power_meter.measure_power(times=measurement_times)
-            
-            # 检查功率计错误队列
-            power_meter.check_errors()
+            # 测量功率（含重试机制）
+            retry_count = 0
+            max_retries = 3
+            measured_power = None
+            while retry_count < max_retries:
+                if retry_count > 0:
+                    print(f"  重试测量 (第{retry_count}次/{max_retries})...")
+                    time.sleep(0.5)
+                measured_power = power_meter.measure_power(times=measurement_times)
+                
+                # 检查功率计错误队列
+                power_meter.check_errors()
+                
+                if measured_power is not None:
+                    break
+                retry_count += 1
             
             if measured_power is None:
-                print("警告: 功率计测量失败，跳过此点")
+                print(f"警告: 功率计测量失败（{max_retries}次重试后），跳过此功率步进")
                 self.add_power_sweep_point(frequency, current_power, None, None, step_count, '测量失败')
-                # 尝试继续，但可能意味着有问题
-                measured_power = prev_measured_power if prev_measured_power is not None else -float('inf')
+                consecutive_failures += 1
+                if consecutive_failures >= 3:
+                    stop_reason = f"连续{consecutive_failures}次测量失败，终止扫描"
+                    print(f"停止条件: {stop_reason}")
+                    stop_scan = True
+                # 重置前值并跳过后续比例对比，避免基于失效数据的误判
+                prev_measured_power = None
+                if not stop_scan:
+                    current_power += power_step
+                continue
+            
+            consecutive_failures = 0  # 测量成功，重置连续失败计数器
             
             # 计算实际功率（考虑衰减器补偿）
             if use_attenuator:

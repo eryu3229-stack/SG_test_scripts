@@ -124,7 +124,7 @@ if __name__ == "__main__":
     test_points = generate_frequency_points()
     print(f"\n生成的测试点 ({len(test_points)}个):")
     for i, point in enumerate(test_points[:5]):  # 只显示前5个
-        print(f"  {i+1}. {point['frequency']/1e6:.0f}MHz, {point['set_power']}dBm, {point['duration']}秒")
+        print(f"  {i+1}. {point['frequency']/1e6:.0f}MHz, {point['set_power']}dBm, {point['settling_time']}秒")
     if len(test_points) > 5:
         print(f"  ... 还有 {len(test_points) - 5} 个测试点")
     

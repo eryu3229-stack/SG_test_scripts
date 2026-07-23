@@ -156,7 +156,7 @@ class SpectrumAnalyzer:
             attenuation: 衰减值，单位dB
         """
         try:
-            self.instrument.write(f"INP:ATT {attenuation}")
+            self.instrument.write(f"INP:ATT{attenuation}")
             print(f"设置衰减为: {attenuation} dB")
         except Exception as e:
             print(f"设置衰减失败: {e}")
