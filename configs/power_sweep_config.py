@@ -5,16 +5,16 @@ project_name = "扫频测试"
 
 # 测试配置：从10MHz到10GHz，步进100MHz，支持多个功率设置
 test_configs = []
-start_freq = 30e9      # 10MHz (科学计数法)
+start_freq = 5e7       # 10MHz (科学计数法)
 end_freq = 40e9        # 10GHz (科学计数法)
-step_freq = 50e6      # 100MHz (科学计数法)
+step_freq = 100e6      # 100MHz (科学计数法)
 
 # 多个功率设置（dBm）
-power_settings = [13]  # 可以添加更多功率值
+power_settings = [-39,-41]  # 可以添加更多功率值
 
 # 测试参数配置
-settling_time = 0.8      # 信号源稳定时间（秒）
-pm_settling_time = 0.5   # 功率计频率切换稳定时间（秒）
+settling_time = 1.5      # 信号源稳定时间（秒）
+pm_settling_time = 0.8   # 功率计频率切换稳定时间（秒）
 post_close_wait = 0.1     # 信号源关闭后等待时间（秒）
 measurement_times = 3     # 功率计测量次数
 attenuator_enabled = False  # 是否启用衰减器
