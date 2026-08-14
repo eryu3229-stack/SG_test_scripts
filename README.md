@@ -47,6 +47,8 @@ python run_scripts/harmonic_test.py
 
 各测试的入口脚本见下文“测试类型速查表”。
 
+也可以直接运行 `python gui/integrated_test_gui.py` 打开集成测试 GUI，在一个窗口中切换并执行所有测试。
+
 ### 5. 查看结果
 
 测试完成后，结果保存在 `output/` 目录，文件名格式为 `测试类型_时间戳.xlsx`，例如 `harmonic_test_results_20260724_124936.xlsx`。
@@ -73,6 +75,7 @@ python run_scripts/harmonic_test.py
 | 低频段最大功率测试 | 在 9 kHz 到 50 MHz 范围测量最大输出功率 | `run_scripts/low_freq_max_power_test.py` | `configs/low_freq_max_power_config.py` |
 | 功率扫描测试 | 记录设定功率与实际测量功率的对应关系 | `run_scripts/power_sweep.py` | `configs/power_sweep_config.py` |
 | 单频点功率扫描 | 在固定频点上扫描设定功率并记录实际功率 | `run_scripts/single_frequency_power_sweep.py` | `configs/single_frequency_power_sweep_config.py` |
+| 集成测试 GUI | 在一个窗口内集成所有测试并填写参数执行 | `gui/integrated_test_gui.py` | 各测试配置文件 |
 
 ---
 
@@ -107,8 +110,11 @@ SG_test_scripts/
 │   ├── low_freq_max_power_test.py
 │   ├── power_sweep.py
 │   └── single_frequency_power_sweep.py
+├── gui/                           # 图形界面程序
+│   └── integrated_test_gui.py
 ├── utils/                          # 工具模块
-│   └── project_manager.py
+│   ├── gui_fonts.py
+│   └── parameter_parsing.py
 ├── output/                         # 测试结果输出目录（.gitignore 排除）
 ├── wideband.py                     # 宽带噪声曲线生成工具（独立使用）
 └── README.md
@@ -205,6 +211,8 @@ SG_test_scripts/
 - 频率参数统一使用 Hz，功率参数统一使用 dBm
 - 修改配置后直接运行入口脚本即可生效
 - 重要测试前建议备份原配置文件
+
+GUI 中的参数输入更灵活：频率支持 `1e9`、`1GHz`、`10 MHz` 等写法；功率支持 `10dBm`、`-40` 等写法；时间支持 `1s`、`500ms` 等写法。
 
 ### 运行提示
 

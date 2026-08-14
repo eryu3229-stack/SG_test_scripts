@@ -85,13 +85,15 @@ class SubharmonicTestProcedure:
         # 等待设置生效
         time.sleep(0.5)
 
-    def measure_fundamental_power(self, spectrum_analyzer, frequency, sa_config):
+    def measure_fundamental_power(self, spectrum_analyzer, frequency, sa_config,
+                                  measurement_average=3):
         """测量基波功率
 
         Args:
             spectrum_analyzer: 频谱仪对象
             frequency: 基波频率 (Hz)
             sa_config: 频谱仪配置
+            measurement_average: 软件测量平均次数
 
         Returns:
             float: 基波功率 (dBm)
@@ -120,7 +122,7 @@ class SubharmonicTestProcedure:
             power = spectrum_analyzer.measure_power()
 
         # 多次测量取平均
-        average_count = sa_config.get('measurement_average', 3)
+        average_count = measurement_average
         measurements = []
 
         for i in range(average_count):
@@ -144,7 +146,9 @@ class SubharmonicTestProcedure:
             print("基波功率测量失败")
             return None
 
-    def measure_subharmonic_power(self, spectrum_analyzer, fundamental_freq, subharmonic_order, sa_config):
+    def measure_subharmonic_power(self, spectrum_analyzer, fundamental_freq,
+                                  subharmonic_order, sa_config,
+                                  measurement_average=3):
         """测量分谐波功率
 
         Args:
@@ -152,6 +156,7 @@ class SubharmonicTestProcedure:
             fundamental_freq: 基波频率 (Hz)
             subharmonic_order: 分谐波阶数
             sa_config: 频谱仪配置
+            measurement_average: 软件测量平均次数
 
         Returns:
             float: 分谐波功率 (dBm)
@@ -181,7 +186,7 @@ class SubharmonicTestProcedure:
             power = spectrum_analyzer.measure_power()
 
         # 多次测量取平均
-        average_count = sa_config.get('measurement_average', 3)
+        average_count = measurement_average
         measurements = []
 
         for i in range(average_count):
@@ -234,8 +239,12 @@ class SubharmonicTestProcedure:
         time.sleep(settling_time)
 
         # 2. 测量基波功率
+        measurement_average = subharmonic_config.get(
+            'measurement_average', sa_config.get('measurement_average', 3)
+        )
         fundamental_power = self.measure_fundamental_power(
-            spectrum_analyzer, frequency, sa_config
+            spectrum_analyzer, frequency, sa_config,
+            measurement_average=measurement_average,
         )
 
         # 3. 测量分谐波功率
@@ -245,7 +254,8 @@ class SubharmonicTestProcedure:
 
         for order in subharmonic_orders:
             subharmonic_power = self.measure_subharmonic_power(
-                spectrum_analyzer, frequency, order, sa_config
+                spectrum_analyzer, frequency, order, sa_config,
+                measurement_average=measurement_average,
             )
             subharmonic_powers[order] = subharmonic_power
 
@@ -279,11 +289,20 @@ class SubharmonicTestProcedure:
         self.test_results.append(result)
 
         print(f"测试完成: {frequency / 1e6:.2f}MHz")
-        print(f"基波功率: {fundamental_power:.2f} dBm")
+        if fundamental_power is not None:
+            print(f"基波功率: {fundamental_power:.2f} dBm")
+        else:
+            print("基波功率: 无数据")
         for order in subharmonic_orders:
-            print(f"1/{order}分谐波功率: {subharmonic_powers[order]:.2f} dBm")
+            power = subharmonic_powers[order]
+            if power is not None:
+                print(f"1/{order}分谐波功率: {power:.2f} dBm")
+            else:
+                print(f"1/{order}分谐波功率: 无数据")
             if subharmonic_suppressions[order] is not None:
                 print(f"分谐波抑制: {subharmonic_suppressions[order]:.2f} dBc")
+            else:
+                print(f"1/{order}分谐波抑制: 无数据")
 
         return result
 

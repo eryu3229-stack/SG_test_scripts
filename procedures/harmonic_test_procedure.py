@@ -85,13 +85,15 @@ class HarmonicTestProcedure:
         # 等待设置生效
         time.sleep(0.5)
 
-    def measure_fundamental_power(self, spectrum_analyzer, frequency, sa_config):
+    def measure_fundamental_power(self, spectrum_analyzer, frequency, sa_config,
+                                  measurement_average=3):
         """测量基波功率
 
         Args:
             spectrum_analyzer: 频谱仪对象
             frequency: 基波频率 (Hz)
             sa_config: 频谱仪配置
+            measurement_average: 软件测量平均次数
 
         Returns:
             float: 基波功率 (dBm)
@@ -124,7 +126,7 @@ class HarmonicTestProcedure:
             power = spectrum_analyzer.measure_power()
 
         # 多次测量取平均
-        average_count = sa_config.get('measurement_average', 3)
+        average_count = measurement_average
         measurements = []
 
         for i in range(average_count):
@@ -148,7 +150,8 @@ class HarmonicTestProcedure:
             print("基波功率测量失败")
             return None
 
-    def measure_harmonic_power(self, spectrum_analyzer, fundamental_freq, harmonic_order, sa_config):
+    def measure_harmonic_power(self, spectrum_analyzer, fundamental_freq,
+                               harmonic_order, sa_config, measurement_average=3):
         """测量谐波功率
 
         Args:
@@ -156,6 +159,7 @@ class HarmonicTestProcedure:
             fundamental_freq: 基波频率 (Hz)
             harmonic_order: 谐波阶数
             sa_config: 频谱仪配置
+            measurement_average: 软件测量平均次数
 
         Returns:
             float: 谐波功率 (dBm)
@@ -215,7 +219,7 @@ class HarmonicTestProcedure:
             power = spectrum_analyzer.measure_power()
 
         # 多次测量取平均
-        average_count = sa_config.get('measurement_average', 3)
+        average_count = measurement_average
         measurements = []
 
         for i in range(average_count):
@@ -274,14 +278,19 @@ class HarmonicTestProcedure:
         time.sleep(settling_time)
 
         # 2. 测量基波功率
+        measurement_average = harmonic_config.get(
+            'measurement_average', sa_config.get('measurement_average', 3)
+        )
         fundamental_power = self.measure_fundamental_power(
-            spectrum_analyzer, frequency, sa_config
+            spectrum_analyzer, frequency, sa_config,
+            measurement_average=measurement_average,
         )
 
         # 3. 测量二次谐波功率
         harmonic_order = harmonic_config.get('harmonic_order', 2)
         harmonic_power = self.measure_harmonic_power(
-            spectrum_analyzer, frequency, harmonic_order, sa_config
+            spectrum_analyzer, frequency, harmonic_order, sa_config,
+            measurement_average=measurement_average,
         )
 
         # 4. 计算谐波抑制比 (dBc)
@@ -316,8 +325,14 @@ class HarmonicTestProcedure:
         self.test_results.append(result)
 
         print(f"测试完成: {frequency / 1e6:.2f}MHz")
-        print(f"基波功率: {fundamental_power:.2f} dBm")
-        print(f"二次谐波功率: {harmonic_power:.2f} dBm")
+        if fundamental_power is not None:
+            print(f"基波功率: {fundamental_power:.2f} dBm")
+        else:
+            print("基波功率: 无数据")
+        if harmonic_power is not None:
+            print(f"二次谐波功率: {harmonic_power:.2f} dBm")
+        else:
+            print("二次谐波功率: 无数据")
         if harmonic_suppression is not None:
             print(f"谐波抑制: {harmonic_suppression:.2f} dBc")
 

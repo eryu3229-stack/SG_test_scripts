@@ -67,8 +67,18 @@ class SingleFrequencyPowerSweepProcedure:
                 time.sleep(0.5)
         return None
 
-    def run_test(self, signal_generator, power_meter, test_config, keep_output=False):
-        """运行单频点功率扫描。"""
+    def run_test(self, signal_generator, power_meter, test_config, keep_output=False,
+                 on_point=None, should_stop=None):
+        """运行单频点功率扫描。
+
+        Args:
+            signal_generator: 信号源对象
+            power_meter: 功率计对象
+            test_config: 测试配置
+            keep_output: 是否保持信号源输出
+            on_point: 可选回调，每完成一个功率点后调用，参数为结果字典
+            should_stop: 可选回调，返回 True 时提前结束扫描
+        """
         frequency = test_config['frequency']
         max_set_power = test_config['max_set_power']
         max_measured_power = test_config['max_measured_power']
@@ -120,6 +130,11 @@ class SingleFrequencyPowerSweepProcedure:
         stop_reason = "扫描完成"
 
         for index, set_power in enumerate(power_points, 1):
+            if should_stop is not None and should_stop():
+                stop_reason = "用户停止"
+                print(f"停止条件: {stop_reason}")
+                break
+
             print(f"\n--- 功率点 {index}/{len(power_points)}: "
                   f"设定功率 = {set_power} dBm ---")
             signal_generator.set_power(set_power)
@@ -129,6 +144,8 @@ class SingleFrequencyPowerSweepProcedure:
 
             if measured_power is None:
                 self.add_power_sweep_point(frequency, set_power, None, None, "测量失败")
+                if on_point is not None:
+                    on_point(self.power_sweep_data[-1])
                 consecutive_failures += 1
                 print("警告: 功率计测量失败。")
                 if consecutive_failures >= 3:
@@ -148,6 +165,8 @@ class SingleFrequencyPowerSweepProcedure:
             self.add_power_sweep_point(
                 frequency, set_power, measured_power, compensated_power, "正常"
             )
+            if on_point is not None:
+                on_point(self.power_sweep_data[-1])
             print(f"测量功率: {measured_power:.2f} dBm, "
                   f"补偿功率: {compensated_power:.2f} dBm")
 

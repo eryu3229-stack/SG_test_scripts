@@ -48,6 +48,9 @@ test_config = {
         else f"{frequency / 1e6:.3f}MHz功率扫描"
     ),
     "frequency": frequency,
+    "start_power": start_power,
+    "end_power": end_power,
+    "power_step": power_step,
     "power_points": power_points,
     "settling_time": settling_time,
     "pm_settling_time": pm_settling_time,

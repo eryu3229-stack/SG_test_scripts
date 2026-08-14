@@ -82,7 +82,8 @@ class LowFreqMaxPowerProcedure:
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         })
 
-    def run_test(self, signal_generator, spectrum_analyzer, test_config, keep_output=False):
+    def run_test(self, signal_generator, spectrum_analyzer, test_config, keep_output=False,
+                 should_stop=None):
         """运行低频段最大功率测试
 
         Args:
@@ -90,6 +91,7 @@ class LowFreqMaxPowerProcedure:
             spectrum_analyzer: 频谱仪对象
             test_config: 测试配置
             keep_output: 是否保持输出状态（不关闭），默认为False
+            should_stop: 可选回调，返回 True 时提前结束扫描
         """
         frequency = test_config['frequency']
         start_power = test_config['start_power']
@@ -151,12 +153,18 @@ class LowFreqMaxPowerProcedure:
         saturation_detected = False
         overload_detected = False
         limit_reached = False
+        stop_scan = False
         step_count = 0
         consecutive_failures = 0
         stop_reason = "正常完成"
         
         # 5. 功率扫描循环
         while True:
+            if should_stop is not None and should_stop():
+                stop_reason = "用户停止"
+                print(f"停止条件: {stop_reason}")
+                break
+
             step_count += 1
             print(f"\n--- 功率步进 {step_count}: 设定功率 = {current_power:.1f} dBm ---")
             
@@ -186,7 +194,7 @@ class LowFreqMaxPowerProcedure:
                 if consecutive_failures >= 3:
                     stop_reason = f"连续{consecutive_failures}次测量失败，终止扫描"
                     print(f"停止条件: {stop_reason}")
-                    stop_scan = True
+                    break
                 # 重置前值并跳过后续比例对比，避免基于失效数据的误判
                 prev_measured_power = None
                 if not stop_scan:
@@ -282,8 +290,14 @@ class LowFreqMaxPowerProcedure:
         
         print(f"\n{'=' * 60}")
         print(f"测试完成: {test_config['test_name']}")
-        print(f"最大实际功率: {max_achieved_power:.2f} dBm")
-        print(f"最大测量功率: {max_achieved_measured:.2f} dBm")
+        if max_achieved_power is not None:
+            print(f"最大实际功率: {max_achieved_power:.2f} dBm")
+        else:
+            print("最大实际功率: 无数据")
+        if max_achieved_measured is not None:
+            print(f"最大测量功率: {max_achieved_measured:.2f} dBm")
+        else:
+            print("最大测量功率: 无数据")
         print(f"功率步进数: {step_count}")
         print(f"停止原因: {stop_reason}")
         print(f"{'=' * 60}")

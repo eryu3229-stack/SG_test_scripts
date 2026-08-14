@@ -28,7 +28,10 @@ class TestProcedure:
             attenuator_value: 衰减器衰减值（dB）
         """
         # 如果启用了衰减器，对测量功率进行补偿
-        compensated_power = measured_power + attenuator_value if attenuator_value > 0 else measured_power
+        if measured_power is not None and attenuator_value > 0:
+            compensated_power = measured_power + attenuator_value
+        else:
+            compensated_power = measured_power
 
         self.test_results.append({
             'frequency': frequency,
