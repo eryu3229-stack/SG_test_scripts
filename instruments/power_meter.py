@@ -60,17 +60,29 @@ class PowerMeter:
         except Exception as e:
             print(f"复位功率计失败: {e}")
 
-    def zero(self):
+    def zero(self, timeout_ms=30000):
         """执行功率计归零（Zeroing）
 
-        归零期间应断开所有输入信号。该命令为同步操作，会等待归零完成。
+        归零前必须断开所有输入信号。该命令为同步操作，仪器在归零完成前
+        不处理其他远程命令，因此需要足够长的 VISA 超时时间。归零完成后
+        通过静态错误队列 SYSTem:SERRor? 确认结果。
         """
         try:
             print("正在执行功率计归零，请确保无输入信号...")
-            # 归零命令是同步的，执行期间仪器会阻塞直到完成
-            self.instrument.write("CALibration:ZERO:AUTO ONCE")
-            # 可选：查询归零状态，但命令本身已阻塞，可认为完成后返回
-            print("归零完成")
+            old_timeout = self.instrument.timeout
+            self.instrument.timeout = timeout_ms
+            try:
+                # 清空状态和错误队列，确保后续查询的是本次归零结果
+                self.instrument.write("*CLS")
+                # 归零命令是同步的，执行期间仪器会阻塞直到完成
+                self.instrument.write("CALibration:ZERO:AUTO ONCE")
+                # 归零完成后查询静态错误队列：0 表示成功，-240 表示失败
+                result = self.instrument.query("SYSTem:SERRor?").strip()
+                if result != "0":
+                    raise RuntimeError(f"归零失败，SYSTem:SERRor? 返回 {result}")
+                print("归零完成")
+            finally:
+                self.instrument.timeout = old_timeout
         except Exception as e:
             print(f"归零失败: {e}")
             raise  # 重新抛出异常，让上层知道归零失败

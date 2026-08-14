@@ -55,6 +55,19 @@ def main():
         print("仪器连接失败，无法继续")
         return
 
+    # 功率计归零前的手动确认
+    print("\n" + "=" * 60)
+    print("请确认功率计已断开连接，处于开路状态！")
+    print("=" * 60)
+    while True:
+        confirm = input("确认功率计已断开连接并处于开路状态? (y/n): ").strip().lower()
+        if confirm == 'y':
+            break
+        elif confirm == 'n':
+            print("请断开功率计连接后再继续。")
+        else:
+            print("请输入 y 或 n")
+
     # 执行功率计归零
     try:
         power_meter.zero()  # 归零会等待完成

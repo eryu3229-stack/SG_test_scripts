@@ -25,6 +25,7 @@ pip install pyvisa pyvisa-py pandas openpyxl numpy scipy matplotlib
 | 谐波测试 / 分谐波测试 | 信号源 + 频谱分析仪 |
 | 最大功率测试 / 功率扫描测试 | 信号源 + 功率计 |
 | 低频段最大功率测试 | 信号源 + 频谱分析仪 |
+| 单频点功率扫描 | 信号源 + 功率计 |
 
 ### 3. 修改配置（可选）
 
@@ -71,6 +72,7 @@ python run_scripts/harmonic_test.py
 | 最大功率测试 | 逐频点扫描功率，寻找最大输出功率与饱和点 | `run_scripts/max_power_test.py` | `configs/max_power_config.py` |
 | 低频段最大功率测试 | 在 9 kHz 到 50 MHz 范围测量最大输出功率 | `run_scripts/low_freq_max_power_test.py` | `configs/low_freq_max_power_config.py` |
 | 功率扫描测试 | 记录设定功率与实际测量功率的对应关系 | `run_scripts/power_sweep.py` | `configs/power_sweep_config.py` |
+| 单频点功率扫描 | 在固定频点上扫描设定功率并记录实际功率 | `run_scripts/single_frequency_power_sweep.py` | `configs/single_frequency_power_sweep_config.py` |
 
 ---
 
@@ -83,7 +85,8 @@ SG_test_scripts/
 │   ├── subharmonic_test_config.py
 │   ├── max_power_config.py
 │   ├── low_freq_max_power_config.py
-│   └── power_sweep_config.py
+│   ├── power_sweep_config.py
+│   └── single_frequency_power_sweep_config.py
 ├── instruments/                    # 仪器控制层（硬件抽象）
 │   ├── instrument_manager.py       # VISA 连接管理
 │   ├── signal_generator.py         # 信号源控制
@@ -95,13 +98,15 @@ SG_test_scripts/
 │   ├── subharmonic_test_procedure.py
 │   ├── max_power_procedure.py
 │   ├── low_freq_max_power_procedure.py
-│   └── power_sweep_procedure.py
+│   ├── power_sweep_procedure.py
+│   └── single_frequency_power_sweep_procedure.py
 ├── run_scripts/                    # 可执行入口脚本
 │   ├── harmonic_test.py
 │   ├── run_subharmonic_test.py
 │   ├── max_power_test.py
 │   ├── low_freq_max_power_test.py
-│   └── power_sweep.py
+│   ├── power_sweep.py
+│   └── single_frequency_power_sweep.py
 ├── utils/                          # 工具模块
 │   └── project_manager.py
 ├── output/                         # 测试结果输出目录（.gitignore 排除）
@@ -143,6 +148,12 @@ SG_test_scripts/
 
 关键参数：`start_freq`、`end_freq`、`step_freq`、`power_settings`、`attenuator_enabled`、`attenuator_value`、`attenuator_freq_dependent`。
 
+### 单频点功率扫描
+
+在固定频点上按 `start_power` 到 `end_power` 扫描信号源设定功率，使用功率计逐点测量实际功率，并支持衰减器补偿。当前版本使用功率计测量；若后续需要低功率精确测量，可在此基础上扩展频谱分析仪测量模式。
+
+关键参数：`frequency`、`start_power`、`end_power`、`power_step`、`settling_time`、`pm_settling_time`、`measurement_times`、`max_set_power`、`max_measured_power`、`attenuator_enabled`、`attenuator_value`。
+
 ---
 
 ## 配置文件说明
@@ -168,6 +179,7 @@ SG_test_scripts/
 | `max_power_config.py` | `frequency_ranges`、`start_power`、`power_step`、`max_set_power`、`max_measured_power`、衰减器参数 |
 | `low_freq_max_power_config.py` | `frequency_ranges`、`start_power`、`power_step`、`spectrum_analyzer_config`、衰减器参数 |
 | `power_sweep_config.py` | `start_freq` / `end_freq` / `step_freq`、`power_settings`、衰减器参数 |
+| `single_frequency_power_sweep_config.py` | `frequency`、`start_power` / `end_power` / `power_step`、衰减器参数 |
 
 ---
 
@@ -185,7 +197,7 @@ SG_test_scripts/
 
 - 测试功率不要超过频谱仪或功率计的最大输入功率
 - `max_set_power` 和 `max_measured_power` 是保护参数，不要随意调大
-- 功率计使用前必须归零，脚本中已包含该步骤
+- 功率计使用前必须归零，归零前脚本会要求断开输入并确认开路状态，无输入信号时才可执行归零
 - 测试前确认电缆和连接器状态良好
 
 ### 配置管理

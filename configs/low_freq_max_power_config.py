@@ -10,9 +10,9 @@ post_close_wait = 0.1         # 信号源关闭后等待时间，单位：秒
 measurement_times = 3         # 频谱仪测量次数
 
 # 功率扫描参数
-start_power = -5             # 起始功率，单位dBm
-power_step = 1.0              # 功率步进，单位dB
-max_set_power = 10            # 信号源最大设定功率限制，单位dBm（防止损坏信号源）
+start_power = -30            # 起始功率，单位dBm
+power_step = 5             # 功率步进，单位dB
+max_set_power = 0           # 信号源最大设定功率限制，单位dBm（防止损坏信号源）
 max_measured_power = 20       # 频谱仪最大输入功率（测量值），单位dBm（保护频谱仪）
 power_tolerance = 0.5         # 功率测量容差，单位dB（用于检测饱和）
 max_power_drop = 1.0          # 最大功率下降值，单位dB（如果功率下降超过此值，则认为过载）
@@ -34,8 +34,8 @@ spectrum_analyzer_config = {
     'span': 5e3,                # 频率跨度：100kHz
     'rbw': 50,                   # 分辨率带宽：1kHz
     'vbw': 100,                   # 视频带宽：100Hz
-    'reference_level': 30,         # 参考电平：20dBm
-    'attenuation': 20,             # 衰减：10dB
+    'reference_level': 10,         # 参考电平：20dBm
+    'attenuation': 10,             # 衰减：10dB
     'sweep_time': None,            # 扫描时间：自动
 }
 
