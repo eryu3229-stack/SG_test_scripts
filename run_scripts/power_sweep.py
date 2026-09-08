@@ -17,6 +17,10 @@ from power_meter import PowerMeter
 from power_sweep_procedure import TestProcedure
 from datetime import datetime
 from power_sweep_config import project_name, test_configs
+from utils.formatting import format_frequency
+
+# 输出文件统一命名：结果 <OUTPUT_TAG>_results_<时间戳>.xlsx
+OUTPUT_TAG = "power_sweep"
 
 
 # 主函数
@@ -154,8 +158,7 @@ def main():
             print(f"\n--- 测试点 {i+1}/{len(selected_configs)}: {test_config['test_name']} ---")
 
             # 显示当前点的频率和功率
-            freq_mhz = test_config['frequency'] / 1e6
-            print(f"频率: {freq_mhz:.0f}MHz, 功率: {test_config['power']}dBm")
+            print(f"频率: {format_frequency(test_config['frequency'])}, 功率: {test_config['power']}dBm")
 
             # 运行测试
             test_procedure.run_test(signal_gen, power_meter, test_config, keep_output=keep_output)
@@ -182,7 +185,7 @@ def main():
     # 保存测试结果
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     output_dir = os.path.join(parent_dir, 'output')
-    filename = f"功率扫描_{timestamp}.xlsx"
+    filename = f"{OUTPUT_TAG}_results_{timestamp}.xlsx"
     filepath = os.path.join(output_dir, filename)
     test_procedure.finish_xlsx(filepath, test_configs=selected_configs)
 

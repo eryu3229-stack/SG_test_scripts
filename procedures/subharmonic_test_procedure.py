@@ -6,7 +6,6 @@
 """
 
 import time
-import os
 from datetime import datetime
 import pandas as pd
 from base_test_procedure import BaseTestProcedure, format_frequency
@@ -39,6 +38,8 @@ class SubharmonicTestProcedure(BaseTestProcedure):
         print(f"测量1/{subharmonic_order}分谐波功率 @ {subharmonic_freq / 1e6:.2f}MHz")
 
         self.setup_spectrum_analyzer(spectrum_analyzer, subharmonic_freq, sa_config)
+        # 先等待一次完整扫描，避免读到过期 trace
+        self._sweep_sync(spectrum_analyzer)
 
         marker_num = 1
 
@@ -59,6 +60,8 @@ class SubharmonicTestProcedure(BaseTestProcedure):
         measurements = []
 
         for i in range(average_count):
+            if not self._sweep_sync(spectrum_analyzer):
+                time.sleep(0.3)  # 无扫描同步支持时退化为固定等待
             if hasattr(spectrum_analyzer, 'measure_marker_power'):
                 measurement = spectrum_analyzer.measure_marker_power(marker_num)
             else:
@@ -66,7 +69,6 @@ class SubharmonicTestProcedure(BaseTestProcedure):
 
             if measurement is not None:
                 measurements.append(measurement)
-            time.sleep(0.3)
 
         if measurements:
             avg_power = sum(measurements) / len(measurements)

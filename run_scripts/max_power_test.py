@@ -18,6 +18,9 @@ from max_power_procedure import MaxPowerProcedure
 from datetime import datetime
 from max_power_config import project_name, test_configs
 
+# 输出文件统一命名：结果 <OUTPUT_TAG>_results_<时间戳>.xlsx，中间流式 CSV <OUTPUT_TAG>_stream_<时间戳>.csv
+OUTPUT_TAG = "max_power"
+
 
 # 主函数
 def main():
@@ -75,7 +78,7 @@ def main():
     test_procedure = MaxPowerProcedure(manager)
     output_dir = os.path.join(parent_dir, "output")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    csv_path = os.path.join(output_dir, f"{project_name}_{timestamp}.csv")
+    csv_path = os.path.join(output_dir, f"{OUTPUT_TAG}_stream_{timestamp}.csv")
     test_procedure.start_csv_stream(csv_path)
 
     print(f"\n开始测试项目: {selected_project_name}")
@@ -141,7 +144,7 @@ def main():
     # 保存测试结果
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     output_dir = os.path.join(parent_dir, 'output')
-    filename = f"最大功率测试_{timestamp}.xlsx"
+    filename = f"{OUTPUT_TAG}_results_{timestamp}.xlsx"
     filepath = os.path.join(output_dir, filename)
     test_procedure.finish_xlsx(filepath)
 

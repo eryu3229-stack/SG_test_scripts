@@ -1,6 +1,14 @@
 # -*- coding: utf-8 -*-
 # 最大功率测试配置文件
 
+import os
+import sys
+
+# 保证可导入 utils（项目根目录加入路径），供 format_frequency 使用
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.formatting import format_frequency
+
+
 # 测试项目名称
 project_name = "最大功率测试"
 
@@ -11,9 +19,9 @@ post_close_wait = 0.1         # 信号源关闭后等待时间，单位：秒
 measurement_times = 3         # 功率计测量次数
 
 # 功率扫描参数
-start_power = 15             # 起始功率，单位dBm
+start_power = 10             # 起始功率，单位dBm
 power_step = 1.0              # 功率步进，单位dB
-max_set_power = 25            # 信号源最大设定功率限制，单位dBm（防止损坏信号源）
+max_set_power = 15            # 信号源最大设定功率限制，单位dBm（防止损坏信号源）
 max_measured_power = 20       # 功率计最大输入功率（测量值），单位dBm（保护功率计）
 power_tolerance = 0.5         # 功率测量容差，单位dB（用于检测饱和）
 max_power_drop = 1.0          # 最大功率下降值，单位dB（如果功率下降超过此值，则认为过载）
@@ -41,7 +49,7 @@ for freq_range in frequency_ranges:
     current_freq = start
     while current_freq <= end:
         test_configs.append({
-            'test_name': f'{current_freq/1e6:.0f}MHz最大功率测试',
+            'test_name': f'{format_frequency(current_freq)}最大功率测试',
             'frequency': current_freq,
             'start_power': start_power,
             'power_step': power_step,

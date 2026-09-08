@@ -23,7 +23,9 @@ class InstrumentManager:
         """
         try:
             instrument = self.rm.open_resource(resource_name)
-            instrument.timeout = 5000  # 设置超时时间为5秒
+            # 默认 VISA 超时放宽到 2 分钟：窄 RBW/宽 Span 扫描以及大段 trace
+            # 读取都可能明显超过原来的 5 秒
+            instrument.timeout = 120000
             self.connected_instruments[resource_name] = {
                 'instrument': instrument,
                 'type': instrument_type

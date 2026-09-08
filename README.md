@@ -14,7 +14,7 @@
 - **统一继承架构**：所有 Procedure 类继承自 `BaseTestProcedure`，消除 ~700 行冗余代码
 - **双格式输出**：支持 CSV / Excel，含摘要 + 详细数据双工作表
 - **进一步消除重复**：抽取 PowerSweepBaseProcedure 公共基类，减少 ~250 行重复代码
-- **配置键名对齐**：SPECTRUM_ANALYZER_CONFIG 增加 sa_settling_time，配置与实际读取一致
+- **频谱仪扫描同步**：谐波/分谐波测量用 `wait_for_sweep` 按仪器实际扫描时间同步，移除固定的 `sa_settling_time` 盲等
 
 ---
 
@@ -182,10 +182,13 @@ pip install pyvisa pyvisa-py pandas openpyxl numpy scipy matplotlib
 
 ## 输出文件
 
-输出文件命名格式：`测试类型_时间戳.xlsx`，存放于 `output/` 目录（`.gitignore` 排除）。
+输出文件统一命名，存放于 `output/` 目录（`.gitignore` 排除）：
+
+- **最终结果**：`<测试类型>_results_<时间戳>.xlsx`（英文 snake_case，如 `harmonic_results_20260908_150915.xlsx`）
+- **中间流式 CSV（过程文件）**：`<测试类型>_stream_<时间戳>.csv`（如 `harmonic_stream_20260908_150915.csv`，`_stream_` 明确标识是过程数据）
 
 - **Excel**：包含"测试摘要"和"详细数据"两个工作表
-- **CSV 流式**：测量过程中实时持久化，测试完成后自动转 XLSX
+- **CSV 流式**：测量过程中实时持久化，测试完成后自动转 XLSX；杂散流程直接保留该流式 CSV 作为输出
 
 ---
 
@@ -204,7 +207,9 @@ pip install pyvisa pyvisa-py pandas openpyxl numpy scipy matplotlib
 - 重构：抽取 PowerSweepBaseProcedure，消除 max_power_procedure.py 和 low_freq_max_power_procedure.py 之间约 250 行重复代码
 - 修复：harmonic_test_config.py 中 point['duration'] 键名错误导致的 KeyError
 - 修复：4 个入口脚本中 CSV 文件时间戳格式从反人类的 %S%M%H 改为 %Y%m%d_%H%M%S
-- 修复：谐波/分谐波配置中缺失 sa_settling_time 键，配置值此前未生效
+- 改进：谐波/分谐波频谱仪改用 `wait_for_sweep` 按实际扫描时间同步，移除冗余的 `sa_settling_time` 盲等
+- 修复：频谱仪输入衰减指令改为符合是德 N9030B 的 `SENS:POW:RF:ATT`（原 `POW:ATT`/`INP:ATT` 均报 undefined header）
+- 改进：谐波"是否检出"判据改为按 span 定频差 + 高于本地噪声底门限，无谐波时标注"读数为底噪"
 - 清理：移除未使用的 utils/project_manager.py（死代码）
 - 清理：移除 Windows 项目多余的 #!/usr/bin/env python3 shebang
 - 清理：移除所有形同虚设的 __init__.py（项目使用 sys.path.append + 直接 import）

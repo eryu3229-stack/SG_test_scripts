@@ -157,7 +157,9 @@ class SpectrumAnalyzer:
             attenuation: 衰减值，单位dB
         """
         try:
-            self.instrument.write(f"INP:ATT {attenuation}")
+            # 是德 X 系列（N9030B）标准 SA 模式输入衰减的层级为 [:SENSe]:POWer[:RF]:ATTenuation，
+            # 用完整短写 SENS:POW:RF:ATT，并确保 mnemonic 与数值间有空格（POW:ATT/INP:ATT 均会报 undefined header）。
+            self.instrument.write(f"SENS:POW:RF:ATT {attenuation}")
             print(f"设置衰减为: {attenuation} dB")
         except Exception as e:
             print(f"设置衰减失败: {e}")
@@ -173,3 +175,80 @@ class SpectrumAnalyzer:
             print(f"设置输入耦合为: {coupling}")
         except Exception as e:
             print(f"设置输入耦合失败: {e}")
+
+    def wait_for_sweep(self, sweep_count=1):
+        """切换到单次扫描并等待扫描完成
+
+        持续扫描模式下 *OPC? 可能一直不返回，因此先禁用连续扫描，
+        然后触发指定次数的单次扫描，再通过 *OPC? 同步。
+
+        Args:
+            sweep_count: 需要完成的扫描次数，默认1
+        """
+        try:
+            self.instrument.write("INIT:CONT OFF")
+            # 查询扫描时间并把 VISA 超时放大，避免窄 RBW + 宽 Span 时
+            # *OPC? 在连接时设置的默认超时(5s)内扫不完
+            try:
+                sweep_time = float(self.instrument.query("SENS:SWE:TIME?"))
+            except Exception:
+                sweep_time = 0.0
+            if sweep_time and sweep_time > 0.0:
+                timeout_ms = max(120000, int(sweep_time * 2500.0))
+            else:
+                # 查询不到扫描时间时按 5 分钟兜底，避免 10s 上限过早超时
+                timeout_ms = 300000
+            self.instrument.timeout = timeout_ms
+            print(
+                f"单次扫描预计 {sweep_time:.1f} s，"
+                f"等待超时设为 {timeout_ms / 1000:.0f} s"
+            )
+            for _ in range(max(1, sweep_count)):
+                self.instrument.write("INIT:IMM")
+                self.instrument.query("*OPC?")
+            return True
+        except Exception as e:
+            print(f"等待扫描完成失败: {e}")
+            return False
+
+    def set_trace_mode(self, mode="MAXH"):
+        """设置 trace 模式，例如 MAXH/WRITE/AVERAGE
+
+        Args:
+            mode: trace 模式
+        """
+        try:
+            self.instrument.write(f"TRAC:MODE {mode}")
+            print(f"设置频谱仪trace模式为: {mode}")
+        except Exception as e:
+            print(f"设置trace模式失败: {e}")
+
+    def set_detector(self, detector="POS"):
+        """设置检测器，例如 POS/NEG/SAMPLE/AVERAGE/RMS
+
+        Args:
+            detector: 检测器类型
+        """
+        try:
+            self.instrument.write(f"DET:TRAC {detector}")
+            print(f"设置频谱仪检测器为: {detector}")
+        except Exception as e:
+            print(f"设置检测器失败: {e}")
+
+    def get_trace(self, trace=1):
+        """读取频谱 trace 数据
+
+        Args:
+            trace: trace 编号，默认1
+
+        Returns:
+            幅度列表，单位为 dBm；读取失败返回 None
+        """
+        try:
+            data = self.instrument.query(f"TRAC:DATA? TRACE{trace}")
+            values = [float(value.strip()) for value in data.split(",") if value.strip()]
+            print(f"读取频谱trace{trace}成功，共 {len(values)} 个点")
+            return values
+        except Exception as e:
+            print(f"读取频谱trace失败: {e}")
+            return None

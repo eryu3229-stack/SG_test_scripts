@@ -1,6 +1,14 @@
 # -*- coding: utf-8 -*-
 # 测试项目配置文件
 
+import os
+import sys
+
+# 保证可导入 utils（项目根目录加入路径），供 format_frequency 使用
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.formatting import format_frequency
+
+
 # 测试项目名称
 project_name = "扫频测试"
 
@@ -27,7 +35,7 @@ for power in power_settings:
     current_freq = start_freq
     while current_freq <= end_freq:
         test_configs.append({
-            'test_name': f'{current_freq/1e6:.0f}MHz_{power}dBm测试',
+            'test_name': f'{format_frequency(current_freq)}_{power}dBm测试',
             'frequency': current_freq,
             'power': power,  # 使用当前功率设置
             'settling_time': settling_time,
@@ -43,7 +51,7 @@ for power in power_settings:
     # 确保包含结束点
     if test_configs and test_configs[-1]['frequency'] != end_freq:
         test_configs.append({
-            'test_name': f'{end_freq/1e6:.0f}MHz_{power}dBm测试',
+            'test_name': f'{format_frequency(end_freq)}_{power}dBm测试',
             'frequency': end_freq,
             'power': power,
             'settling_time': settling_time,

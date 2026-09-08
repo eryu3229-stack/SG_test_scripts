@@ -23,14 +23,15 @@ from signal_generator import SignalGenerator
 from spectrum_analyzer import SpectrumAnalyzer
 from subharmonic_test_procedure import SubharmonicTestProcedure
 from subharmonic_test_config import (
-    PROJECT_NAME,
     FREQUENCY_SWEEP_CONFIG,
     SPECTRUM_ANALYZER_CONFIG,
     SUBHARMONIC_MEASUREMENT_CONFIG,
-    OUTPUT_CONFIG,
     generate_frequency_points,
     get_test_config_summary
 )
+
+# 输出文件统一命名：结果 <OUTPUT_TAG>_results_<时间戳>.xlsx，中间流式 CSV <OUTPUT_TAG>_stream_<时间戳>.csv
+OUTPUT_TAG = "subharmonic"
 
 
 def connect_instruments():
@@ -90,10 +91,8 @@ def configure_test():
     print("配置修改功能暂未实现，使用默认配置")
     
     return {
-        'frequency_sweep_config': FREQUENCY_SWEEP_CONFIG,
         'spectrum_analyzer_config': SPECTRUM_ANALYZER_CONFIG,
         'subharmonic_measurement_config': SUBHARMONIC_MEASUREMENT_CONFIG,
-        'output_config': OUTPUT_CONFIG
     }
 
 def run_subharmonic_test():
@@ -122,7 +121,7 @@ def run_subharmonic_test():
     test_procedure = SubharmonicTestProcedure(manager)
     output_dir = os.path.join(parent_dir, "output")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    csv_path = os.path.join(output_dir, f"{PROJECT_NAME}_{timestamp}.csv")
+    csv_path = os.path.join(output_dir, f"{OUTPUT_TAG}_stream_{timestamp}.csv")
     test_procedure.start_csv_stream(csv_path)
 
     # 5. 运行测试
@@ -146,13 +145,7 @@ def run_subharmonic_test():
     # 6. 保存测试结果
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     output_dir = os.path.join(parent_dir, 'output')
-    output_format = test_config['output_config'].get('output_format', 'excel')
-    
-    if output_format == 'excel':
-        filename = f"subharmonic_test_results_{timestamp}.xlsx"
-    else:
-        filename = f"subharmonic_test_results_{timestamp}.csv"
-    
+    filename = f"{OUTPUT_TAG}_results_{timestamp}.xlsx"
     filepath = os.path.join(output_dir, filename)
     test_procedure.finish_xlsx(filepath)
 

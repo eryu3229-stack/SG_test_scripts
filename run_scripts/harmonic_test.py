@@ -23,16 +23,17 @@ from instrument_manager import InstrumentManager
 from signal_generator import SignalGenerator
 from spectrum_analyzer import SpectrumAnalyzer
 from harmonic_test_procedure import HarmonicTestProcedure
-print(f"频率: {format_frequency(test_point['frequency'])}, 功率: {test_point['set_power']}dBm")
+from base_test_procedure import format_frequency
 from harmonic_test_config import (
-    PROJECT_NAME,
     FREQUENCY_SWEEP_CONFIG,
     SPECTRUM_ANALYZER_CONFIG,
     HARMONIC_MEASUREMENT_CONFIG,
-    OUTPUT_CONFIG,
     generate_frequency_points,
     get_test_config_summary
 )
+
+# 输出文件统一命名：结果 <OUTPUT_TAG>_results_<时间戳>.xlsx，中间流式 CSV <OUTPUT_TAG>_stream_<时间戳>.csv
+OUTPUT_TAG = "harmonic"
 
 
 def connect_instruments():
@@ -85,17 +86,86 @@ def configure_test():
 
     # 询问是否修改配置
     modify = input("\n是否修改配置? (y/N): ").strip().lower()
-    
-    print("配置修改功能暂未实现，使用默认配置")
-    # 暂时使用默认配置
+
     if modify == 'y':
-        print("配置修改功能暂未实现，使用默认配置")
+        print("\n请输入修改值，直接按Enter保留当前值")
+
+        def edit_float(prompt, current):
+            try:
+                value = input(prompt).strip()
+                return float(value) if value else current
+            except ValueError:
+                print("输入无效，保留当前值")
+                return current
+
+        def edit_int(prompt, current):
+            try:
+                value = input(prompt).strip()
+                return int(value) if value else current
+            except ValueError:
+                print("输入无效，保留当前值")
+                return current
+
+        FREQUENCY_SWEEP_CONFIG['start_frequency'] = edit_float(
+            f"起始频率(Hz) [{FREQUENCY_SWEEP_CONFIG['start_frequency']}]: ",
+            FREQUENCY_SWEEP_CONFIG['start_frequency']
+        )
+        FREQUENCY_SWEEP_CONFIG['end_frequency'] = edit_float(
+            f"结束频率(Hz) [{FREQUENCY_SWEEP_CONFIG['end_frequency']}]: ",
+            FREQUENCY_SWEEP_CONFIG['end_frequency']
+        )
+        FREQUENCY_SWEEP_CONFIG['step_frequency'] = edit_float(
+            f"频率步进(Hz) [{FREQUENCY_SWEEP_CONFIG['step_frequency']}]: ",
+            FREQUENCY_SWEEP_CONFIG['step_frequency']
+        )
+        FREQUENCY_SWEEP_CONFIG['fixed_power'] = edit_float(
+            f"固定功率(dBm) [{FREQUENCY_SWEEP_CONFIG['fixed_power']}]: ",
+            FREQUENCY_SWEEP_CONFIG['fixed_power']
+        )
+        FREQUENCY_SWEEP_CONFIG['frequency_settling_time'] = edit_float(
+            f"频率切换稳定时间(秒) [{FREQUENCY_SWEEP_CONFIG['frequency_settling_time']}]: ",
+            FREQUENCY_SWEEP_CONFIG['frequency_settling_time']
+        )
+        FREQUENCY_SWEEP_CONFIG['settling_time'] = edit_float(
+            f"信号源稳定时间(秒) [{FREQUENCY_SWEEP_CONFIG['settling_time']}]: ",
+            FREQUENCY_SWEEP_CONFIG['settling_time']
+        )
+
+        SPECTRUM_ANALYZER_CONFIG['span'] = edit_float(
+            f"频谱仪SPAN(Hz) [{SPECTRUM_ANALYZER_CONFIG['span']}]: ",
+            SPECTRUM_ANALYZER_CONFIG['span']
+        )
+        SPECTRUM_ANALYZER_CONFIG['rbw'] = edit_float(
+            f"频谱仪RBW(Hz) [{SPECTRUM_ANALYZER_CONFIG['rbw']}]: ",
+            SPECTRUM_ANALYZER_CONFIG['rbw']
+        )
+        SPECTRUM_ANALYZER_CONFIG['vbw'] = edit_float(
+            f"频谱仪VBW(Hz) [{SPECTRUM_ANALYZER_CONFIG['vbw']}]: ",
+            SPECTRUM_ANALYZER_CONFIG['vbw']
+        )
+        SPECTRUM_ANALYZER_CONFIG['reference_level'] = edit_float(
+            f"频谱仪参考电平(dBm) [{SPECTRUM_ANALYZER_CONFIG['reference_level']}]: ",
+            SPECTRUM_ANALYZER_CONFIG['reference_level']
+        )
+        SPECTRUM_ANALYZER_CONFIG['attenuation'] = edit_float(
+            f"频谱仪衰减(dB) [{SPECTRUM_ANALYZER_CONFIG['attenuation']}]: ",
+            SPECTRUM_ANALYZER_CONFIG['attenuation']
+        )
+        HARMONIC_MEASUREMENT_CONFIG['harmonic_order'] = edit_int(
+            f"谐波阶数 [{HARMONIC_MEASUREMENT_CONFIG['harmonic_order']}]: ",
+            HARMONIC_MEASUREMENT_CONFIG['harmonic_order']
+        )
+        HARMONIC_MEASUREMENT_CONFIG['measurement_average'] = edit_int(
+            f"测量平均次数 [{HARMONIC_MEASUREMENT_CONFIG['measurement_average']}]: ",
+            HARMONIC_MEASUREMENT_CONFIG['measurement_average']
+        )
+
+        print("\n已更新配置:")
+        print(get_test_config_summary())
     
     return {
-        'frequency_sweep_config': FREQUENCY_SWEEP_CONFIG,
         'spectrum_analyzer_config': SPECTRUM_ANALYZER_CONFIG,
         'harmonic_measurement_config': HARMONIC_MEASUREMENT_CONFIG,
-        'output_config': OUTPUT_CONFIG
     }
 
 
@@ -118,13 +188,13 @@ def run_harmonic_test():
 
     # 3. 生成测试点
     test_points = generate_frequency_points()
-    print(f"\n--- 测试点 {i+1}/{len(test_points)} ---")
+    print(f"生成 {len(test_points)} 个测试点")
 
     # 4. 初始化测试流程
     test_procedure = HarmonicTestProcedure(manager)
     output_dir = os.path.join(parent_dir, "output")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    csv_path = os.path.join(output_dir, f"{PROJECT_NAME}_{timestamp}.csv")
+    csv_path = os.path.join(output_dir, f"{OUTPUT_TAG}_stream_{timestamp}.csv")
     test_procedure.start_csv_stream(csv_path)
 
     # 5. 运行测试
@@ -132,18 +202,15 @@ def run_harmonic_test():
     print("开始测试")
     print("=" * 60)
 
-    print(f"时间参数配置:")
+    print("时间参数配置:")
     if test_points and len(test_points) > 0:
-        print(f"\n--- 测试点 {i+1}/{len(test_points)} ---")
         sample_config = test_points[0]
+        frequency_settling_time = sample_config.get('frequency_settling_time', 1.0)
+        settling_time = sample_config.get('settling_time', 1.0)
+        print(f"  - 频率切换稳定时间: {frequency_settling_time}秒")
         print(f"  - 信号源稳定时间: {settling_time}秒")
-        post_close_wait = test_config['harmonic_measurement_config'].get('post_close_wait', 0.1)  # 从谐波配置获取关闭后等待时间
-
-        print(f"时间参数配置:")
-        print(f"  - 信号源稳定时间: {settling_time}秒")
-        print(f"  - 信号源关闭后等待时间: {post_close_wait}秒")
     else:
-        print(f"  - 信号源稳定时间: {settling_time}秒")
+        print("  - 没有测试点")
 
     print("测试模式: 信号源在测试过程中保持开启，最后一个频率点测试完成后关闭")
     print("频谱仪输入耦合: 10MHz以下自动切换为DC耦合，10MHz以上使用AC耦合")
@@ -177,13 +244,12 @@ def run_harmonic_test():
             time.sleep(0.1)
 
     print("\n所有测试点完成，关闭信号源输出...")
-    print("\n所有测试点完成，关闭信号源输出...")
     signal_gen.enable_output(False)
 
     # 6. 保存测试结果
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     output_dir = os.path.join(parent_dir, 'output')
-    filename = f"harmonic_test_results_{timestamp}.xlsx"
+    filename = f"{OUTPUT_TAG}_results_{timestamp}.xlsx"
     filepath = os.path.join(output_dir, filename)
     test_procedure.finish_xlsx(filepath)
     # 7. 打印测试摘要

@@ -18,6 +18,7 @@ from instrument_manager import InstrumentManager
 from signal_generator import SignalGenerator
 from spectrum_analyzer import SpectrumAnalyzer
 from power_meter import PowerMeter
+from utils.formatting import format_frequency
 
 
 class LogRedirector:
@@ -220,8 +221,8 @@ class SignalTestGUI(tk.Tk):
         import harmonic_test_config as cfg
         fcfg = cfg.FREQUENCY_SWEEP_CONFIG
         params = [
-            ("起止频率 (MHz)", f"{fcfg["start_frequency"]/1e6:.0f}-{fcfg["end_frequency"]/1e6:.0f}"),
-            ("步进频率 (MHz)", f"{fcfg["step_frequency"]/1e6:.0f}"),
+            ("起止频率", f"{format_frequency(fcfg['start_frequency'])} - {format_frequency(fcfg['end_frequency'])}"),
+            ("步进频率", format_frequency(fcfg['step_frequency'])),
             ("固定功率 (dBm)", str(fcfg["fixed_power"])),
         ]
         for i, (label, val) in enumerate(params):

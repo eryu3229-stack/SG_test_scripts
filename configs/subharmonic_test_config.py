@@ -4,6 +4,14 @@
 用于测试信号源的分谐波性能
 """
 
+import os
+import sys
+
+# 保证可导入 utils（项目根目录加入路径），供 format_frequency 使用
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.formatting import format_frequency
+
+
 # ==================== 基础配置 ====================
 
 # 项目名称
@@ -27,33 +35,20 @@ FREQUENCY_SWEEP_CONFIG = {
 
 # 频谱仪测量配置
 SPECTRUM_ANALYZER_CONFIG = {
-    'span': 10e3,                  # 频率跨度: 10MHz
-    'rbw': 100,                    # 分辨率带宽: 100kHz
-    'vbw': 100,                    # 视频带宽: 100kHz
+    'span': 10e3,                  # 频率跨度: 10 kHz
+    'rbw': 100,                    # 分辨率带宽: 100 Hz
+    'vbw': 100,                    # 视频带宽: 100 Hz
     'reference_level': 10,         # 参考电平: 10dBm
-    'attenuation': 40,             # 衰减: 10dB
-    'peak_search_range': 5e3,
-        'sa_settling_time': 0.5,          # 频谱仪稳定等待时间: 0.5秒
+    'attenuation': 40,             # 衰减: 40dB
 }
 
 # ==================== 分谐波测量配置 ====================
 
 # 分谐波测量配置
 SUBHARMONIC_MEASUREMENT_CONFIG = {
-    'fundamental_marker': 1,       # 基波标记器编号
     'subharmonic_orders': [2],     # 分谐波阶数: 2 (1/2)
     'measurement_average': 3,      # 测量平均次数
     'subharmonic_search_offset': 2e3, # 分谐波搜索偏移: 1MHz
-}
-
-# ==================== 输出配置 ====================
-
-# 结果输出配置
-OUTPUT_CONFIG = {
-    'output_format': 'excel',      # 输出格式: excel
-    'include_timestamp': True,     # 包含时间戳
-    'save_raw_data': True,         # 保存原始数据
-    'calculate_dbc': True,         # 计算dBc值
 }
 
 # ==================== 测试点生成函数 ====================
@@ -94,21 +89,21 @@ def get_test_config_summary():
 ===================
 
 1. 频率扫描配置:
-   - 起始频率: {freq_config['start_frequency']/1e6:.0f} MHz
-   - 结束频率: {freq_config['end_frequency']/1e6:.0f} MHz
-   - 频率步进: {freq_config['step_frequency']/1e6:.0f} MHz
+   - 起始频率: {format_frequency(freq_config['start_frequency'])}
+   - 结束频率: {format_frequency(freq_config['end_frequency'])}
+   - 频率步进: {format_frequency(freq_config['step_frequency'])}
    - 固定功率: {freq_config['fixed_power']} dBm
    - 稳定时间: {freq_config['settling_time']} 秒
 
 2. 频谱仪配置:
-   - 频率跨度: {sa_config['span']/1e6:.1f} MHz
-   - 分辨率带宽: {sa_config['rbw']/1e3:.0f} kHz
+   - 频率跨度: {format_frequency(sa_config['span'])}
+   - 分辨率带宽: {format_frequency(sa_config['rbw'])}
    - 参考电平: {sa_config['reference_level']} dBm
 
 3. 分谐波测量配置:
    - 分谐波阶数: {', '.join([f'1/{order}' for order in subharmonic_config['subharmonic_orders']])}
    - 测量平均次数: {subharmonic_config['measurement_average']}
-   - 分谐波搜索偏移: {subharmonic_config['subharmonic_search_offset']/1e6:.1f} MHz
+   - 分谐波搜索偏移: {format_frequency(subharmonic_config['subharmonic_search_offset'])}
 
 预计测试点数: {len(generate_frequency_points())}
 """
@@ -125,7 +120,7 @@ if __name__ == "__main__":
     test_points = generate_frequency_points()
     print(f"\n生成的测试点 ({len(test_points)}个):")
     for i, point in enumerate(test_points[:5]):  # 只显示前5个
-        print(f"  {i+1}. {point['frequency']/1e6:.0f}MHz, {point['set_power']}dBm")
+        print(f"  {i+1}. {format_frequency(point['frequency'])}, {point['set_power']}dBm")
     if len(test_points) > 5:
         print(f"  ... 还有 {len(test_points) - 5} 个测试点")
     

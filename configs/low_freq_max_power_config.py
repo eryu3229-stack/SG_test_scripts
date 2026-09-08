@@ -1,6 +1,14 @@
 # -*- coding: utf-8 -*-
 # 低频段最大功率测试配置文件
 
+import os
+import sys
+
+# 保证可导入 utils（项目根目录加入路径），供 format_frequency 使用
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.formatting import format_frequency
+
+
 # 测试项目名称
 project_name = "低频段最大功率测试"
 
@@ -51,7 +59,7 @@ for freq_range in frequency_ranges:
     current_freq = start
     while current_freq <= end:
         test_configs.append({
-            'test_name': f'{current_freq/1e3:.0f}kHz最大功率测试' if current_freq < 1e6 else f'{current_freq/1e6:.0f}MHz最大功率测试',
+            'test_name': f'{format_frequency(current_freq)}最大功率测试',
             'frequency': current_freq,
             'start_power': start_power,
             'power_step': power_step,

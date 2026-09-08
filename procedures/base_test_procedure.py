@@ -11,24 +11,7 @@ import os
 from datetime import datetime
 import pandas as pd
 
-
-def format_frequency(frequency):
-    """格式化频率显示，根据频率大小自动选择合适的单位
-
-    Args:
-        frequency: 频率值，单位Hz
-
-    Returns:
-        str: 格式化后的频率字符串
-    """
-    if frequency < 1e3:
-        return f"{frequency:.0f}Hz"
-    elif frequency < 1e6:
-        return f"{frequency/1e3:.2f}kHz"
-    elif frequency < 1e9:
-        return f"{frequency/1e6:.2f}MHz"
-    else:
-        return f"{frequency/1e9:.2f}GHz"
+from utils.formatting import format_frequency
 
 
 class BaseTestProcedure:
@@ -57,7 +40,7 @@ class BaseTestProcedure:
         """
         return format_frequency(frequency)
 
-    def setup_signal_generator(self, signal_gen, frequency, power, enable_output=True, settling_time=1.0):
+    def setup_signal_generator(self, signal_gen, frequency, power, enable_output=True, settling_time=1.0, frequency_settling_time=0.0):
         """设置信号源
 
         Args:
@@ -66,10 +49,14 @@ class BaseTestProcedure:
             power: 功率 (dBm)
             enable_output: 是否启用输出，默认为True
             settling_time: 信号稳定等待时间（秒），默认1.0
+            frequency_settling_time: 频率切换稳定等待时间（秒），默认0
         """
         print(f"设置信号源: {format_frequency(frequency)}, {power}dBm")
 
         signal_gen.set_frequency(frequency)
+        if frequency_settling_time > 0:
+            print(f"等待频率切换稳定 {frequency_settling_time}秒...")
+            time.sleep(frequency_settling_time)
         signal_gen.set_power(power)
 
         if enable_output:
@@ -90,8 +77,6 @@ class BaseTestProcedure:
             config: 频谱仪配置字典
         """
         print(f"设置频谱仪中心频率: {format_frequency(center_frequency)}")
-
-        sa_settling_time = config.get('sa_settling_time', 0.5)
 
         spectrum_analyzer.set_center_frequency(center_frequency)
 
@@ -117,10 +102,6 @@ class BaseTestProcedure:
             spectrum_analyzer.set_attenuation(attenuation)
             print(f"设置衰减: {attenuation} dB")
 
-
-        print(f"等待频谱仪设置生效 {sa_settling_time}秒...")
-        time.sleep(sa_settling_time)
-
     def measure_fundamental_power(self, spectrum_analyzer, frequency, sa_config, average_count=3):
         """测量基波功率
 
@@ -138,8 +119,9 @@ class BaseTestProcedure:
 
         marker_num = 1
 
-        # 执行峰值搜索
+        # 执行峰值搜索（先等待一次完整扫描，避免读到过期 trace）
         if hasattr(spectrum_analyzer, 'peak_search'):
+            self._sweep_sync(spectrum_analyzer)
             spectrum_analyzer.peak_search()
             time.sleep(0.5)
         else:
@@ -147,17 +129,12 @@ class BaseTestProcedure:
                 spectrum_analyzer.set_marker_frequency(marker_num, frequency)
                 time.sleep(0.2)
 
-        # 第一次测量获取参考值
-        if hasattr(spectrum_analyzer, 'measure_marker_power'):
-            power = spectrum_analyzer.measure_marker_power(marker_num)
-        else:
-            power = spectrum_analyzer.measure_power()
-
-        # 多次测量取平均
-        # average_count is now a parameter with default=3
+        # 多次测量取平均：每次读数前都触发并等待一次完整扫描，确保数值准确
         measurements = []
 
         for i in range(average_count):
+            if not self._sweep_sync(spectrum_analyzer):
+                time.sleep(0.3)  # 无扫描同步支持时退化为固定等待
             if hasattr(spectrum_analyzer, 'measure_marker_power'):
                 measurement = spectrum_analyzer.measure_marker_power(marker_num)
             else:
@@ -165,18 +142,28 @@ class BaseTestProcedure:
 
             if measurement is not None:
                 measurements.append(measurement)
-            time.sleep(0.3)
 
         if measurements:
             avg_power = sum(measurements) / len(measurements)
             print(f"基波功率: {avg_power:.2f} dBm (平均{len(measurements)}次)")
             return avg_power
-        elif power is not None:
-            print(f"基波功率: {power:.2f} dBm")
-            return power
         else:
             print("基波功率测量失败")
             return None
+
+    @staticmethod
+    def _sweep_sync(spectrum_analyzer):
+        """若频谱仪支持扫描同步，则触发并等待一次完整扫描
+
+        Args:
+            spectrum_analyzer: 频谱仪对象
+
+        Returns:
+            bool: 是否成功执行了扫描同步
+        """
+        if hasattr(spectrum_analyzer, 'wait_for_sweep'):
+            return spectrum_analyzer.wait_for_sweep(1) is True
+        return False
 
     def save_results_to_csv(self, filename, fieldnames=None):
         """保存测试结果到CSV文件

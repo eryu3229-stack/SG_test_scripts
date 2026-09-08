@@ -4,6 +4,14 @@
 用于测试信号源的二次谐波性能
 """
 
+import os
+import sys
+
+# 保证可导入 utils（项目根目录加入路径），供 format_frequency 使用
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.formatting import format_frequency
+
+
 # ==================== 基础配置 ====================
 
 # 项目名称
@@ -16,23 +24,24 @@ TEST_DESCRIPTION = "测试信号源的二次谐波性能，记录基波和二次
 
 # 频率扫描配置
 FREQUENCY_SWEEP_CONFIG = {
-    'start_frequency': 1e9,      # 起始频率: 1 GHz
-    'end_frequency': 20e9,       # 结束频率: 20 GHz
-    'step_frequency': 100e6,     # 频率步进: 100 MHz
-    'fixed_power': 10,           # 固定输出功率: 10 dBm
-    'settling_time': 2.0,        # 仪器稳定时间: 2秒
+    'start_frequency': 1e6,       # 起始频率: 100 kHz
+    'end_frequency': 1e9,          # 结束频率: 1 MHz
+    'step_frequency': 10e6,         # 频率步进: 100 kHz
+    'fixed_power': 10,              # 固定输出功率: 10 dBm
+    'frequency_settling_time': 1.0, # 频率切换稳定时间，单位：秒
+    'settling_time': 1.0,           # 仪器稳定时间: 1秒
 }
 
 # ==================== 频谱仪配置 ====================
 
 # 频谱仪测量配置
 SPECTRUM_ANALYZER_CONFIG = {
-    'span': 5e3,                  # 频率跨度: 5 kHz
+    'span': 10e3,                  # 频率跨度: 10 kHz
     'rbw': 200,                   # 分辨率带宽: 200 Hz
     'vbw': 200,                   # 视频带宽: 200 Hz
-    'reference_level': 20,        # 参考电平: 20 dBm
+    'reference_level': 20,        # 参考电平: 30 dBm
     'attenuation': 40,            # 衰减: 40dB
-        'sa_settling_time': 0.5,      # 频谱仪稳定等待时间: 0.5秒
+    'sa_settling_time': 0.5,      # 频谱仪稳定等待时间: 0.5秒
 }
 
 # ==================== 谐波测量配置 ====================
@@ -42,6 +51,8 @@ HARMONIC_MEASUREMENT_CONFIG = {
     'fundamental_marker': 1,       # 基波标记器编号
     'harmonic_order': 2,           # 谐波阶数: 2 (二次谐波)
     'measurement_average': 3,      # 测量平均次数
+    'harmonic_detection_margin_db': 10,   # 峰包络高于本地噪声底多少 dB 才判为"检出谐波"
+    'harmonic_freq_tolerance_ratio': 0.25, # 频率冗余判据相对 span 的比例
 }
 
 # ==================== 输出配置 ====================
@@ -65,6 +76,7 @@ def generate_frequency_points():
     while current_freq <= config['end_frequency']:
         points.append({
             'frequency': current_freq,
+            'frequency_settling_time': config['frequency_settling_time'],
             'set_power': config['fixed_power'],
             'settling_time': config['settling_time'],
         })
@@ -74,6 +86,7 @@ def generate_frequency_points():
     if points and points[-1]['frequency'] != config['end_frequency']:
         points.append({
             'frequency': config['end_frequency'],
+            'frequency_settling_time': config['frequency_settling_time'],
             'set_power': config['fixed_power'],
             'settling_time': config['settling_time'],
         })
@@ -92,20 +105,22 @@ def get_test_config_summary():
 ===================
 
 1. 频率扫描配置:
-   - 起始频率: {freq_config['start_frequency']/1e6:.0f} MHz
-   - 结束频率: {freq_config['end_frequency']/1e6:.0f} MHz
-   - 频率步进: {freq_config['step_frequency']/1e6:.0f} MHz
+   - 起始频率: {format_frequency(freq_config['start_frequency'])}
+   - 结束频率: {format_frequency(freq_config['end_frequency'])}
+   - 频率步进: {format_frequency(freq_config['step_frequency'])}
    - 固定功率: {freq_config['fixed_power']} dBm
+   - 频率切换稳定时间: {freq_config['frequency_settling_time']} 秒
    - 稳定时间: {freq_config['settling_time']} 秒
 
 2. 频谱仪配置:
-   - 频率跨度: {sa_config['span']/1e6:.1f} MHz
-   - 分辨率带宽: {sa_config['rbw']/1e3:.0f} kHz
+   - 频率跨度: {format_frequency(sa_config['span'])}
+   - 分辨率带宽: {format_frequency(sa_config['rbw'])}
    - 参考电平: {sa_config['reference_level']} dBm
 
 3. 谐波测量配置:
    - 谐波阶数: {harmonic_config['harmonic_order']}
    - 测量平均次数: {harmonic_config['measurement_average']}
+   - 谐波检出门限: {harmonic_config['harmonic_detection_margin_db']} dB (高于本地噪声底)
 
 预计测试点数: {len(generate_frequency_points())}
 """
@@ -122,7 +137,7 @@ if __name__ == "__main__":
     test_points = generate_frequency_points()
     print(f"\n生成的测试点 ({len(test_points)}个):")
     for i, point in enumerate(test_points[:5]):  # 只显示前5个
-        print(f"  {i+1}. {point['frequency']/1e6:.0f}MHz, {point['set_power']}dBm, {point['settling_time']}秒")
+        print(f"  {i+1}. {format_frequency(point['frequency'])}, {point['set_power']}dBm, {point['settling_time']}秒")
     if len(test_points) > 5:
         print(f"  ... 还有 {len(test_points) - 5} 个测试点")
     
