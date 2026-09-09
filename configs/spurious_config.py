@@ -11,18 +11,19 @@ carrier_frequency_mode = "step"
 carrier_frequency_list = []
 
 # 步进式载波频率参数，单位 Hz
-carrier_start_frequency_hz = 100e3
-carrier_end_frequency_hz = 1e6
-carrier_step_frequency_hz = 10e3
+carrier_start_frequency_hz = 3.5e9
+carrier_end_frequency_hz = 40e9
+carrier_step_frequency_hz = 500e6
 
 # 载波功率，单位 dBm
-carrier_power_dbm = 0
+carrier_power_dbm = 10
 
 # 频谱仪通用参数
 reference_level_dbm = 10
 attenuation_db = 20
 input_coupling = "DC"
 sa_settling_time_s = 0.5
+scale_div_db = 15
 
 # 频率边界，防止设置到仪器不支持范围
 min_frequency_hz = 9e3
@@ -43,7 +44,7 @@ near_carrier_segments = [
         "span_hz": 10e6,
         "rbw_hz": 100,
         "vbw_hz": 300,
-        "sweep_count": 10,
+        "sweep_count": 5,
         "trace_mode": "MAXH",
         "detector": "POS",
     },
@@ -53,21 +54,23 @@ near_carrier_segments = [
         "span_hz": 100e6,
         "rbw_hz": 1e3,
         "vbw_hz": 3e3,
-        "sweep_count": 10,
+        "sweep_count": 5,
         "trace_mode": "MAXH",
         "detector": "POS",
     },
 ]
 
-# 远载波段：以固定频率段覆盖全频段，每段 1 GHz
+# 远载波段：以载波为中心，向两侧扩展 coverage_hz 范围分段扫描
+# 例如 coverage_hz=2e9 时，1.5 GHz 载波只扫 0.5-2.5 GHz，不再扫到 10 GHz
 far_carrier_segment = {
     "name": "far_1GHz",
     "span_hz": 1e9,
     "rbw_hz": 10e3,
     "vbw_hz": 30e3,
-    "sweep_count": 5,
+    "sweep_count": 3,
     "trace_mode": "MAXH",
     "detector": "POS",
+    "coverage_hz": 2e9,   # 以 CF 为中心，总覆盖宽度
 }
 
 # 谐波：单独逐阶测量，避免和谐波区重复搜索
@@ -90,7 +93,7 @@ refine_config = {
     "sweep_count": 3,
     "trace_mode": "WRITE",
     "detector": "POS",
-    "average_count": 5,
+    "average_count": 3,   # 从 5 减到 3
 }
 
 # ============================================================
@@ -101,11 +104,15 @@ peak_detection = {
     "noise_margin_db": 6.0,          # 高于噪声底多少 dB 算候选
     "peak_prominence_db": 3.0,       # 局部峰值相对于邻域的突出程度
     "min_peak_distance_hz": 1e3,     # 两个候选峰最小频率间隔
-    "max_peak_count_per_segment": 200,
+    "max_peak_count_per_segment": 30,  # 每段最多保留候选，减少精测/验证负担
 }
 
 # 近载波保护带：载波本身及附近不搜索杂散（避免把主信号当杂散）
-carrier_guard_hz = 50e3  # ±50 kHz
+carrier_guard_hz = 10e3  
+
+# 最小有效杂散偏移：相对于载波的最小频率偏移
+# 小于该值的峰视为载波自身分量/测量伪影，直接丢弃
+min_spur_offset_hz = 5e3  # 5 kHz
 
 # ============================================================
 # 候选杂散真伪验证
@@ -114,23 +121,27 @@ validation = {
     "enable": True,
 
     # 源开关测试：关 RF 后若杂散仍在，判为仪器/环境杂散
-    "source_off_check": True,
+    # 默认关闭，非常耗时（需要关源、重扫多个 segment）
+    "source_off_check": False,
 
     # 衰减器阶跃测试：改衰减后 dBc 不变才是真杂散
+    "attenuator_step_check": True,
     "attenuator_step_db": 2,
-    "attenuator_steps": [-2, 0, 2],
+    "attenuator_steps": [0, 2],   # 只测当前值和 +2 dB，减少耗时
     "attenuator_dbc_tolerance_db": 2.0,
 
     # 载波频率步进测试：真杂散应随 CF 同步偏移
+    "cf_step_check": False,  # 默认关闭，因会改变整个测试状态；可手动开启
     "cf_step_hz": 10e6,
     "cf_step_freq_tolerance_hz": 100e3,
 
     # RBW 缩放测试：真 CW 杂散幅度不随 RBW 变化；噪声会涨
+    "rbw_scaling_check": True,
     "rbw_scaling_ratios": [1, 2],
     "rbw_scaling_amplitude_tolerance_db": 2.0,
 
     # 重复性测试
-    "stability_count": 5,
+    "stability_count": 3,   # 精测时只读 3 次
     "stability_limit_db": 1.0,
 
     # 接近噪声底判定
@@ -139,10 +150,10 @@ validation = {
 
 # 输出控制
 output = {
-    # 每段保留多少个候选（None 表示保留全部通过噪声阈值和验证的）
-    "max_candidates_per_segment": None,
+    # 每段保留多少个候选参与最终验证（None 表示保留全部）
+    "max_candidates_per_segment": 15,  # 只验证/输出 worst-case 前 15
     # 是否输出谐波条目
-    "include_harmonics": True,
+    "include_harmonics": False,
     # 是否输出验证失败的 suspected/noise/artifact 条目
     "include_unconfirmed": True,
 }
