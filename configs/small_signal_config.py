@@ -52,8 +52,17 @@ reference_level_margin_db = 10
 max_reference_level = 20
 min_reference_level = -80
 high_power_threshold_dbm = -20
+# 衰减模式：True=自动衰减（POW:ATT:AUTO ON，仪器按参考电平自动耦合）
+#          False=手动，用下面两个固定值
+attenuation_auto = True
 attenuation_for_high_power = 10
 attenuation_for_low_power = 0
+
+# 内置预放（N9030B，手册: [:SENSe]:POWer[:RF]:GAIN[:STATe] / :GAIN:BAND）
+# 低功率测量时打开预放压低底噪；高功率时关闭防止过载
+preamp_enabled = True            # 总开关：False 则全程不开预放
+preamp_threshold_dbm = -50       # 设定功率 <= 该值时开预放
+preamp_band = "FULL"             # LOW=仅低波段, FULL=全频段
 
 # 频谱仪输入耦合，低频可使用 DC
 input_coupling = "AC"
@@ -76,7 +85,11 @@ def get_config():
         "max_reference_level": max_reference_level,
         "min_reference_level": min_reference_level,
         "high_power_threshold_dbm": high_power_threshold_dbm,
+        "attenuation_auto": attenuation_auto,
         "attenuation_for_high_power": attenuation_for_high_power,
         "attenuation_for_low_power": attenuation_for_low_power,
+        "preamp_enabled": preamp_enabled,
+        "preamp_threshold_dbm": preamp_threshold_dbm,
+        "preamp_band": preamp_band,
         "input_coupling": input_coupling,
     }

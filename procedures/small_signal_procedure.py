@@ -26,6 +26,7 @@ class SmallSignalProcedure(BaseTestProcedure):
             "vbw_hz",
             "reference_level_dbm",
             "attenuation_db",
+            "preamp_on",
             "average_count",
             "status",
             "timestamp",
@@ -69,13 +70,20 @@ class SmallSignalProcedure(BaseTestProcedure):
             return True
         return self.save_results_to_csv(filename)
 
-    def _configure_spectrum_analyzer(self, spectrum_analyzer, center_frequency, span, rbw, vbw, reference_level, attenuation, coupling):
+    def _configure_spectrum_analyzer(self, spectrum_analyzer, center_frequency, span, rbw, vbw, reference_level, attenuation, coupling, preamp_on=False, preamp_band="FULL"):
         spectrum_analyzer.set_center_frequency(center_frequency)
         spectrum_analyzer.set_span(span)
         spectrum_analyzer.set_rbw(rbw)
         spectrum_analyzer.set_vbw(vbw)
         spectrum_analyzer.set_reference_level(reference_level)
-        spectrum_analyzer.set_attenuation(attenuation)
+        if attenuation is None:
+            # None = 自动衰减（手册: POW:ATT:AUTO ON）
+            if hasattr(spectrum_analyzer, "set_attenuation_auto"):
+                spectrum_analyzer.set_attenuation_auto(True)
+        else:
+            spectrum_analyzer.set_attenuation(attenuation)
+        if hasattr(spectrum_analyzer, "set_preamp"):
+            spectrum_analyzer.set_preamp(preamp_on, preamp_band)
         if hasattr(spectrum_analyzer, "set_input_coupling"):
             spectrum_analyzer.set_input_coupling(coupling)
 
@@ -84,7 +92,13 @@ class SmallSignalProcedure(BaseTestProcedure):
             return False
         return abs(peak_frequency - expected_frequency) <= tolerance
 
-    def _measure_peak(self, spectrum_analyzer, expected_frequency, span, rbw, vbw, reference_level, attenuation, config, average_count):
+    def _suggest_preamp(self, set_power, config):
+        """低功率档开预放压低底噪；高功率档关闭防止前端过载"""
+        if not config.get("preamp_enabled", False):
+            return False
+        return set_power <= config.get("preamp_threshold_dbm", -50)
+
+    def _measure_peak(self, spectrum_analyzer, expected_frequency, span, rbw, vbw, reference_level, attenuation, config, average_count, preamp_on=False):
         self._configure_spectrum_analyzer(
             spectrum_analyzer,
             expected_frequency,
@@ -93,7 +107,9 @@ class SmallSignalProcedure(BaseTestProcedure):
             vbw,
             reference_level,
             attenuation,
-            config.get("input_coupling", "AC")
+            config.get("input_coupling", "AC"),
+            preamp_on,
+            config.get("preamp_band", "FULL")
         )
         time.sleep(config.get("sa_settling_time", 0.5))
 
@@ -156,6 +172,9 @@ class SmallSignalProcedure(BaseTestProcedure):
         )
 
     def _suggest_attenuation(self, set_power, config):
+        """返回衰减值；自动衰减模式返回 None（仪器按参考电平自动耦合）"""
+        if config.get("attenuation_auto", False):
+            return None
         if set_power >= config.get("high_power_threshold_dbm", -20):
             return config.get("attenuation_for_high_power", 10)
         return config.get("attenuation_for_low_power", 0)
@@ -188,6 +207,7 @@ class SmallSignalProcedure(BaseTestProcedure):
             vbw = self._suggest_vbw(power, config)
             reference_level = self._suggest_reference_level(power, config)
             attenuation = self._suggest_attenuation(power, config)
+            preamp_on = self._suggest_preamp(power, config)
 
             measured_power, peak_frequency, found = self._measure_peak(
                 spectrum_analyzer,
@@ -198,7 +218,8 @@ class SmallSignalProcedure(BaseTestProcedure):
                 reference_level,
                 attenuation,
                 config,
-                config.get("average_count", 5)
+                config.get("average_count", 5),
+                preamp_on
             )
 
             if measured_power is not None:
@@ -222,17 +243,19 @@ class SmallSignalProcedure(BaseTestProcedure):
                 "rbw_hz": rbw,
                 "vbw_hz": vbw,
                 "reference_level_dbm": reference_level,
-                "attenuation_db": attenuation,
+                "attenuation_db": "AUTO" if attenuation is None else attenuation,
+                "preamp_on": preamp_on,
                 "average_count": config.get("average_count", 5),
                 "status": status,
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             })
 
+            atten_str = "AUTO" if attenuation is None else f"{attenuation} dB"
             print(
                 f"频率: {format_frequency(frequency)}, "
                 f"设定功率: {power} dBm, 测量功率: "
                 f"{measured_power if measured_power is None else f'{measured_power:.2f}'} dBm, "
-                f"状态: {status}"
+                f"衰减: {atten_str}, 预放: {'开' if preamp_on else '关'}, 状态: {status}"
             )
 
             if measured_power is None:

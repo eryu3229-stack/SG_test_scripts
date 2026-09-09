@@ -40,9 +40,45 @@ class SpectrumAnalyzer:
         except Exception as e:
             print(f"设置 Y 轴刻度失败: {e}")
 
+    def set_attenuation_auto(self, state=True):
+        """设置机械衰减自动/手动（N9030B，手册 Swept SA 模式指令）
+
+        手册指令:
+            [:SENSe]:POWer[:RF]:ATTenuation:AUTO OFF | ON | 0 | 1
+        注意: 手动发送 [:SENSe]:POWer[:RF]:ATTenuation <值> 会自动切回手动模式。
+
+        Args:
+            state: True 自动衰减，False 手动
+        """
+        try:
+            self.instrument.write(f"SENS:POW:ATT:AUTO {'ON' if state else 'OFF'}")
+        except Exception as e:
+            print(f"设置自动衰减失败: {e}")
+
+    def set_preamp(self, state=True, band=None):
+        """设置内置预放（N9030B，手册 Swept SA 模式指令）
+
+        手册指令:
+            [:SENSe]:POWer[:RF]:GAIN[:STATe] OFF | ON | 0 | 1
+            [:SENSe]:POWer[:RF]:GAIN:BAND OFF | LOW | FULL
+
+        Args:
+            state: True 打开预放，False 关闭
+            band: 预放频段，"LOW"(仅低波段) 或 "FULL"(全频段)；None 不改频段
+        """
+        try:
+            if state:
+                if band:
+                    self.instrument.write(f"SENS:POW:GAIN:BAND {band}")
+                self.instrument.write("SENS:POW:GAIN ON")
+            else:
+                self.instrument.write("SENS:POW:GAIN OFF")
+        except Exception as e:
+            print(f"设置预放失败: {e}")
+
     def measure_power(self):
         """测量功率
-        
+
         Returns:
             测量的功率值，单位dBm
         """
