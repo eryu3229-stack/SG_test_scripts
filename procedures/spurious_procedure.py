@@ -100,14 +100,12 @@ class SpuriousProcedure(BaseTestProcedure):
         trace_mode,
         detector,
         coupling,
-        scale_div_db=15,
     ):
         spectrum_analyzer.set_center_frequency(center_frequency)
         spectrum_analyzer.set_span(span)
         spectrum_analyzer.set_rbw(rbw)
         spectrum_analyzer.set_vbw(vbw)
         spectrum_analyzer.set_reference_level(reference_level)
-        spectrum_analyzer.set_scale_div(scale_div_db)
         spectrum_analyzer.set_attenuation(attenuation)
         if hasattr(spectrum_analyzer, "set_trace_mode"):
             spectrum_analyzer.set_trace_mode(trace_mode)
@@ -242,7 +240,6 @@ class SpuriousProcedure(BaseTestProcedure):
             "WRITE",
             "POS",
             config.get("input_coupling", "DC"),
-            config.get("scale_div_db", 15),
         )
         time.sleep(config.get("sa_settling_time_s", 0.5))
         if not spectrum_analyzer.wait_for_sweep(1, span_hz=span):
@@ -255,15 +252,17 @@ class SpuriousProcedure(BaseTestProcedure):
             spectrum_analyzer.set_marker_frequency(1, carrier_frequency)
             peak_frequency = carrier_frequency
 
+        min_frequency_hz = config.get("min_frequency_hz", 0.0)
         measurements = []
         for _ in range(5):
             power = spectrum_analyzer.measure_marker_power(1)
-            if power is not None:
+            if self._is_valid_measurement(peak_frequency, power, min_frequency_hz):
                 measurements.append(power)
             time.sleep(0.1)
 
         if measurements:
             return float(np.mean(measurements)), peak_frequency
+        print(f"  载波 {carrier_frequency / 1e6:.3f} MHz 功率测量无效")
         return None, peak_frequency
 
     # ------------------------------------------------------------------
@@ -290,7 +289,6 @@ class SpuriousProcedure(BaseTestProcedure):
             trace_mode,
             detector,
             config.get("input_coupling", "DC"),
-            config.get("scale_div_db", 15),
         )
         time.sleep(config.get("sa_settling_time_s", 0.5))
         if not spectrum_analyzer.wait_for_sweep(sweep_count, span_hz=span):
@@ -312,6 +310,15 @@ class SpuriousProcedure(BaseTestProcedure):
         if not measurements:
             return None
 
+        mean_power = float(np.mean(measurements))
+        min_frequency_hz = config.get("min_frequency_hz", 0.0)
+        if not self._is_valid_measurement(peak_frequency, mean_power, min_frequency_hz):
+            print(
+                f"  精测结果无效，跳过: "
+                f"freq={peak_frequency / 1e6:.3f} MHz, amp={mean_power:.2f} dBm"
+            )
+            return None
+
         trace = spectrum_analyzer.get_trace(1)
         noise_floor = self._estimate_noise_floor(trace)
         if noise_floor is None:
@@ -319,7 +326,7 @@ class SpuriousProcedure(BaseTestProcedure):
 
         return {
             "frequency_hz": peak_frequency,
-            "amplitude_dbm": float(np.mean(measurements)),
+            "amplitude_dbm": mean_power,
             "std_db": float(np.std(measurements)),
             "rbw_hz": rbw,
             "span_hz": span,
@@ -459,7 +466,6 @@ class SpuriousProcedure(BaseTestProcedure):
                 segment.get("trace_mode", "MAXH"),
                 segment.get("detector", "POS"),
                 config.get("input_coupling", "DC"),
-                config.get("scale_div_db", 15),
             )
             time.sleep(config.get("sa_settling_time_s", 0.5))
             if not spectrum_analyzer.wait_for_sweep(segment.get("sweep_count", 5), span_hz=span):
@@ -519,7 +525,6 @@ class SpuriousProcedure(BaseTestProcedure):
             trace_mode,
             detector,
             config.get("input_coupling", "DC"),
-            config.get("scale_div_db", 15),
         )
         time.sleep(config.get("sa_settling_time_s", 0.5))
         if not spectrum_analyzer.wait_for_sweep(sweep_count, span_hz=span):
@@ -572,13 +577,41 @@ class SpuriousProcedure(BaseTestProcedure):
     # ------------------------------------------------------------------
     # 远载波 1 GHz 分段生成
     # ------------------------------------------------------------------
-    def _build_far_segment_centers(self, carrier_frequency, coverage, span):
+    @staticmethod
+    def _is_valid_measurement(frequency_hz, power_dbm, min_frequency_hz=0.0):
+        """判断频点/功率是否为有效测量值
+
+        R&S 仪器在设置无效中心频率时会返回 9.91e+37 等哨兵值；
+        同时频率必须为正，功率必须在合理范围内。
+        """
+        if frequency_hz is None or power_dbm is None:
+            return False
+        try:
+            freq = float(frequency_hz)
+            power = float(power_dbm)
+        except (TypeError, ValueError):
+            return False
+        if not np.isfinite(freq) or freq <= 0:
+            return False
+        if not np.isfinite(power) or abs(power) > 200.0:
+            return False
+        if freq < min_frequency_hz:
+            return False
+        return True
+
+    def _build_far_segment_centers(
+        self, carrier_frequency, coverage, span, min_frequency_hz=0.0
+    ):
         """以载波为中心，向两侧各扩展 coverage/2 的范围，按 span 分段。
+
+        过滤掉低端会低于 min_frequency_hz（通常为仪器最小频率）或为负的段，
+        避免把频谱仪设到无效中心频率后产生 9.91e+37 哨兵数据。
 
         Args:
             carrier_frequency: 载波频率 (Hz)
             coverage: 远载波总覆盖宽度 (Hz)，以 CF 为中心
             span: 每段 SPAN (Hz)
+            min_frequency_hz: 仪器允许的最小频率 (Hz)，段起点低于该值则跳过
 
         Returns:
             list of segment center frequencies (Hz)
@@ -590,7 +623,14 @@ class SpuriousProcedure(BaseTestProcedure):
         centers = []
         center = start
         while center <= stop:
-            centers.append(center)
+            # 段中心本身必须为正且不低于仪器最小频率；否则频谱仪会返回哨兵值
+            if center <= 0 or center < min_frequency_hz:
+                print(
+                    f"  跳过无效远段: 中心 {center / 1e6:.3f} MHz "
+                    f"(< min {min_frequency_hz / 1e6:.3f} MHz 或为负)"
+                )
+            else:
+                centers.append(center)
             center += span
         return centers
 
@@ -624,7 +664,6 @@ class SpuriousProcedure(BaseTestProcedure):
                 harmonic_config.get("trace_mode", "MAXH"),
                 harmonic_config.get("detector", "POS"),
                 config.get("input_coupling", "DC"),
-                config.get("scale_div_db", 15),
             )
             time.sleep(config.get("sa_settling_time_s", 0.5))
             if not spectrum_analyzer.wait_for_sweep(sweep_count, span_hz=span):
@@ -635,7 +674,12 @@ class SpuriousProcedure(BaseTestProcedure):
             peak_frequency = spectrum_analyzer.get_marker_frequency(1)
             peak_power = spectrum_analyzer.measure_marker_power(1)
 
-            if peak_power is None:
+            if not self._is_valid_measurement(
+                peak_frequency,
+                peak_power,
+                config.get("min_frequency_hz", 0.0),
+            ):
+                print(f"  谐波 {order} 测量无效，跳过")
                 continue
 
             trace = spectrum_analyzer.get_trace(1)
@@ -720,6 +764,7 @@ class SpuriousProcedure(BaseTestProcedure):
                 carrier_freq_reference,
                 coverage,
                 span,
+                min_frequency_hz=config.get("min_frequency_hz", 0.0),
             )
             print(f"  远载波扫描: CF ± {coverage / 2e9:.1f} GHz, 共 {len(centers)} 段")
             for idx, center in enumerate(centers, 1):

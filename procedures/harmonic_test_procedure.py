@@ -23,7 +23,7 @@ class HarmonicTestProcedure(BaseTestProcedure):
         super().__init__(instrument_manager)
         self._output_enabled = False
 
-    def measure_harmonic_power(self, spectrum_analyzer, fundamental_freq, harmonic_order, sa_config, average_count=3, harmonic_config=None):
+    def measure_harmonic_power(self, spectrum_analyzer, fundamental_freq, harmonic_order, sa_config, average_count=3, harmonic_config=None, sync_kwargs=None):
         """测量谐波功率
 
         Args:
@@ -33,29 +33,31 @@ class HarmonicTestProcedure(BaseTestProcedure):
             sa_config: 频谱仪配置
             average_count: 测量平均次数
             harmonic_config: 谐波测量配置（含检出门限等）
+            sync_kwargs: 透传给 _sweep_sync / wait_for_sweep 的参数
 
         Returns:
             dict: {"power": 谐波功率/底噪(dBm), "detected": 是否检出谐波,
                    "noise_floor": 本地噪声底(dBm)或None}
         """
         harmonic_config = harmonic_config or {}
+        sync_kwargs = sync_kwargs or {}
         harmonic_freq = fundamental_freq * harmonic_order
-        print(f"测量{harmonic_order}次谐波功率 @ {harmonic_freq / 1e6:.2f}MHz")
+        print(f"测量{harmonic_order}次谐波功率 @ {self.format_frequency(harmonic_freq)}")
 
         self.setup_spectrum_analyzer(spectrum_analyzer, harmonic_freq, sa_config)
 
         marker_num = 1
 
         # 先等待一次完整扫描，避免读到过期 trace
-        self._sweep_sync(spectrum_analyzer)
+        self._sweep_sync(spectrum_analyzer, **sync_kwargs)
 
         if hasattr(spectrum_analyzer, 'peak_search'):
             spectrum_analyzer.peak_search()
-            time.sleep(0.5)
+            time.sleep(0.05)
         else:
             if hasattr(spectrum_analyzer, 'set_marker_frequency'):
                 spectrum_analyzer.set_marker_frequency(marker_num, harmonic_freq)
-                time.sleep(0.2)
+                time.sleep(0.05)
 
         # 读取峰值频率与电平（用于后续"是否检出"判定）
         peak_frequency = None
@@ -90,19 +92,19 @@ class HarmonicTestProcedure(BaseTestProcedure):
         harmonic_detected = frequency_ok and level_ok
 
         if harmonic_detected:
-            print(f"检测到{harmonic_order}次谐波，频率: {peak_frequency / 1e6:.2f}MHz (理论: {harmonic_freq / 1e6:.2f}MHz)")
+            print(f"检测到{harmonic_order}次谐波，频率: {self.format_frequency(peak_frequency)} (理论: {self.format_frequency(harmonic_freq)})")
         else:
             print(f"未检测到明显的{harmonic_order}次谐波，将使用理论频率点的底噪")
             if hasattr(spectrum_analyzer, 'set_marker_frequency'):
                 spectrum_analyzer.set_marker_frequency(marker_num, harmonic_freq)
-                time.sleep(0.2)
-                print(f"设置标记器到理论{harmonic_order}次谐波频率: {harmonic_freq / 1e6:.2f}MHz")
+                time.sleep(0.05)
+                print(f"设置标记器到理论{harmonic_order}次谐波频率: {self.format_frequency(harmonic_freq)}")
 
         # 多次测量取平均：每次读数前都触发并等待一次完整扫描，确保数值准确
         measurements = []
 
         for i in range(average_count):
-            if not self._sweep_sync(spectrum_analyzer):
+            if not self._sweep_sync(spectrum_analyzer, **sync_kwargs):
                 time.sleep(0.3)  # 无扫描同步支持时退化为固定等待
             if hasattr(spectrum_analyzer, 'measure_marker_power'):
                 measurement = spectrum_analyzer.measure_marker_power(marker_num)
@@ -156,8 +158,11 @@ class HarmonicTestProcedure(BaseTestProcedure):
         settling_time = test_point.get('settling_time', 1.0)
         frequency_settling_time = test_point.get('frequency_settling_time', 1.0)
 
+        # 谐波测试使用小 SPAN，无需杂散测试那么大的安全余量
+        sync_kwargs = sa_config.get('sweep_sync_kwargs', {'factor': 1.0, 'margin': 0.2})
+
         print(f"\n{'=' * 60}")
-        print(f"开始测试: {frequency / 1e6:.2f}MHz")
+        print(f"开始测试: {self.format_frequency(frequency)}")
         print(f"{'=' * 60}")
 
         # 1. 设置信号源；输出只在首个测试点打开，后续频点不重复触发输出开关
@@ -182,10 +187,19 @@ class HarmonicTestProcedure(BaseTestProcedure):
             )
         time.sleep(settling_time)
 
+        # 输入耦合判断：低于阈值用 DC（AC 耦合有低频截止，会严重压低低频读数）。
+        # 按基波频率判断、每个测试点只设一次，使基波与谐波测量使用同一耦合，避免 dBc 被耦合切换影响。
+        dc_below = sa_config.get('dc_coupling_below_hz', 10e6)
+        coupling = 'DC' if frequency < dc_below else sa_config.get('input_coupling', 'AC')
+        if hasattr(spectrum_analyzer, 'set_input_coupling'):
+            spectrum_analyzer.set_input_coupling(coupling)
+            print(f"频谱仪输入耦合: {coupling} (基波 {self.format_frequency(frequency)})")
+
         # 2. 测量基波功率（使用基类方法）
         fundamental_power = self.measure_fundamental_power(
             spectrum_analyzer, frequency, sa_config,
-            average_count=harmonic_config.get('measurement_average', 3)
+            average_count=harmonic_config.get('measurement_average', 3),
+            sync_kwargs=sync_kwargs
         )
 
         # 3. 测量谐波功率（返回 dict，含检出状态与噪声底）
@@ -193,7 +207,8 @@ class HarmonicTestProcedure(BaseTestProcedure):
         harmonic_result = self.measure_harmonic_power(
             spectrum_analyzer, frequency, harmonic_order, sa_config,
             average_count=harmonic_config.get('measurement_average', 3),
-            harmonic_config=harmonic_config
+            harmonic_config=harmonic_config,
+            sync_kwargs=sync_kwargs
         )
         harmonic_power = harmonic_result['power']
         harmonic_detected = harmonic_result['detected']
@@ -247,7 +262,7 @@ class HarmonicTestProcedure(BaseTestProcedure):
         if self.csv_streamer:
             self.csv_streamer.append(result)
 
-        print(f"测试完成: {frequency / 1e6:.2f}MHz")
+        print(f"测试完成: {self.format_frequency(frequency)}")
         print(f"基波功率: {fundamental_power:.2f} dBm")
         print(f"二次谐波功率: {harmonic_power:.2f} dBm" if harmonic_power is not None else "二次谐波功率: 测量失败")
         print(f"谐波检出: {'是' if harmonic_detected else '否'}")
@@ -287,7 +302,9 @@ class HarmonicTestProcedure(BaseTestProcedure):
         print(f"总测试点数: {len(self.test_results)}")
 
         if df is not None and not df.empty:
-            print(f"频率范围: {df['frequency_mhz'].min():.0f} - {df['frequency_mhz'].max():.0f} MHz")
+            freq_min = self.format_frequency(df['frequency_hz'].min())
+            freq_max = self.format_frequency(df['frequency_hz'].max())
+            print(f"频率范围: {freq_min} - {freq_max}")
             print(f"设置功率: {df['set_power_dbm'].iloc[0]} dBm")
 
             if 'harmonic_detected' in df.columns:
@@ -295,10 +312,12 @@ class HarmonicTestProcedure(BaseTestProcedure):
                 print(f"检出谐波点数: {detected_count}/{len(df)}")
 
             if not df['harmonic_suppression_dbc'].isnull().all():
+                best_idx = df['harmonic_suppression_dbc'].idxmin()
+                worst_idx = df['harmonic_suppression_dbc'].idxmax()
+                best_freq = self.format_frequency(df.loc[best_idx, 'frequency_hz'])
+                worst_freq = self.format_frequency(df.loc[worst_idx, 'frequency_hz'])
                 print(f"平均谐波抑制: {df['harmonic_suppression_dbc'].mean():.2f} dBc")
-                print(
-                    f"最佳谐波抑制: {df['harmonic_suppression_dbc'].min():.2f} dBc @ {df.loc[df['harmonic_suppression_dbc'].idxmin(), 'frequency_mhz']:.0f} MHz")
-                print(
-                    f"最差谐波抑制: {df['harmonic_suppression_dbc'].max():.2f} dBc @ {df.loc[df['harmonic_suppression_dbc'].idxmax(), 'frequency_mhz']:.0f} MHz")
+                print(f"最佳谐波抑制: {df['harmonic_suppression_dbc'].min():.2f} dBc @ {best_freq}")
+                print(f"最差谐波抑制: {df['harmonic_suppression_dbc'].max():.2f} dBc @ {worst_freq}")
 
         print(f"{'=' * 60}")

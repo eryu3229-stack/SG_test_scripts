@@ -213,7 +213,8 @@ def run_harmonic_test():
         print("  - 没有测试点")
 
     print("测试模式: 信号源在测试过程中保持开启，最后一个频率点测试完成后关闭")
-    print("频谱仪输入耦合: 10MHz以下自动切换为DC耦合，10MHz以上使用AC耦合")
+    sa_cfg = test_config['spectrum_analyzer_config']
+    print(f"频谱仪输入耦合: 低于 {format_frequency(sa_cfg.get('dc_coupling_below_hz', 10e6))} 自动切 DC，以上用 {sa_cfg.get('input_coupling', 'AC')}")
     print("\n开始测试...")
 
     for i, test_point in enumerate(test_points):

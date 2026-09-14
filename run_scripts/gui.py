@@ -291,11 +291,11 @@ class SignalTestGUI(tk.Tk):
             import tkinter.messagebox as mb
             mb.showwarning("提示", "此测试需要连接功率计")
             return False
-        if not mb.askyesno("功率计归零", "请断开功率计输入信号。\\n确认已断开吗？"):
+        if not mb.askyesno("功率计归零", "请断开功率计输入信号。\n确认已断开吗？"):
             return False
         try:
             self.power_meter.zero()
-            mb.showinfo("归零完成", "请重新连接功率计输入信号。\\n连接完成后点击确定。")
+            mb.showinfo("归零完成", "请重新连接功率计输入信号。\n连接完成后点击确定。")
             return True
         except Exception as e:
             mb.showerror("归零失败", str(e))

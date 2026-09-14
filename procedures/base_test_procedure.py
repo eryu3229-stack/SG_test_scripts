@@ -102,17 +102,20 @@ class BaseTestProcedure:
             spectrum_analyzer.set_attenuation(attenuation)
             print(f"设置衰减: {attenuation} dB")
 
-    def measure_fundamental_power(self, spectrum_analyzer, frequency, sa_config, average_count=3):
+    def measure_fundamental_power(self, spectrum_analyzer, frequency, sa_config, average_count=3, sync_kwargs=None):
         """测量基波功率
 
         Args:
             spectrum_analyzer: 频谱仪对象
             frequency: 基波频率 (Hz)
             sa_config: 频谱仪配置
+            average_count: 测量平均次数
+            sync_kwargs: 透传给 _sweep_sync / wait_for_sweep 的参数
 
         Returns:
             float: 基波功率 (dBm)
         """
+        sync_kwargs = sync_kwargs or {}
         print(f"测量基波功率 @ {format_frequency(frequency)}")
 
         self.setup_spectrum_analyzer(spectrum_analyzer, frequency, sa_config)
@@ -121,19 +124,19 @@ class BaseTestProcedure:
 
         # 执行峰值搜索（先等待一次完整扫描，避免读到过期 trace）
         if hasattr(spectrum_analyzer, 'peak_search'):
-            self._sweep_sync(spectrum_analyzer)
+            self._sweep_sync(spectrum_analyzer, **sync_kwargs)
             spectrum_analyzer.peak_search()
-            time.sleep(0.5)
+            time.sleep(0.05)
         else:
             if hasattr(spectrum_analyzer, 'set_marker_frequency'):
                 spectrum_analyzer.set_marker_frequency(marker_num, frequency)
-                time.sleep(0.2)
+                time.sleep(0.05)
 
         # 多次测量取平均：每次读数前都触发并等待一次完整扫描，确保数值准确
         measurements = []
 
         for i in range(average_count):
-            if not self._sweep_sync(spectrum_analyzer):
+            if not self._sweep_sync(spectrum_analyzer, **sync_kwargs):
                 time.sleep(0.3)  # 无扫描同步支持时退化为固定等待
             if hasattr(spectrum_analyzer, 'measure_marker_power'):
                 measurement = spectrum_analyzer.measure_marker_power(marker_num)
@@ -152,17 +155,21 @@ class BaseTestProcedure:
             return None
 
     @staticmethod
-    def _sweep_sync(spectrum_analyzer):
-        """若频谱仪支持扫描同步，则触发并等待一次完整扫描
+    def _sweep_sync(spectrum_analyzer, **kwargs):
+        """触发并等待一次完整扫描（谐波/分谐波为小 SPAN，优先用轻量快速同步）
 
         Args:
             spectrum_analyzer: 频谱仪对象
+            **kwargs: 透传给同步方法的参数（如 factor、margin）
 
         Returns:
             bool: 是否成功执行了扫描同步
         """
+        # 小 SPAN（FFT）走轻量快速同步；无该方法时回退到通用保守同步
+        if hasattr(spectrum_analyzer, 'wait_for_sweep_fast'):
+            return spectrum_analyzer.wait_for_sweep_fast(1, **kwargs) is True
         if hasattr(spectrum_analyzer, 'wait_for_sweep'):
-            return spectrum_analyzer.wait_for_sweep(1) is True
+            return spectrum_analyzer.wait_for_sweep(1, **kwargs) is True
         return False
 
     def save_results_to_csv(self, filename, fieldnames=None):

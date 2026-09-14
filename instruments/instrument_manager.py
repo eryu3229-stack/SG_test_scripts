@@ -26,6 +26,11 @@ class InstrumentManager:
             # 默认 VISA 超时放宽到 2 分钟：窄 RBW/宽 Span 扫描以及大段 trace
             # 读取都可能明显超过原来的 5 秒
             instrument.timeout = 120000
+            # SOCKET 资源（TCPIP...::SOCKET）pyvisa 默认不带终止符，
+            # 不设置的话 query 会卡在第一次读写（如 *IDN?）
+            if "SOCKET" in resource_name.upper():
+                instrument.read_termination = "\n"
+                instrument.write_termination = "\n"
             self.connected_instruments[resource_name] = {
                 'instrument': instrument,
                 'type': instrument_type

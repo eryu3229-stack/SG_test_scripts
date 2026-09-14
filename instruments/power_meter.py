@@ -1,15 +1,25 @@
 # -*- coding: utf-8 -*-
+import time
+
 
 class PowerMeter:
     """功率计控制类"""
 
-    def __init__(self, instrument):
+    # NRP 归零耗时（手册原文 "Takes several seconds"）。
+    # pyvisa 的 write() 发送即返回，不等待归零结束，故这里需要显式等待。
+    DEFAULT_ZERO_WAIT_S = 8.0
+
+    def __init__(self, instrument, zero_wait_s=None):
         """初始化功率计
 
         Args:
             instrument: pyvisa仪器对象
+            zero_wait_s: 归零等待秒数；None 则用 DEFAULT_ZERO_WAIT_S
         """
         self.instrument = instrument
+        self.zero_wait_s = (
+            self.DEFAULT_ZERO_WAIT_S if zero_wait_s is None else float(zero_wait_s)
+        )
         # 初始化时设置功率单位为dBm
         self.set_power_unit("DBM")
         # 禁用连续测量模式，使用单次触发
@@ -61,17 +71,38 @@ class PowerMeter:
         except Exception as e:
             print(f"复位功率计失败: {e}")
 
-    def zero(self):
-        """执行功率计归零（Zeroing）
+    def zero(self, wait_s=None):
+        """执行功率计归零（Zero calibration）
 
-        归零期间应断开所有输入信号。该命令为同步操作，会等待归零完成。
+        依据 R&S NRPxS(N) 手册 1177.5079.02 - 26，CALibration<Channel>:ZERO:AUTO：
+          - 唯一有效参数 ONCE；OFF 是"无归零进行中"时的查询返回值
+          - 归零前必须关闭所有测试信号，否则归零报错
+          - 归零期间为同步命令，禁止任何查询/设置命令，通信可能超时
+          - 归零耗时数秒（手册原文 "Performs zeroing. Takes several seconds."）
+          - 归零后查静态错误队列 SYSTem:SERRor?：0=成功，-240=归零失败
+
+        注意：命令虽是同步的，但 pyvisa 的 write() 发送即返回，并不会阻塞到
+        归零结束。因此必须在此显式等待，否则上层会在归零尚未完成时开始测量，
+        读数会带着未补偿的零点漂移。
+
+        Args:
+            wait_s: 归零等待秒数；None 则用构造时的 zero_wait_s
+
+        Raises:
+            Exception: 归零等待后静态错误队列非 0（如 -240 归零失败）
         """
+        wait_s = self.zero_wait_s if wait_s is None else float(wait_s)
         try:
-            print("正在执行功率计归零，请确保无输入信号...")
-            # 归零命令是同步的，执行期间仪器会阻塞直到完成
+            print(f"正在执行功率计归零，请确保无输入信号...（预计 {wait_s:.1f}s）")
+            self.instrument.write("*CLS")
             self.instrument.write("CALibration:ZERO:AUTO ONCE")
-            # 可选：查询归零状态，但命令本身已阻塞，可认为完成后返回
-            print("归零完成")
+            # 归零期间不允许任何查询，这里只等待、不轮询，避免通信超时
+            time.sleep(wait_s)
+            # 手册要求：归零后查静态错误队列确认结果
+            error = self.instrument.query("SYSTem:SERRor?").strip()
+            if not error.startswith("0"):
+                raise RuntimeError(f"功率计归零失败（SYSTem:SERRor?）: {error}")
+            print(f"归零完成（等待 {wait_s:.1f}s），静态错误队列: {error}")
         except Exception as e:
             print(f"归零失败: {e}")
             raise  # 重新抛出异常，让上层知道归零失败

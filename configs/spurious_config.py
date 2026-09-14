@@ -11,19 +11,18 @@ carrier_frequency_mode = "step"
 carrier_frequency_list = []
 
 # 步进式载波频率参数，单位 Hz
-carrier_start_frequency_hz = 3.5e9
+carrier_start_frequency_hz = 1e9
 carrier_end_frequency_hz = 40e9
-carrier_step_frequency_hz = 500e6
+carrier_step_frequency_hz = 100e6
 
 # 载波功率，单位 dBm
 carrier_power_dbm = 10
 
 # 频谱仪通用参数
 reference_level_dbm = 10
-attenuation_db = 20
+attenuation_db = 40
 input_coupling = "DC"
 sa_settling_time_s = 0.5
-scale_div_db = 15
 
 # 频率边界，防止设置到仪器不支持范围
 min_frequency_hz = 9e3
@@ -44,7 +43,7 @@ near_carrier_segments = [
         "span_hz": 10e6,
         "rbw_hz": 100,
         "vbw_hz": 300,
-        "sweep_count": 5,
+        "sweep_count": 3,
         "trace_mode": "MAXH",
         "detector": "POS",
     },
@@ -54,7 +53,7 @@ near_carrier_segments = [
         "span_hz": 100e6,
         "rbw_hz": 1e3,
         "vbw_hz": 3e3,
-        "sweep_count": 5,
+        "sweep_count": 3,
         "trace_mode": "MAXH",
         "detector": "POS",
     },

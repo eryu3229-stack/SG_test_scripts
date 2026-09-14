@@ -21,20 +21,20 @@ measurement_times = 3         # 功率计测量次数
 # 功率扫描参数
 start_power = 10             # 起始功率，单位dBm
 power_step = 1.0              # 功率步进，单位dB
-max_set_power = 15            # 信号源最大设定功率限制，单位dBm（防止损坏信号源）
+max_set_power = 30            # 信号源最大设定功率限制，单位dBm（防止损坏信号源）
 max_measured_power = 20       # 功率计最大输入功率（测量值），单位dBm（保护功率计）
 power_tolerance = 0.5         # 功率测量容差，单位dB（用于检测饱和）
 max_power_drop = 1.0          # 最大功率下降值，单位dB（如果功率下降超过此值，则认为过载）
 
 # 衰减器配置
-attenuator_value = 10.0        # 衰减器衰减值，单位dB（正数表示衰减）
+attenuator_value = 30.0        # 衰减器衰减值，单位dB（正数表示衰减）
 use_attenuator = True        # 是否使用衰减器
 
 # 分段频率步进配置
 frequency_ranges = [
-    # {'start': 50e6, 'end': 100e6, 'step': 1e6},     # 50-100MHz，步进1MHz
-    # {'start': 110e6, 'end': 1e9, 'step': 10e6},    # 110MHz-1GHz，步进10MHz
-    {'start': 1e9, 'end': 40e9, 'step': 100e6},  # 1.1GHz-40GHz，步进100MHz
+    {'start': 50e6, 'end': 100e6, 'step': 1e6},     # 50-100MHz，步进1MHz
+    {'start': 110e6, 'end': 1e9, 'step': 10e6},    # 110MHz-1GHz，步进10MHz
+    {'start': 1e9, 'end': 40e9, 'step': 50e6},  # 1.1GHz-40GHz，步进100MHz
 ]
 
 # 生成测试配置

@@ -35,7 +35,7 @@ class SubharmonicTestProcedure(BaseTestProcedure):
             float: 分谐波功率 (dBm)
         """
         subharmonic_freq = fundamental_freq / subharmonic_order
-        print(f"测量1/{subharmonic_order}分谐波功率 @ {subharmonic_freq / 1e6:.2f}MHz")
+        print(f"测量1/{subharmonic_order}分谐波功率 @ {self.format_frequency(subharmonic_freq)}")
 
         self.setup_spectrum_analyzer(spectrum_analyzer, subharmonic_freq, sa_config)
         # 先等待一次完整扫描，避免读到过期 trace
@@ -100,12 +100,20 @@ class SubharmonicTestProcedure(BaseTestProcedure):
         settling_time = test_point.get('settling_time', 1.0)
 
         print(f"\n{'=' * 60}")
-        print(f"开始测试: {frequency / 1e6:.2f}MHz")
+        print(f"开始测试: {self.format_frequency(frequency)}")
         print(f"{'=' * 60}")
 
         # 1. 设置信号源（使用基类方法）
         self.setup_signal_generator(signal_gen, frequency, set_power, settling_time=0)
         time.sleep(settling_time)
+
+        # 输入耦合判断：低于阈值用 DC（AC 耦合有低频截止，会严重压低低频读数）。
+        # 按基波频率判断、每个测试点只设一次，使基波与分谐波测量使用同一耦合，避免 dBc 被耦合切换影响。
+        dc_below = sa_config.get('dc_coupling_below_hz', 10e6)
+        coupling = 'DC' if frequency < dc_below else sa_config.get('input_coupling', 'AC')
+        if hasattr(spectrum_analyzer, 'set_input_coupling'):
+            spectrum_analyzer.set_input_coupling(coupling)
+            print(f"频谱仪输入耦合: {coupling} (基波 {self.format_frequency(frequency)})")
 
         # 2. 测量基波功率（使用基类方法）
         fundamental_power = self.measure_fundamental_power(
@@ -154,7 +162,7 @@ class SubharmonicTestProcedure(BaseTestProcedure):
         if self.csv_streamer:
             self.csv_streamer.append(result)
 
-        print(f"测试完成: {frequency / 1e6:.2f}MHz")
+        print(f"测试完成: {self.format_frequency(frequency)}")
         print(f"基波功率: {fundamental_power:.2f} dBm")
         for order in subharmonic_orders:
             print(f"1/{order}分谐波功率: {subharmonic_powers[order]:.2f} dBm")
@@ -191,7 +199,9 @@ class SubharmonicTestProcedure(BaseTestProcedure):
         print(f"总测试点数: {len(self.test_results)}")
 
         if df is not None and not df.empty:
-            print(f"频率范围: {df['frequency_mhz'].min():.0f} - {df['frequency_mhz'].max():.0f} MHz")
+            freq_min = self.format_frequency(df['frequency_hz'].min())
+            freq_max = self.format_frequency(df['frequency_hz'].max())
+            print(f"频率范围: {freq_min} - {freq_max}")
             print(f"设置功率: {df['set_power_dbm'].iloc[0]} dBm")
 
             for col in df.columns:

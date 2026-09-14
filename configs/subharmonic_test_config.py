@@ -24,11 +24,11 @@ TEST_DESCRIPTION = "测试信号源的分谐波性能，记录基波和分谐波
 
 # 频率扫描配置
 FREQUENCY_SWEEP_CONFIG = {
-    'start_frequency': 200e6,      # 起始频率: 200MHz (确保分谐波在可测量范围内)
-    'end_frequency': 1e9,          # 结束频率: 1GHz
-    'step_frequency': 200e6,       # 频率步进: 200MHz
-    'fixed_power': 10,              # 固定输出功率: 0dBm
-    'settling_time': 1.0,          # 仪器稳定时间: 2秒
+    'start_frequency': 100e6,      # 起始频率: 200MHz (确保分谐波在可测量范围内)
+    'end_frequency': 40e9,          # 结束频率: 1GHz
+    'step_frequency': 10e6,       # 频率步进: 200MHz
+    'fixed_power': 10,              # 固定输出功率: 10 dBm
+    'settling_time': 1.0,          # 仪器稳定时间: 1秒
 }
 
 # ==================== 频谱仪配置 ====================
@@ -40,6 +40,8 @@ SPECTRUM_ANALYZER_CONFIG = {
     'vbw': 100,                    # 视频带宽: 100 Hz
     'reference_level': 10,         # 参考电平: 10dBm
     'attenuation': 40,             # 衰减: 40dB
+    'input_coupling': 'AC',        # 频率 >= dc_coupling_below_hz 时使用的耦合方式
+    'dc_coupling_below_hz': 10e6,  # 低于该频率自动用 DC 耦合（AC 耦合有低频截止，会压低低频读数）
 }
 
 # ==================== 分谐波测量配置 ====================
@@ -99,6 +101,7 @@ def get_test_config_summary():
    - 频率跨度: {format_frequency(sa_config['span'])}
    - 分辨率带宽: {format_frequency(sa_config['rbw'])}
    - 参考电平: {sa_config['reference_level']} dBm
+   - 输入耦合: 低于 {format_frequency(sa_config['dc_coupling_below_hz'])} 用 DC，以上用 {sa_config['input_coupling']}
 
 3. 分谐波测量配置:
    - 分谐波阶数: {', '.join([f'1/{order}' for order in subharmonic_config['subharmonic_orders']])}

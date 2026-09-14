@@ -4,28 +4,21 @@ project_name = "小信号测量"
 
 # 被测频率列表，单位 Hz
 frequency_list = [
-    10e6,
-    50e6,
-    100e6,
-    200e6,
-    500e6,
+    1e7,
+    10e7,
     1e9,
+    6e9,
+    10e9
 ]
 
 # 从高到低排列的功率扫描列表，单位 dBm
 power_list_dbm = [
-    10,
-    0,
-    -10,
-    -20,
-    -30,
-    -40,
-    -50,
-    -60,
     -70,
     -80,
     -90,
     -100,
+    -110,
+    -120
 ]
 
 # 稳定时间，单位秒
@@ -64,8 +57,11 @@ preamp_enabled = True            # 总开关：False 则全程不开预放
 preamp_threshold_dbm = -50       # 设定功率 <= 该值时开预放
 preamp_band = "FULL"             # LOW=仅低波段, FULL=全频段
 
-# 频谱仪输入耦合，低频可使用 DC
+# 频谱仪输入耦合
+# 低于 dc_coupling_below_hz 的频点用 DC（AC 耦合有低频截止，会压低低频读数）
+# 其余频点用 input_coupling 指定的值；每个频点只下发一次，不随功率点重复
 input_coupling = "AC"
+dc_coupling_below_hz = 10e6
 
 
 def get_config():
@@ -92,4 +88,5 @@ def get_config():
         "preamp_threshold_dbm": preamp_threshold_dbm,
         "preamp_band": preamp_band,
         "input_coupling": input_coupling,
+        "dc_coupling_below_hz": dc_coupling_below_hz,
     }

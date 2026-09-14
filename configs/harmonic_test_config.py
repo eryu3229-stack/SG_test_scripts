@@ -24,12 +24,12 @@ TEST_DESCRIPTION = "测试信号源的二次谐波性能，记录基波和二次
 
 # 频率扫描配置
 FREQUENCY_SWEEP_CONFIG = {
-    'start_frequency': 1e6,       # 起始频率: 100 kHz
-    'end_frequency': 1e9,          # 结束频率: 1 MHz
-    'step_frequency': 10e6,         # 频率步进: 100 kHz
+    'start_frequency': 1e9,       # 起始频率: 3 kHz
+    'end_frequency': 10e9,          # 结束频率: 100 kHz
+    'step_frequency': 10e6,         # 频率步进: 1 kHz
     'fixed_power': 10,              # 固定输出功率: 10 dBm
-    'frequency_settling_time': 1.0, # 频率切换稳定时间，单位：秒
-    'settling_time': 1.0,           # 仪器稳定时间: 1秒
+    'frequency_settling_time': 0.8, # 频率切换稳定时间，单位：秒
+    'settling_time': 0.5,           # 仪器稳定时间: 0.5秒
 }
 
 # ==================== 频谱仪配置 ====================
@@ -39,9 +39,16 @@ SPECTRUM_ANALYZER_CONFIG = {
     'span': 10e3,                  # 频率跨度: 10 kHz
     'rbw': 200,                   # 分辨率带宽: 200 Hz
     'vbw': 200,                   # 视频带宽: 200 Hz
-    'reference_level': 20,        # 参考电平: 30 dBm
+    'reference_level': 30,        # 参考电平: 20 dBm
     'attenuation': 40,            # 衰减: 40dB
+    'scale_div_db': 15,           # Y轴刻度: 15 dB/div
+    'input_coupling': 'AC',        # 频率 >= dc_coupling_below_hz 时使用的耦合方式
+    'dc_coupling_below_hz': 10e6,  # 低于该频率自动用 DC 耦合（AC 耦合有低频截止，会压低低频读数）
     'sa_settling_time': 0.5,      # 频谱仪稳定等待时间: 0.5秒
+    # 谐波测试同步参数（仅控制程序等待，不设置仪器扫描时间）：
+    # 单次等待 = sweep_time×factor + margin + (sweep_time×1.2 + extra_margin)
+    # 若三次平均读数完全一致（疑似没扫够）可增大 margin
+    'sweep_sync_kwargs': {'factor': 1.5, 'margin': 0.15, 'extra_margin': 0.0},
 }
 
 # ==================== 谐波测量配置 ====================
@@ -116,6 +123,7 @@ def get_test_config_summary():
    - 频率跨度: {format_frequency(sa_config['span'])}
    - 分辨率带宽: {format_frequency(sa_config['rbw'])}
    - 参考电平: {sa_config['reference_level']} dBm
+   - 输入耦合: 低于 {format_frequency(sa_config['dc_coupling_below_hz'])} 用 DC，以上用 {sa_config['input_coupling']}
 
 3. 谐波测量配置:
    - 谐波阶数: {harmonic_config['harmonic_order']}

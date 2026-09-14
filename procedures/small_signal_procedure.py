@@ -70,7 +70,7 @@ class SmallSignalProcedure(BaseTestProcedure):
             return True
         return self.save_results_to_csv(filename)
 
-    def _configure_spectrum_analyzer(self, spectrum_analyzer, center_frequency, span, rbw, vbw, reference_level, attenuation, coupling, preamp_on=False, preamp_band="FULL"):
+    def _configure_spectrum_analyzer(self, spectrum_analyzer, center_frequency, span, rbw, vbw, reference_level, attenuation, preamp_on=False, preamp_band="FULL"):
         spectrum_analyzer.set_center_frequency(center_frequency)
         spectrum_analyzer.set_span(span)
         spectrum_analyzer.set_rbw(rbw)
@@ -84,8 +84,6 @@ class SmallSignalProcedure(BaseTestProcedure):
             spectrum_analyzer.set_attenuation(attenuation)
         if hasattr(spectrum_analyzer, "set_preamp"):
             spectrum_analyzer.set_preamp(preamp_on, preamp_band)
-        if hasattr(spectrum_analyzer, "set_input_coupling"):
-            spectrum_analyzer.set_input_coupling(coupling)
 
     def _within_tolerance(self, peak_frequency, expected_frequency, tolerance):
         if peak_frequency is None:
@@ -107,7 +105,6 @@ class SmallSignalProcedure(BaseTestProcedure):
             vbw,
             reference_level,
             attenuation,
-            config.get("input_coupling", "AC"),
             preamp_on,
             config.get("preamp_band", "FULL")
         )
@@ -195,6 +192,14 @@ class SmallSignalProcedure(BaseTestProcedure):
             signal_generator.set_frequency(frequency)
             time.sleep(config.get("frequency_settling_time", 1.0))
             signal_generator.set_power(sorted_power_list[0])
+
+        # 输入耦合只随频率变化，每个频点设一次，不在功率循环内重复下发
+        # 低于阈值的频点用 DC（AC 耦合低频截止会压低读数），其余用配置值
+        dc_below = config.get("dc_coupling_below_hz", 10e6)
+        coupling = "DC" if frequency < dc_below else config.get("input_coupling", "AC")
+        if hasattr(spectrum_analyzer, "set_input_coupling"):
+            spectrum_analyzer.set_input_coupling(coupling)
+            print(f"输入耦合: {coupling} (频率 {format_frequency(frequency)})")
 
         for power in sorted_power_list:
             signal_generator.set_power(power)

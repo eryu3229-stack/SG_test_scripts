@@ -33,13 +33,6 @@ class SpectrumAnalyzer:
         except Exception as e:
             print(f"设置参考电平失败: {e}")
 
-    def set_scale_div(self, scale_db=15):
-        """设置 Y 轴每格刻度（dB/div）"""
-        try:
-            self.instrument.write(f"DISP:WIND:TRAC:Y:PDIV {scale_db} dB")
-        except Exception as e:
-            print(f"设置 Y 轴刻度失败: {e}")
-
     def set_attenuation_auto(self, state=True):
         """设置机械衰减自动/手动（N9030B，手册 Swept SA 模式指令）
 
@@ -183,7 +176,7 @@ class SpectrumAnalyzer:
         try:
             # 是德 X 系列（N9030B）标准 SA 模式输入衰减的层级为 [:SENSe]:POWer[:RF]:ATTenuation，
             # 用完整短写 SENS:POW:RF:ATT，并确保 mnemonic 与数值间有空格（POW:ATT/INP:ATT 均会报 undefined header）。
-            self.instrument.write(f"SENS:POW:RF:ATT {attenuation}")
+            self.instrument.write(f"INP:ATT {attenuation}")
         except Exception as e:
             print(f"设置衰减失败: {e}")
     
@@ -198,16 +191,19 @@ class SpectrumAnalyzer:
         except Exception as e:
             print(f"设置输入耦合失败: {e}")
 
-    def wait_for_sweep(self, sweep_count=1, span_hz=None):
-        """切换到单次扫描并等待扫描完成
+    def wait_for_sweep(self, sweep_count=1, span_hz=None, factor=None, margin=None):
+        """切换到单次扫描并等待扫描完成（保守版，供宽 SPAN 扫描使用）
 
         N9030B 不支持 SWE:COUN，*OPC? 在某些模式下也不可靠。
         改用连续扫描 + 固定等待：根据 SPAN 大小动态调整安全系数，
-        避免远端大 SPAN 没扫完就进入下一步。
+        避免远端大 SPAN 没扫完就进入下一步。杂散扫描（宽 SPAN）依赖此实现。
+        小 SPAN 的快速场景请改用 wait_for_sweep_fast。
 
         Args:
             sweep_count: 需要完成的扫描次数，默认1
             span_hz: 当前 SPAN，用于调整等待时间（可选）
+            factor: 扫描时间放大系数（None 则按 SPAN 自动选择）
+            margin: 固定余量秒数（None 则按 SPAN 自动选择）
 
         Returns:
             bool: 是否成功完成所有扫描
@@ -223,15 +219,18 @@ class SpectrumAnalyzer:
                 sweep_time = 0.0
 
             # 根据 SPAN 动态调整安全系数：SPAN 越大，实际扫描时间波动越大
-            span = span_hz if span_hz else 10e6
-            if span <= 10e6:
-                factor, margin = 1.5, 1.0
-            elif span <= 100e6:
-                factor, margin = 2.0, 2.0
-            elif span <= 1e9:
-                factor, margin = 3.0, 3.0
-            else:
-                factor, margin = 4.0, 5.0
+            if factor is None or margin is None:
+                span = span_hz if span_hz else 10e6
+                if span <= 10e6:
+                    default_factor, default_margin = 1.5, 1.0
+                elif span <= 100e6:
+                    default_factor, default_margin = 2.0, 2.0
+                elif span <= 1e9:
+                    default_factor, default_margin = 3.0, 3.0
+                else:
+                    default_factor, default_margin = 4.0, 5.0
+                factor = factor if factor is not None else default_factor
+                margin = margin if margin is not None else default_margin
 
             # 总超时 = sweep_count 次扫描 + 余量
             sweep_count = max(1, sweep_count)
@@ -250,6 +249,66 @@ class SpectrumAnalyzer:
             self.instrument.write("INIT:CONT OFF")
             # 再额外等一次扫描时间确保当前扫描完成
             time.sleep(sweep_time * 1.2 + 0.5)
+            return True
+        except Exception as e:
+            print(f"等待扫描完成失败: {e}")
+            self._cleanup_after_timeout()
+            return False
+        finally:
+            if original_timeout is not None:
+                try:
+                    self.instrument.timeout = original_timeout
+                except Exception:
+                    pass
+
+    def wait_for_sweep_fast(self, sweep_count=1, span_hz=None, factor=1.5, margin=0.15, extra_margin=0.0):
+        """小 SPAN 快速扫描同步（连续扫描方式，余量比 wait_for_sweep 小）
+
+        与 wait_for_sweep 使用相同的「连续扫描 + 固定等待」机制（保证真正触发并
+        完成扫描），只是把安全系数/余量压小，适配谐波/分谐波这类小 SPAN
+        （FFT 扫描，sweep_time 仅几十毫秒）的场景，避免被与扫描无关的
+        固定兜底（如原来的 +0.5s）拖慢。宽 SPAN 的杂散扫描请用 wait_for_sweep。
+
+        若发现读数未刷新（扫描没跑完就进入下一步），可适当增大 factor/margin。
+
+        Args:
+            sweep_count: 需要完成的扫描次数，默认1
+            span_hz: 当前 SPAN（保留参数，便于调用方统一传参）
+            factor: 扫描时间放大系数，默认1.5
+            margin: 固定余量秒数，默认0.15
+            extra_margin: 切回单次模式后再等 sweep_time×1.2 + extra_margin 秒，
+                          确保当前扫描完成，默认0.0
+
+        Returns:
+            bool: 是否成功完成所有扫描
+        """
+        original_timeout = None
+        try:
+            original_timeout = self.instrument.timeout
+            self.instrument.write("INIT:CONT OFF")
+            try:
+                sweep_time = float(self.instrument.query("SENS:SWE:TIME?"))
+            except Exception:
+                sweep_time = 0.0
+
+            sweep_count = max(1, sweep_count)
+            if sweep_time and sweep_time > 0.0:
+                wait_s = sweep_count * sweep_time * factor + margin
+            else:
+                # 查询不到扫描时间时退化为保守估计
+                wait_s = sweep_count * 0.3 + margin
+
+            # VISA 超时给足即可，不影响实际等待时长
+            self.instrument.timeout = max(60000, int(wait_s * 1000) + 5000)
+            print(f"    快速同步等待 {wait_s:.3f}s "
+                  f"(sweep_time={sweep_time:.3f}s × {sweep_count} × {factor} + {margin})")
+
+            # 连续扫描一段时间确保完成 sweep_count 次扫描
+            self.instrument.write("INIT:CONT ON")
+            time.sleep(wait_s)
+            self.instrument.write("INIT:CONT OFF")
+            # 切回单次后再补一小段，确保当前扫描完成、trace 已刷新
+            time.sleep(sweep_time * 1.2 + extra_margin)
             return True
         except Exception as e:
             print(f"等待扫描完成失败: {e}")
