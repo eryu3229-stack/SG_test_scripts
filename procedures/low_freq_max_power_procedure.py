@@ -14,9 +14,15 @@ class LowFreqMaxPowerProcedure(PowerSweepBaseProcedure):
         """运行低频段最大功率测试"""
         frequency = test_config['frequency']
         start_power = test_config['start_power']
+        stop_power = test_config.get('stop_power', test_config.get('max_set_power', start_power))
         power_step = test_config['power_step']
         max_set_power = test_config['max_set_power']
         max_measured_power = test_config['max_measured_power']
+
+        if stop_power > max_set_power:
+            print(f"警告: stop_power ({stop_power} dBm) > max_set_power ({max_set_power} dBm)，"
+                  f"将 stop_power 限制为 {max_set_power} dBm")
+            stop_power = max_set_power
         power_tolerance = test_config['power_tolerance']
         max_power_drop = test_config['max_power_drop']
         attenuator_value = test_config['attenuator_value']
@@ -29,9 +35,9 @@ class LowFreqMaxPowerProcedure(PowerSweepBaseProcedure):
         print(f"\n{'=' * 60}")
         print(f"开始低频段最大功率测试: {test_config['test_name']}")
         print(f"频率: {format_frequency(frequency)}")
-        print(f"起始功率: {start_power} dBm, 步进: {power_step} dB")
-        print(f"最大设定功率限制: {max_set_power} dBm")
-        print(f"最大测量功率限制: {max_measured_power} dBm")
+        print(f"起始功率: {start_power} dBm, 终止功率: {stop_power} dBm, 步进: {power_step} dB")
+        print(f"信号源硬限制: {max_set_power} dBm")
+        print(f"频谱仪最大读数限制: {max_measured_power} dBm")
         if use_attenuator:
             print(f"衰减器值: {attenuator_value} dB")
         print(f"频谱仪输入耦合: {sa_config['input_coupling']}")
@@ -61,6 +67,7 @@ class LowFreqMaxPowerProcedure(PowerSweepBaseProcedure):
         max_achieved_power = None
         max_achieved_measured = None
         prev_measured_power = None
+        prev_actual_power = None
         saturation_detected = False
         overload_detected = False
         step_count = 0
@@ -94,33 +101,38 @@ class LowFreqMaxPowerProcedure(PowerSweepBaseProcedure):
             else:
                 actual_power = measured_power
             
-            print(f"实际功率: {actual_power:.2f} dBm")
+            print(f"测量功率: {measured_power:.2f} dBm, 实际功率: {actual_power:.2f} dBm")
             
             stop_scan = False
             
+            if current_power >= stop_power:
+                stop_reason = f"达到扫描终止功率 ({stop_power} dBm)"
+                print(f"停止条件: {stop_reason}")
+                stop_scan = True
+            
             if current_power >= max_set_power:
-                stop_reason = f"达到设定功率限制 ({max_set_power} dBm)"
+                stop_reason = f"达到信号源硬限制 ({max_set_power} dBm)"
                 print(f"停止条件: {stop_reason}")
                 stop_scan = True
             
             if measured_power >= max_measured_power:
-                stop_reason = f"达到测量功率限制 ({max_measured_power} dBm)"
+                stop_reason = f"达到频谱仪最大读数 ({max_measured_power} dBm)"
                 print(f"停止条件: {stop_reason}")
                 stop_scan = True
             
-            if prev_measured_power is not None:
-                power_increase = measured_power - prev_measured_power
+            if prev_actual_power is not None:
+                power_increase = actual_power - prev_actual_power
                 if power_increase < power_tolerance:
                     saturation_detected = True
-                    stop_reason = f"检测到饱和 (功率增加仅{power_increase:.2f} dB < 容差 {power_tolerance} dB)"
+                    stop_reason = f"检测到饱和 (实际功率增加仅{power_increase:.2f} dB < 容差 {power_tolerance} dB)"
                     print(f"停止条件: {stop_reason}")
                     stop_scan = True
             
-            if prev_measured_power is not None:
-                power_drop = prev_measured_power - measured_power
+            if prev_actual_power is not None:
+                power_drop = prev_actual_power - actual_power
                 if power_drop > max_power_drop:
                     overload_detected = True
-                    stop_reason = f"检测到过载 (功率下降 {power_drop:.2f} dB > 最大允许 {max_power_drop} dB)"
+                    stop_reason = f"检测到过载 (实际功率下降 {power_drop:.2f} dB > 最大允许 {max_power_drop} dB)"
                     print(f"停止条件: {stop_reason}")
                     stop_scan = True
             
@@ -139,6 +151,7 @@ class LowFreqMaxPowerProcedure(PowerSweepBaseProcedure):
                 max_achieved_measured = measured_power
             
             prev_measured_power = measured_power
+            prev_actual_power = actual_power
             
             if stop_scan:
                 break

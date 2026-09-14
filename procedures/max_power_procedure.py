@@ -21,9 +21,16 @@ class MaxPowerProcedure(PowerSweepBaseProcedure):
         """
         frequency = test_config['frequency']
         start_power = test_config['start_power']
+        stop_power = test_config.get('stop_power', test_config.get('max_set_power', start_power))
         power_step = test_config['power_step']
         max_set_power = test_config['max_set_power']
         max_measured_power = test_config['max_measured_power']
+
+        # stop_power 是扫描终点，max_set_power 是硬安全限制
+        if stop_power > max_set_power:
+            print(f"警告: stop_power ({stop_power} dBm) > max_set_power ({max_set_power} dBm)，"
+                  f"将 stop_power 限制为 {max_set_power} dBm")
+            stop_power = max_set_power
         power_tolerance = test_config['power_tolerance']
         max_power_drop = test_config['max_power_drop']
         attenuator_value = test_config['attenuator_value']
@@ -35,9 +42,9 @@ class MaxPowerProcedure(PowerSweepBaseProcedure):
         print(f"\n{'=' * 60}")
         print(f"开始最大功率测试: {test_config['test_name']}")
         print(f"频率: {format_frequency(frequency)}")
-        print(f"起始功率: {start_power} dBm, 步进: {power_step} dB")
-        print(f"最大设定功率限制: {max_set_power} dBm")
-        print(f"最大测量功率限制: {max_measured_power} dBm")
+        print(f"起始功率: {start_power} dBm, 终止功率: {stop_power} dBm, 步进: {power_step} dB")
+        print(f"信号源硬限制: {max_set_power} dBm")
+        print(f"功率计最大读数限制: {max_measured_power} dBm")
         if use_attenuator:
             print(f"衰减器值: {attenuator_value} dB")
         print(f"{'=' * 60}")
@@ -70,7 +77,8 @@ class MaxPowerProcedure(PowerSweepBaseProcedure):
         # 5. 功率扫描变量初始化
         max_achieved_power = None  # 最大实际功率（考虑衰减）
         max_achieved_measured = None  # 最大测量功率
-        prev_measured_power = None
+        prev_measured_power = None  # 上一步原始测量值（用于测量失败回退）
+        prev_actual_power = None    # 上一步补偿后的实际功率（用于饱和/过载检测）
         saturation_detected = False
         overload_detected = False
         limit_reached = False
@@ -111,35 +119,39 @@ class MaxPowerProcedure(PowerSweepBaseProcedure):
             # 检查停止条件
             stop_scan = False
             
-            # 条件1: 设定功率超过最大限制
+            # 条件1: 达到扫描终止功率（正常扫描终点）
+            if current_power >= stop_power:
+                stop_reason = f"达到扫描终止功率 ({stop_power} dBm)"
+                print(f"停止条件: {stop_reason}")
+                stop_scan = True
+            
+            # 条件2: 达到信号源硬限制（安全冗余）
             if current_power >= max_set_power:
-                stop_reason = f"达到设定功率限制 ({max_set_power} dBm)"
+                stop_reason = f"达到信号源硬限制 ({max_set_power} dBm)"
                 print(f"停止条件: {stop_reason}")
                 stop_scan = True
             
-            # 条件2: 测量功率超过功率计最大输入
+            # 条件3: 功率计原始读值超过最大输入（保护探头；比较对象是功率计读值，不是补偿值）
             if measured_power >= max_measured_power:
-                stop_reason = f"达到测量功率限制 ({max_measured_power} dBm)"
+                stop_reason = f"达到功率计最大读数 ({max_measured_power} dBm)"
                 print(f"停止条件: {stop_reason}")
                 stop_scan = True
             
-            # 条件3: 饱和检测（功率增加小于容差）
-            if prev_measured_power is not None:
-                power_increase = measured_power - prev_measured_power
-                expected_increase = power_step  # 理想情况下，测量功率应增加 power_step dB
-                
+            # 条件4: 饱和检测（补偿后的实际输出功率增加小于容差）
+            if prev_actual_power is not None:
+                power_increase = actual_power - prev_actual_power
                 if power_increase < power_tolerance:
                     saturation_detected = True
-                    stop_reason = f"检测到饱和 (功率增加仅{power_increase:.2f} dB < 容差 {power_tolerance} dB)"
+                    stop_reason = f"检测到饱和 (实际功率增加仅{power_increase:.2f} dB < 容差 {power_tolerance} dB)"
                     print(f"停止条件: {stop_reason}")
                     stop_scan = True
             
-            # 条件4: 过载检测（功率下降）
-            if prev_measured_power is not None:
-                power_drop = prev_measured_power - measured_power
+            # 条件5: 过载检测（补偿后的实际输出功率下降）
+            if prev_actual_power is not None:
+                power_drop = prev_actual_power - actual_power
                 if power_drop > max_power_drop:
                     overload_detected = True
-                    stop_reason = f"检测到过载 (功率下降 {power_drop:.2f} dB > 最大允许 {max_power_drop} dB)"
+                    stop_reason = f"检测到过载 (实际功率下降 {power_drop:.2f} dB > 最大允许 {max_power_drop} dB)"
                     print(f"停止条件: {stop_reason}")
                     stop_scan = True
             
@@ -161,6 +173,7 @@ class MaxPowerProcedure(PowerSweepBaseProcedure):
             
             # 准备下一次迭代
             prev_measured_power = measured_power
+            prev_actual_power = actual_power
             
             # 检查是否停止扫描
             if stop_scan:

@@ -20,9 +20,10 @@ measurement_times = 3         # 频谱仪测量次数
 
 # 功率扫描参数
 start_power = -5             # 起始功率，单位dBm
+stop_power = 20              # 扫描终止功率，单位dBm（达到此值后正常停止扫描）
 power_step = 1.0              # 功率步进，单位dB
-max_set_power = 20            # 信号源最大设定功率限制，单位dBm（防止损坏信号源）
-max_measured_power = 20       # 频谱仪最大输入功率（测量值），单位dBm（保护频谱仪）
+max_set_power = 20            # 信号源最大设定功率硬限制，单位dBm（安全冗余，必须 >= stop_power）
+max_measured_power = 20       # 频谱仪最大输入功率（测量值，未补偿衰减），单位dBm（保护频谱仪）
 power_tolerance = 0.5         # 功率测量容差，单位dB（用于检测饱和）
 max_power_drop = 1.0          # 最大功率下降值，单位dB（如果功率下降超过此值，则认为过载）
 
@@ -62,6 +63,7 @@ for freq_range in frequency_ranges:
             'test_name': f'{format_frequency(current_freq)}最大功率测试',
             'frequency': current_freq,
             'start_power': start_power,
+            'stop_power': stop_power,
             'power_step': power_step,
             'max_set_power': max_set_power,
             'max_measured_power': max_measured_power,

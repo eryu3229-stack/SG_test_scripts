@@ -90,6 +90,7 @@ def main():
         # 使用第一个测试点的配置作为参考
         sample_config = selected_configs[0]
         start_power = sample_config.get('start_power', -20)
+        stop_power = sample_config.get('stop_power', sample_config.get('max_set_power', start_power))
         power_step = sample_config.get('power_step', 1.0)
         max_set_power = sample_config.get('max_set_power', 20)
         max_measured_power = sample_config.get('max_measured_power', 20)
@@ -99,9 +100,10 @@ def main():
 
         print(f"功率扫描参数:")
         print(f"  - 起始功率: {start_power} dBm")
+        print(f"  - 终止功率: {stop_power} dBm")
         print(f"  - 功率步进: {power_step} dB")
-        print(f"  - 最大设定功率限制: {max_set_power} dBm")
-        print(f"  - 最大测量功率限制: {max_measured_power} dBm")
+        print(f"  - 信号源硬限制: {max_set_power} dBm")
+        print(f"  - 功率计最大读数限制: {max_measured_power} dBm")
         if use_attenuator:
             print(f"  - 衰减器值: {attenuator_value} dB")
         print(f"  - 功率计测量次数: {measurement_times}次")
