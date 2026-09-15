@@ -134,7 +134,11 @@ class SpuriousProcedure(BaseTestProcedure):
         Returns:
             读回的设置字典（读不到的项为 None）
         """
-        actual = spectrum_analyzer.read_key_settings() or {}
+        handler = getattr(spectrum_analyzer, "read_key_settings", None)
+        if handler is None:
+            print(f"  {segment_name}: 当前仪器对象不支持读回校验，已跳过")
+            return {}
+        actual = handler() or {}
         details = []
         problems = []
         for key, want in expected.items():

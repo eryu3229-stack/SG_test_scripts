@@ -89,11 +89,13 @@ near_carrier_segments = [
         "trace_mode": "MAXH",
         "detector": "POS",
         "sweep_points": None,   # 1001 点 / 10 MHz => 10 kHz 频率量化，待需要时收紧
-        # 本段底噪 ∝ RBW：RBW 100 Hz 比 1 GHz 段的 10 kHz 低 20 dB，若沿用 25 dB
-        # 衰减，底噪会落到 −95 dBm 上下 —— 越过参考电平 10 dBm + 10 dB/div × 10 div
-        # 给出的显示下限 −90 dBm，迹线触底，门限变成"屏幕下限"而不是真实噪声。
-        # 故本段取 35 dB，把底噪放在 −85 dBm 附近（距显示下限 5 dB），
+        # 门限基准（POS/MAXH 迹线中位数）∝ RBW：RBW 100 Hz 比 1 GHz 段的 10 kHz 低 20 dB。
+        # 若沿用 25 dB 衰减，迹线中位数会落到约 −95 dBm —— 越过参考电平 10 dBm +
+        # 10 dB/div × 10 div 给出的显示下限 −90 dBm，迹线触底，门限退化成"屏幕下限"
+        # 而不是真实噪声。故本段取 35 dB：迹线中位数 ≈ −85 dBm（距显示下限 5 dB），
         # 混频器电平 = 10 − 35 = −25 dBm，余量充裕。
+        # （真实平均底噪比它再低约 10 dB，即 −95 dBm —— 已低于常规显示下限，
+        #   由 noise_floor_report 单独压低参考电平后用 AVER 迹线测。）
         "input_att_db": 35,
     },
     # 100 MHz SPAN：覆盖 ±50 MHz，RBW 1 kHz
@@ -106,7 +108,7 @@ near_carrier_segments = [
         "trace_mode": "MAXH",
         "detector": "POS",
         "sweep_points": None,
-        "input_att_db": None,   # 25 dB，底噪 ≈ −85 dBm
+        "input_att_db": None,   # 用全局 25 dB；迹线中位数 ≈ −85 dBm（距显示下限 5 dB）
     },
 ]
 
