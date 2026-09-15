@@ -5,7 +5,28 @@ from power_sweep_base import PowerSweepBaseProcedure
 
 
 class LowFreqMaxPowerProcedure(PowerSweepBaseProcedure):
-    """低频段最大功率测试流程类"""
+    """低频段最大功率测试流程类（用频谱仪读数，带 sa_* 采集条件列）"""
+
+    TEST_TYPE = "low_freq_max_power"
+
+    SA_COLUMNS = [
+        "sa_ref_level_dbm", "sa_input_att_db", "sa_att_mode",
+        "sa_span_hz", "sa_rbw_hz", "sa_vbw_hz",
+    ]
+
+    SUMMARY_FIELDNAMES = (
+        ["run_id", "test_type", "carrier_hz", "set_power_dbm",
+         "measured_power_dbm", "delta_db", "delta_ref"]
+        + SA_COLUMNS
+        + ["ext_att_db", "saturated", "steps", "status", "note", "timestamp"]
+    )
+
+    DETAIL_FIELDNAMES = (
+        ["run_id", "test_type", "carrier_hz", "set_power_dbm",
+         "measured_power_dbm", "delta_db", "delta_ref"]
+        + SA_COLUMNS
+        + ["ext_att_db", "step_index", "status", "note", "timestamp"]
+    )
 
     def __init__(self, instrument_manager):
         super().__init__(instrument_manager)
@@ -53,6 +74,19 @@ class LowFreqMaxPowerProcedure(PowerSweepBaseProcedure):
         spectrum_analyzer.set_attenuation(sa_config['attenuation'])
         spectrum_analyzer.set_input_coupling(sa_config['input_coupling'])
         print(f"设置频谱仪输入耦合为: {sa_config['input_coupling']}")
+
+        # 频谱仪采集条件：写入每行的 sa_* 列
+        self.sa_context = {
+            "sa_ref_level_dbm": sa_config['reference_level'],
+            "sa_input_att_db": sa_config['attenuation'],
+            "sa_att_mode": "manual",
+            "sa_span_hz": sa_config['span'],
+            "sa_rbw_hz": sa_config['rbw'],
+            "sa_vbw_hz": sa_config['vbw'],
+        }
+
+        # 外接衰减器：人为告知的物理事实，从不下发仪器，仅用于折算读数
+        ext_att_db = attenuator_value if use_attenuator else 0.0
         
         current_power = start_power
         signal_generator.set_power(current_power)
@@ -66,6 +100,7 @@ class LowFreqMaxPowerProcedure(PowerSweepBaseProcedure):
         
         max_achieved_power = None
         max_achieved_measured = None
+        max_set_power_at_peak = None
         prev_measured_power = None
         prev_actual_power = None
         saturation_detected = False
@@ -93,7 +128,10 @@ class LowFreqMaxPowerProcedure(PowerSweepBaseProcedure):
                 print(f"测量功率 (平均{len(measurements)}次): {measured_power:.2f} dBm")
             else:
                 print("警告: 频谱仪测量失败，跳过此点")
-                self.add_power_sweep_point(frequency, current_power, None, None, step_count, '测量失败')
+                self.add_power_sweep_point(
+                    frequency, current_power, None, None, step_count,
+                    'MEAS_FAIL', ext_att_db=ext_att_db,
+                )
                 measured_power = prev_measured_power if prev_measured_power is not None else -float('inf')
             
             if use_attenuator:
@@ -136,19 +174,23 @@ class LowFreqMaxPowerProcedure(PowerSweepBaseProcedure):
                     print(f"停止条件: {stop_reason}")
                     stop_scan = True
             
-            status = '正常'
+            status = 'OK'
             if saturation_detected:
-                status = '饱和'
+                status = 'SATURATED'
             elif overload_detected:
-                status = '过载'
+                status = 'OVERLOAD'
             elif stop_scan:
-                status = '超限'
-            
-            self.add_power_sweep_point(frequency, current_power, measured_power, actual_power, step_count, status)
-            
+                status = 'LIMIT'
+
+            self.add_power_sweep_point(
+                frequency, current_power, measured_power, actual_power,
+                step_count, status, ext_att_db=ext_att_db,
+            )
+
             if max_achieved_power is None or actual_power > max_achieved_power:
                 max_achieved_power = actual_power
                 max_achieved_measured = measured_power
+                max_set_power_at_peak = current_power
             
             prev_measured_power = measured_power
             prev_actual_power = actual_power
@@ -166,8 +208,9 @@ class LowFreqMaxPowerProcedure(PowerSweepBaseProcedure):
         
         self.add_test_result(
             frequency=frequency,
-            max_power=max_achieved_power,
+            set_power_at_max=max_set_power_at_peak,
             max_measured_power=max_achieved_measured,
+            max_actual_power=max_achieved_power,
             attenuation=attenuator_value if use_attenuator else 0.0,
             saturation_point=saturation_detected,
             steps=step_count,

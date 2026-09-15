@@ -7,12 +7,26 @@
 
 import time
 from datetime import datetime
-import pandas as pd
-from base_test_procedure import BaseTestProcedure, format_frequency
+from base_test_procedure import BaseTestProcedure
 
 
 class SubharmonicTestProcedure(BaseTestProcedure):
-    """分谐波测试流程类"""
+    """分谐波测试流程类（长表：每 (基波频率, 阶数) 一行）"""
+
+    TEST_TYPE = "subharmonic"
+
+    FIELDNAMES = [
+        # A 区：标识与数值
+        "run_id", "test_type", "carrier_hz", "set_power_dbm",
+        "measured_power_dbm", "delta_db", "delta_ref",
+        # B 区：频谱仪采集条件
+        "sa_ref_level_dbm", "sa_input_att_db", "sa_att_mode",
+        "sa_span_hz", "sa_rbw_hz", "sa_vbw_hz", "sa_noise_floor_dbm",
+        # C 区：源专有
+        "subharmonic_order", "subharmonic_freq_hz", "fundamental_power_dbm",
+        # 判定与时间
+        "status", "note", "timestamp",
+    ]
 
     def __init__(self, instrument_manager):
         """初始化分谐波测试流程
@@ -21,6 +35,7 @@ class SubharmonicTestProcedure(BaseTestProcedure):
             instrument_manager: 仪器管理器对象
         """
         super().__init__(instrument_manager)
+        self.run_id = ""
 
     def measure_subharmonic_power(self, spectrum_analyzer, fundamental_freq, subharmonic_order, sa_config, average_count=3):
         """测量分谐波功率
@@ -145,22 +160,48 @@ class SubharmonicTestProcedure(BaseTestProcedure):
         if not keep_output:
             signal_gen.enable_output(False)
 
-        # 创建测试结果
-        result = {
-            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'frequency_hz': frequency,
-            'frequency_mhz': frequency / 1e6,
-            'set_power_dbm': set_power,
-            'fundamental_power_dbm': fundamental_power,
-        }
-
+        # 创建测试结果（长表：每 (基波频率, 阶数) 一行）
+        sa_ref_level = sa_config.get('reference_level', 10)
+        sa_att = sa_config.get('attenuation', 10)
+        results = []
         for order in subharmonic_orders:
-            result[f'subharmonic_{order}_power_dbm'] = subharmonic_powers[order]
-            result[f'subharmonic_{order}_suppression_dbc'] = subharmonic_suppressions[order]
+            sh_power = subharmonic_powers[order]
+            sh_suppression = subharmonic_suppressions[order]
+            if sh_power is None:
+                status, note = "SKIP", "分谐波测量失败"
+            else:
+                status, note = "OK", ""
 
-        self.test_results.append(result)
-        if self.csv_streamer:
-            self.csv_streamer.append(result)
+            row = {
+                # A 区：标识与数值
+                "run_id": getattr(self, "run_id", ""),
+                "test_type": self.TEST_TYPE,
+                "carrier_hz": frequency,
+                "set_power_dbm": set_power,
+                "measured_power_dbm": sh_power,
+                "delta_db": None if sh_suppression is None else round(sh_suppression, 3),
+                "delta_ref": "fundamental",
+                # B 区：频谱仪采集条件
+                "sa_ref_level_dbm": sa_ref_level,
+                "sa_input_att_db": sa_att,
+                "sa_att_mode": "manual",
+                "sa_span_hz": sa_config.get('span', 10e6),
+                "sa_rbw_hz": sa_config.get('rbw', 100e3),
+                "sa_vbw_hz": sa_config.get('vbw', 100e3),
+                "sa_noise_floor_dbm": None,
+                # C 区：源专有
+                "subharmonic_order": order,
+                "subharmonic_freq_hz": frequency / order,
+                "fundamental_power_dbm": fundamental_power,
+                # 判定与时间
+                "status": status,
+                "note": note,
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            }
+            results.append(row)
+            self.test_results.append(row)
+            if self.csv_streamer:
+                self.csv_streamer.append(row)
 
         print(f"测试完成: {self.format_frequency(frequency)}")
         print(f"基波功率: {fundamental_power:.2f} dBm")
@@ -169,20 +210,12 @@ class SubharmonicTestProcedure(BaseTestProcedure):
             if subharmonic_suppressions[order] is not None:
                 print(f"分谐波抑制: {subharmonic_suppressions[order]:.2f} dBc")
 
-        return result
+        return results
 
     def start_csv_stream(self, csv_path):
         """开启 CSV 流式写入"""
-        fieldnames = [
-            "timestamp", "frequency_hz", "frequency_mhz", "set_power_dbm",
-            "fundamental_power_dbm",
-            "subharmonic_2_power_dbm", "subharmonic_2_suppression_dbc",
-        ]
-        super().start_csv_stream(csv_path, fieldnames)
-
-    def finish_xlsx(self, xlsx_path):
-        """关闭 CSV 流并转为 XLSX"""
-        super().finish_xlsx(xlsx_path, sheet_name="详细数据")
+        self.run_id = self.derive_run_id(csv_path)
+        super().start_csv_stream(csv_path, self.FIELDNAMES)
 
     def print_summary(self):
         """打印测试摘要（分谐波专项）"""
@@ -194,20 +227,24 @@ class SubharmonicTestProcedure(BaseTestProcedure):
         print("测试摘要")
         print(f"{'=' * 60}")
 
-        df = pd.DataFrame(self.test_results) if self.test_results else None
+        rows = self.test_results
+        print(f"总测试点数: {len(rows)}")
 
-        print(f"总测试点数: {len(self.test_results)}")
+        freqs = [r["carrier_hz"] for r in rows if r.get("carrier_hz") is not None]
+        if freqs:
+            print(f"频率范围: {self.format_frequency(min(freqs))} - {self.format_frequency(max(freqs))}")
+        if rows[0].get("set_power_dbm") is not None:
+            print(f"设置功率: {rows[0]['set_power_dbm']} dBm")
 
-        if df is not None and not df.empty:
-            freq_min = self.format_frequency(df['frequency_hz'].min())
-            freq_max = self.format_frequency(df['frequency_hz'].max())
-            print(f"频率范围: {freq_min} - {freq_max}")
-            print(f"设置功率: {df['set_power_dbm'].iloc[0]} dBm")
-
-            for col in df.columns:
-                if 'subharmonic_' in col and 'suppression' in col:
-                    order = col.split('_')[1]
-                    if not df[col].isnull().all():
-                        print(f"平均1/{order}分谐波抑制: {df[col].mean():.2f} dBc")
+        # 按阶数分组统计平均抑制比
+        by_order = {}
+        for r in rows:
+            order = r.get("subharmonic_order")
+            if r.get("delta_db") is not None:
+                by_order.setdefault(order, []).append(r["delta_db"])
+        for order in sorted(by_order, key=lambda o: (o is None, o)):
+            values = by_order[order]
+            avg = sum(values) / len(values)
+            print(f"平均1/{order}分谐波抑制: {avg:.2f} dBc ({len(values)} 点)")
 
         print(f"{'=' * 60}")

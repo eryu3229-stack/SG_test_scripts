@@ -59,11 +59,10 @@ class MaxPowerProcedure(PowerSweepBaseProcedure):
         print(f"等待功率计稳定 {pm_settling_time}秒...")
         time.sleep(pm_settling_time)
         
-        # 3. 配置衰减器（如果使用）
-        if use_attenuator and hasattr(power_meter, 'set_input_attenuation'):
-            power_meter.set_input_attenuation(attenuator_value)
-            print(f"设置功率计输入衰减: {attenuator_value} dB")
-        
+        # 3. 外接衰减器：由人告知的物理事实，**从不下发到仪器**，
+        #    唯一用途是把功率计读数折算回 DUT 端（见 actual_power = measured_power + ext_att_db）
+        ext_att_db = attenuator_value if use_attenuator else 0.0
+
         # 4. 启用信号源输出（从起始功率开始）
         current_power = start_power
         signal_generator.set_power(current_power)
@@ -77,6 +76,7 @@ class MaxPowerProcedure(PowerSweepBaseProcedure):
         # 5. 功率扫描变量初始化
         max_achieved_power = None  # 最大实际功率（考虑衰减）
         max_achieved_measured = None  # 最大测量功率
+        max_set_power_at_peak = None  # 取到最大实际功率时的信号源设定功率
         prev_measured_power = None  # 上一步原始测量值（用于测量失败回退）
         prev_actual_power = None    # 上一步补偿后的实际功率（用于饱和/过载检测）
         saturation_detected = False
@@ -104,7 +104,10 @@ class MaxPowerProcedure(PowerSweepBaseProcedure):
             
             if measured_power is None:
                 print("警告: 功率计测量失败，跳过此点")
-                self.add_power_sweep_point(frequency, current_power, None, None, step_count, '测量失败')
+                self.add_power_sweep_point(
+                    frequency, current_power, None, None, step_count,
+                    'MEAS_FAIL', ext_att_db=ext_att_db,
+                )
                 # 尝试继续，但可能意味着有问题
                 measured_power = prev_measured_power if prev_measured_power is not None else -float('inf')
             
@@ -156,20 +159,24 @@ class MaxPowerProcedure(PowerSweepBaseProcedure):
                     stop_scan = True
             
             # 记录数据点
-            status = '正常'
+            status = 'OK'
             if saturation_detected:
-                status = '饱和'
+                status = 'SATURATED'
             elif overload_detected:
-                status = '过载'
+                status = 'OVERLOAD'
             elif stop_scan:
-                status = '超限'
-            
-            self.add_power_sweep_point(frequency, current_power, measured_power, actual_power, step_count, status)
-            
+                status = 'LIMIT'
+
+            self.add_power_sweep_point(
+                frequency, current_power, measured_power, actual_power,
+                step_count, status, ext_att_db=ext_att_db,
+            )
+
             # 更新最大功率记录
             if max_achieved_power is None or actual_power > max_achieved_power:
                 max_achieved_power = actual_power
                 max_achieved_measured = measured_power
+                max_set_power_at_peak = current_power
             
             # 准备下一次迭代
             prev_measured_power = measured_power
@@ -192,8 +199,9 @@ class MaxPowerProcedure(PowerSweepBaseProcedure):
         # 添加测试结果
         self.add_test_result(
             frequency=frequency,
-            max_power=max_achieved_power,
+            set_power_at_max=max_set_power_at_peak,
             max_measured_power=max_achieved_measured,
+            max_actual_power=max_achieved_power,
             attenuation=attenuator_value if use_attenuator else 0.0,
             saturation_point=saturation_detected,
             steps=step_count,

@@ -30,7 +30,7 @@ from subharmonic_test_config import (
     get_test_config_summary
 )
 
-# 输出文件统一命名：结果 <OUTPUT_TAG>_results_<时间戳>.xlsx，中间流式 CSV <OUTPUT_TAG>_stream_<时间戳>.csv
+# 输出文件统一命名（只出 CSV）：<OUTPUT_TAG>_<时间戳>.csv
 OUTPUT_TAG = "subharmonic"
 
 
@@ -121,7 +121,7 @@ def run_subharmonic_test():
     test_procedure = SubharmonicTestProcedure(manager)
     output_dir = os.path.join(parent_dir, "output")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    csv_path = os.path.join(output_dir, f"{OUTPUT_TAG}_stream_{timestamp}.csv")
+    csv_path = os.path.join(output_dir, f"{OUTPUT_TAG}_{timestamp}.csv")
     test_procedure.start_csv_stream(csv_path)
 
     # 5. 运行测试
@@ -142,12 +142,8 @@ def run_subharmonic_test():
             keep_output=keep_output
         )
 
-    # 6. 保存测试结果
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    output_dir = os.path.join(parent_dir, 'output')
-    filename = f"{OUTPUT_TAG}_results_{timestamp}.xlsx"
-    filepath = os.path.join(output_dir, filename)
-    test_procedure.finish_xlsx(filepath)
+    # 6. 保存测试结果（CSV 流已在测试过程中逐点落盘）
+    test_procedure.finish_csv()
 
     # 7. 打印测试摘要
     test_procedure.print_summary()

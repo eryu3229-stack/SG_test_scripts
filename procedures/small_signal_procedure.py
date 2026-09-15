@@ -1,5 +1,4 @@
 import time
-import os
 from datetime import datetime
 from base_test_procedure import BaseTestProcedure, format_frequency
 
@@ -7,68 +6,32 @@ from base_test_procedure import BaseTestProcedure, format_frequency
 class SmallSignalProcedure(BaseTestProcedure):
     """基于信号源功率步进和频谱仪 marker 追踪的小信号测量流程"""
 
+    TEST_TYPE = "small_signal"
+
+    FIELDNAMES = [
+        # A 区：标识与数值
+        "run_id", "test_type", "carrier_hz", "set_power_dbm",
+        "measured_power_dbm", "delta_db", "delta_ref",
+        # B 区：频谱仪采集条件
+        "sa_ref_level_dbm", "sa_input_att_db", "sa_att_mode",
+        "sa_span_hz", "sa_rbw_hz", "sa_vbw_hz", "sa_noise_floor_dbm",
+        # C 区：源专有
+        "peak_frequency_hz", "sa_preamp_on",
+        # 判定与时间
+        "status", "note", "timestamp",
+    ]
+
     def __init__(self, instrument_manager):
         super().__init__(instrument_manager)
         self.test_results = []
         self.csv_streamer = None
         self._output_enabled = False
+        self.run_id = ""
 
     def start_csv_stream(self, csv_path):
         from utils.csv_streamer import CsvStreamer
-        self.csv_streamer = CsvStreamer(csv_path, [
-            "frequency",
-            "set_power_dbm",
-            "measured_power_dbm",
-            "error_db",
-            "peak_frequency_hz",
-            "span_hz",
-            "rbw_hz",
-            "vbw_hz",
-            "reference_level_dbm",
-            "attenuation_db",
-            "preamp_on",
-            "average_count",
-            "status",
-            "timestamp",
-        ])
-
-    def finish_xlsx(self, xlsx_path):
-        if not self.csv_streamer:
-            return self.save_results(xlsx_path)
-        try:
-            self.csv_streamer.to_xlsx(xlsx_path, sheet_name="小信号测量数据")
-            self._remove_intermediate_csv()
-            return True
-        except Exception as e:
-            print(f"Excel 输出失败，保留 CSV 结果: {e}")
-            if self.csv_streamer:
-                self.csv_streamer.close()
-            return False
-
-    def finish_csv(self):
-        if self.csv_streamer:
-            self.csv_streamer.close()
-            print(f"CSV流式存储已关闭: {self.csv_streamer.filepath}")
-
-    def _remove_intermediate_csv(self):
-        csv_path = self.csv_streamer.filepath if self.csv_streamer else None
-        if csv_path and os.path.exists(csv_path):
-            try:
-                os.remove(csv_path)
-                print(f"已删除中间CSV: {csv_path}")
-            except OSError as e:
-                print(f"删除中间CSV失败: {e}")
-
-    def save_results(self, filename):
-        if not self.test_results:
-            print("没有小信号测量结果可保存")
-            return False
-        if filename.lower().endswith(".xlsx"):
-            import pandas as pd
-            pd.DataFrame(self.test_results).to_excel(filename, index=False)
-            print(f"Excel 已保存: {filename}")
-            return True
-        return self.save_results_to_csv(filename)
+        self.run_id = self.derive_run_id(csv_path)
+        self.csv_streamer = CsvStreamer(csv_path, self.FIELDNAMES)
 
     def _configure_spectrum_analyzer(self, spectrum_analyzer, center_frequency, span, rbw, vbw, reference_level, attenuation, preamp_on=False, preamp_band="FULL"):
         spectrum_analyzer.set_center_frequency(center_frequency)
@@ -229,29 +192,40 @@ class SmallSignalProcedure(BaseTestProcedure):
 
             if measured_power is not None:
                 # 未找到真峰时仍保留名义频率读到的数值（作为噪声底判据），仅标记状态
-                status = "OK" if found else "未找到"
+                status = "OK" if found else "SUSPECT"
+                note = "" if found else "未找到真峰，读数为窗口内噪声/杂散"
             else:
-                status = "未找到"
+                status = "SKIP"
+                note = "测量失败"
                 peak_frequency = None
 
-            error_db = None
+            delta_db = None
             if measured_power is not None:
-                error_db = measured_power - power
+                delta_db = round(measured_power - power, 3)
 
             self.add_result({
-                "frequency": frequency,
+                # A 区：标识与数值
+                "run_id": self.run_id,
+                "test_type": self.TEST_TYPE,
+                "carrier_hz": frequency,
                 "set_power_dbm": power,
                 "measured_power_dbm": measured_power,
-                "error_db": error_db,
+                "delta_db": delta_db,
+                "delta_ref": "set",
+                # B 区：频谱仪采集条件（衰减为 AUTO 时 sa_input_att_db 留空，由 sa_att_mode 说明）
+                "sa_ref_level_dbm": reference_level,
+                "sa_input_att_db": attenuation,
+                "sa_att_mode": "auto" if attenuation is None else "manual",
+                "sa_span_hz": span,
+                "sa_rbw_hz": rbw,
+                "sa_vbw_hz": vbw,
+                "sa_noise_floor_dbm": None,
+                # C 区：源专有
                 "peak_frequency_hz": peak_frequency,
-                "span_hz": span,
-                "rbw_hz": rbw,
-                "vbw_hz": vbw,
-                "reference_level_dbm": reference_level,
-                "attenuation_db": "AUTO" if attenuation is None else attenuation,
-                "preamp_on": preamp_on,
-                "average_count": config.get("average_count", 5),
+                "sa_preamp_on": self.bool_str(preamp_on),
+                # 判定与时间
                 "status": status,
+                "note": note,
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             })
 

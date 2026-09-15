@@ -1,0 +1,1843 @@
+
+=== PAGE 161 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+3.1.2Windows
+Thefollowing windows areavailable intheAMDemod measurement: "RFSpectrum"
+onpage 161,"Demod Waveform" onpage 162,"AFSpectrum" onpage 162,
+"Metrics" onpage 163,"Result Table" onpage 165.They arenumbered asbelow:
+Window Number
+"RFSpectrum" onpage 161 1
+"Demod Waveform" onpage 162 2
+"AFSpectrum" onpage 162 3
+"Metrics" onpage 163 4
+"Result Table" onpage 165 5
+3.1.2.1RFSpectrum
+Thiswindow shows aspectral display oftheinput RFsignal with amplitude inthe
+vertical Yaxisandfrequency inthehorizontal Xaxis. Thevertical axisisalways
+scaled indB,with units ofdBm, with theRefValue initially atthetopofthevertical
+scale. Thisspectral display isbasically identical tothefrequency display ofthe
+Swept SAmeasurement; however itisalways taken using anFFTandZero Span is
+notallowed.
+Thiswindow provides aconvenient waytoidentify broadcast stations byplacing the
+signal ofinterest atthecenter frequency using thiswindow andlistening tothe
+instrument’s speaker. Demodulation isalways performed atthecenter frequency of
+theRFSpectrum window; thisisregarded astheapplication’s center frequency and
+isannotated intheMeasurement Bar.
+TheCenter Frequency, Span, andRFResBWareannotated atthebottom oftheRF
+Spectrum Window. TheRefValue andScale/Div areannotated above thegraticule.
+Views inwhich theRFSpectrum window appears:
+View Size Position
+"Quad" onpage 160 Half height, halfwidth Topleft
+"RFSpectrum" onpage 160 Two thirds height, fullwidth Top
+Thiswindow hasseveral special modes:
+–Two green vertical lines areshown centered around thecenter frequency, with
+spacing equal totheChannel BW. IftheChannel BWiswider than thespan, they
+arenotdisplayed
+–When aMarker Table window isalsodisplayed, asintheMarker Table View, the
+markers intheRFSpectrum window aredescribed intheMarker Table window
+161 Analog Demod Mode User's & Programmer's Reference
+=== PAGE 162 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+3.1.2.2DemodWaveform
+Inthiswindow, thedemodulated signal isdisplayed inthetime domain (zero span)
+with time onthehorizontal Xaxis, andmodulation depth (AM) onthevertical Yaxis.
+TheYaxisislinearly scaled inunits ofpercent modulation forAM.Onapreset, the
+RefValue ispositioned inthecenter ofthevertical scale.
+Four traces areavailable intheDemod Waveform window. TheDemod trace, in
+yellow, shows thecurrent demodulation signal. TheDemod Max trace, incyan,
+shows theMax Hold value foreach display point bucket since thelastrestart and
+theDemod Mintrace, inmagenta, shows theMinHold value foreach display point
+bucket since thelastrestart. TheDemod Average trace, ingreen, shows the
+averaged demodulation signal. IfAveraging isturned off,only theDemod trace is
+displayed.
+TheSweep Time isannotated atthebottom oftheDemod Waveform Window. The
+RefValue andScale/Div areannotated above thegraticule.
+Views inwhich theDemod Waveform window appears:
+View Size Position
+"Quad" onpage 160 Half height, halfwidth Topright
+"Demod Waveform" onpage 160 Two thirds height, fullwidth Top
+3.1.2.3AFSpectrum
+Thedemodulated signal isdisplayed inthefrequency domain intheAFSpectrum
+window. TheXaxisisfrequency (Hz)andtheYaxisispercent (%)ordBam
+(depending onYScale Type). TheYaxisisalways scaled inlogarithmic with theRef
+Value initially atthetopofthevertical scale.
+Inthisview youcanobserve thespectral components ofthemodulating signal. The
+preset Start Frequency ofthiswindow is0Hz.TheAFStart Freq andAFStop Freq
+areannotated atthebottom ofthewindow, asistheAFResBW. TheRefValue and
+Scale/Div areannotated above thegraticule.
+Itisonly possible toshow aspectrum toamaximum frequency ofChannel BW/2.
+Fortrace display points  beyond thatfrequency, thevalue 1.0E- 50isplotted and
+returned inqueries.
+Views inwhich theAFSpectrum window appears:
+View Size Position
+"Quad" onpage 160 Half height, halfwidth Bottom left
+"AFSpectrum" onpage 160 Two thirds height, fullwidth Top
+Analog Demod Mode User's & Programmer's Reference 162
+=== PAGE 163 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+3.1.2.4Metrics
+TheMetrics window displays thefollowing measurement results.
+Note that, foreach measurement, themetric ofgreatest typical interest is
+highlighted inyellow.
+CarrierPower
+Carrier Power istheaverage power detected atthecarrier frequency, averaged over
+integer periods ofthemodulation frequency.
+Modulation Rate
+Modulation Rate isthefrequency ofthedetected modulation. Thisisalsosometimes
+known asModulation Frequency.
+SINAD
+SINAD istheratio oftotal received power (thereceived signal- plus- noise- plus-
+distortion power) tothereceived noise- plus- distortion power. Itisalways expressed
+indecibel units. Therejection ofthecarrier from thenoise- plus- distortion power
+measurement isusually notmuch more than 50dB,thus limiting themaximum
+SINAD.
+Distortion/Total Voltage(rms)
+Distortion/Total Voltage (rms) istheratio ofunwanted received power (noise plus
+distortion) tothetotal received power, expressed in%ordB.Therefore, thismetric is
+thenegative ofSINAD when expressed indecibels.
+THD
+THD istheratio oftherootmean square voltage oftheharmonics referenced tothe
+fundamental voltage, expressed in%ordB.Please note thedifferences with respect
+toDistortion. Thedenominator oftheratio isdifferent. Andtheitems inthe
+numerator donotinclude thenoise between harmonics, justtheharmonics
+themselves.
+Modulation DepthPeak+(AMDemodonly)
+Modulation Depth Peak+ represents themaximum amount ofmodulation inunits of
+%during theacquisition period.
+When averaging ison,column 1includes averaging ofpeaks through theacquisition
+period –thissignificantly improves theSNR when measuring cyclic signals. If
+163 Analog Demod Mode User's & Programmer's Reference
+=== PAGE 164 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+averaging isoff,column 1shows simply thehighest peak. Column 2always shows
+themaximum ofthehighest peak.
+Note thatinamplitude modulation, themodulation depth (a.k.a. %modulation or
+modulation index) istheamount ofvoltage deviation themodulated signal has
+relative toitsoriginal un-modulated level. Modulation depth of100% means the
+peak voltage doubles, which inturn implies thepeak power quadruples.
+Modulation DepthPeak-(AMDemodonly)
+Modulation Depth Peak- represents theminimum value ofmodulation inunits of%
+during theacquisition period andshows anegative value when theminimum is
+negative.
+Modulation Depth(Pk–Pk)/2(AMDemodonly)
+Modulation Depth (Pk–Pk)/2 represents halfthedifference between the
+modulation depth Peak+ andPeak-.
+Modulation DepthRMS(AMDemodonly)
+Modulation Depth –RMS represents theRoot Mean Square modulation inunits of
+%during theacquisition period.
+RMSRatio
+Theratio between thedisplayed value ofRMS modulation andtheRatio Reference
+(see below). Only appears when RMS Ratio isselected under Display, Meas Display,
+Metrics Settings.
+RatioReference
+Thereference value being used fortheRatio display. Thereference issetwhenever
+theratio metric isselected orre-selected (see Display, Meas Display, Metrics
+Settings, RMS Ratio). Only appears when RMS Ratio isselected (see above)
+SNR
+SNR istheratio ofthereceived signal power tothereceived noise power. Itisalways
+expressed indecibel units.
+IfAveraging isturned on,thecolumn marked “Current” isrelabeled “Average” and
+theresults inthatcolumn areaveraged over successive measurements until the
+Average/Hold number isreached. Then, ifnotinSingle measurement mode, the
+measurement continues, exponentially averaging insuccessive results. TheMax
+Hold column shows theMaximum value theun-averaged metric hasattained since
+thelastRestart. TheMax Hold column shows “---”when averaging isturned off.
+Analog Demod Mode User's & Programmer's Reference 164
+=== PAGE 165 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+Thewindow titleis“AM Modulation Depth”.
+Views inwhich theMetrics window appears:
+View Size Position
+"Quad" onpage 160 Half height, halfwidth Bottom right
+"RFSpectrum" onpage 160 One thirds height, fullwidth Bottom
+"Demod Waveform" onpage 160 One third height, fullwidth Bottom
+"AFSpectrum" onpage 160 One third height, fullwidth Bottom
+3.1.2.5ResultTable
+Window Number: 5
+AMType: DSB
+AMType: SSB- SC
+3.1.3Amplitude
+Activates theAmplitude menu andselects RefLevel orRefValue astheactive
+function, depending onthemeasurement.
+Some features inthismenu apply tomultiple measurements. Some other features
+apply only tospecific measurements andtheir controls areblanked orgrayed- outin
+measurements thatdonotsupport thefeature.
+165 Analog Demod Mode User's & Programmer's Reference
+=== PAGE 166 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+3.1.3.1YScale
+Contains controls thatpertain totheYaxisparameters ofthemeasurement. These
+parameters control how data onthevertical (Y)axisisdisplayed andcontrol
+instrument settings thataffect thevertical axis.
+RefValue
+Specifies theamplitude ofasignal displayed onthereference graticule line. The
+reference lineisatthetop,center, orbottom ofthegraticule, depending onthe
+value oftheRefPosition function.
+Changing thereference value does notrestart ameasurement, butchanges all
+displayed traces andmarkers tothenew value. Ifachange tothereference value
+changes anauto- coupled attenuation value, themeasurement restarts.
+TheRefValue control applies only totheselected window. IftheMetrics window is
+selected, theRefValue control isunavailable. Thefunctionality depends onthe
+selected window.
+Remote
+Command:DISPlay:AM:WINDow [1]:TRACe:Y [:SCALe]:RLEVel <amptd>
+:DISPlay:AM:WINDow [1]:TRACe:Y [:SCALe]:RLEVel?
+See"Window Numbers &Parameter Values" onpage 166forwindow numbers
+Example :DISP:AM:WIND:TRAC:Y:RLEV 10dBm
+Couplings Thevalue isconstrained within theMAX andMIN values, butisotherwise generally notadjusted
+Inwindow 3(AFSpectrum), thisvalue depends onScale Type. IfScale Type isLog, thevalue willbe
+expressed indecibel units. Forexample, x%willbeexpressed asydBam, where y=20*log(x)
+Preset See"Window Numbers &Parameter Values" onpage 166below
+State Saved Saved ininstrument state
+Min/Max See"Window Numbers &Parameter Values" onpage 166below
+Annotation Thereference value isdisplayed above thegraticule with thetitle“Ref Value”
+WindowNumbers &Parameter Values
+Name Number Preset Min/Max
+RFSpectrum 1 0dBm CXA, EXA: -170dBm /23dBm
+Allother models: -170dBm /30dBm
+Demod Waveform 2 0% -100% /100%
+AFSpectrum 3 100% 1m%/10k%
+Analog Demod Mode User's & Programmer's Reference 166
+=== PAGE 167 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+Scale/Div
+Sets theheight ofonedivision ofthegraticule. Changing itsvalue does notrestart a
+measurement.
+Thefunctionality depends ontheselected window. IftheMetrics window isselected,
+theScale/Div control isunavailable.
+Remote Command :DISPlay:AM:WINDow [1]:TRACe:Y [:SCALe]:PDIVision <rel>
+:DISPlay:AM:WINDow [1]:TRACe:Y [:SCALe]:PDIVision?
+See"Window Numbers &Parameter Values" onpage 167forwindow numbers
+Example :DISP:AM:WIND:TRAC:Y:PDIV 5dB
+Preset See"Window Numbers &Parameter Values" onpage 167below
+State Saved Saved ininstrument state
+Min/Max See"Window Numbers &Parameter Values" onpage 167below
+Annotation Scale/Div isshown intheupper leftside ofthedisplay
+WindowNumbers &Parameter Values
+Name Number Preset Min/Max
+RFSpectrum 1 10dB 0.1dB/20dB
+Demod Waveform 2 20% 0.1%/1k%
+AFSpectrum 3 10dB 0.1dB/20dB
+YAxisUnit-AFSpectrum
+Displays adropdown menu thatenables youtochange thevertical (Y)axisunitof
+theAFSpectrum window.
+Remote
+Command:UNIT:AM:AFSPectrum PERCent |DBAM|DBC_HZ
+:UNIT:AM:AFSPectrum?
+Example :UNIT:AM:AFSP DBAM
+:UNIT:AM:AFSP?
+Notes Changing thisparameter willchange theunitofYaxisannotation, marker YandRefValue annotation of
+theAFSpectrum window
+Preset PERCent
+State Saved Saved ininstrument state
+167 Analog Demod Mode User's & Programmer's Reference
+=== PAGE 168 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+RefPosition
+Positions thereference value atthetop,center, orbottom oftheYScale display.
+Changing thereference position does notchange thereference value.
+Thissetting applies only tothewindow with thefocus. Ifthefocus isontheMetrics
+window, thiscontrol isunavailable.
+Remote
+Command:DISPlay:AM:WINDow [1]:TRACe:Y [:SCALe]:RPOSition TOP|CENTer |BOTTom
+:DISPlay:AM:WINDow [1]:TRACe:Y [:SCALe]:RPOSition?
+See"Window Numbers &Parameter Values" onpage 168forwindow numbers
+Example :DISP:AM:WIND:TRAC:Y:RPOS BOTT
+Preset See"Window Numbers &Parameter Values" onpage 168below
+State Saved Saved ininstrument state
+Range TOP|CENTer|BOTTom
+WindowNumbers &Parameter Values
+Name Number Preset
+RFSpectrum 1 TOP
+Demod Waveform 2 CENTer
+AFSpectrum 3 TOP
+DisplayScale(Remote Command Only)
+Chooses whether todisplay theYaxisindecibel units intheAFspectrum window.
+Nomatter what theScale Type value is,LogorLin,theAFspectrum trace isalways
+scaled inlogarithmic units.
+NOTE ThiscontrolappliesonlytotheAFSpectrum windowintheAMmeasurement.
+Thefollowingtabledescribes theparameters thatwillbeaffectedbyScaleType
+intheAFspectrumwindow.
+Scale Type isLog Scale Type isLin
+Yaxisannotation unit
+Marker Y
+Refer Value annotationdBam %
+Remote :DISPlay:AM:WINDow3:TRACe:Y [:SCALe]:SPACing LINear |LOGarithmic
+Analog Demod Mode User's & Programmer's Reference 168
+=== PAGE 169 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+Command :DISPlay:AM:WINDow3:TRACe:Y [:SCALe]:SPACing?
+Example :DISP:AM:WIND3:TRAC:Y:SPAC LOG
+:DISP:AM:WIND3:TRAC:Y:SPAC?
+Notes Changing theScale Type value always changes theYAxis Unit (:UNIT:AM:AFSPectrum )
+Preset LINear
+State Saved Saved ininstrument state
+3.1.3.2Attenuation
+Controls theattenuator functions andinteractions between theattenuation system
+components.
+There aretwoattenuator configurations inX-Series. OneisaDual- Attenuator
+configuration consisting ofamechanical attenuator andanoptional electronic
+attenuator. Theother configuration uses asingle attenuator with combined
+mechanical andelectronic sections thatcontrols alltheattenuation functions.
+Different models inX-Series support different configurations.
+–See"Dual- Attenuator Configurations" onpage 169
+–See"Single- Attenuator Configuration" onpage 170
+Most attenuation settings arethesame forallmeasurements –they donotchange
+asyouchange measurements. Settings likethese arecalled “Meas Global” andare
+unaffected byMeas Preset .
+Only available when thehardware setincludes aninput attenuator, which istypically
+only thecase forKeysight’s benchtop instruments. Forexample, thisgroup doesnot
+appear inVXTmodels M9420A/10A/11A/15A/16A, M9410E/11E/15E/16E, norin
+UXM. InUXM, allAttenuation andRange settings aredisabled, astheexpected
+input power level ishandled bytheCallProcessing Appthatdrives theDUT power
+control.
+Dependencies Inmeasurements that support theI/Qinputs, unavailable when I/Qistheselected input. Replaced by
+theRange tabinthat case
+Dual-Attenuator Configurations
+Configuration 1:Mechanical attenuator +optional electronic attenuator
+169 Analog Demod Mode User's & Programmer's Reference
+=== PAGE 170 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+Configuration 2:Mechanical attenuator, nooptional electronic attenuator
+Note thatConfiguration 2 isnotstrictly speaking adual- section attenuator, since
+there isnoelectronic section available. However, itbehaves exactly like
+Configuration 1without theElectronic Attenuator Option EA3, therefore forthesake
+ofthisdocument itisgrouped intothe“Dual- Attenuator” configuration.
+Single-Attenuator Configuration
+Youcantellwhich attenuator configuration youhave bypressing theAttenuation
+tab,which (inmost Modes) opens theAttenuation menu. Ifthefirstcontrol inthe
+Attenuation menu says Mech Atten youhave theDual- Attenuator configuration. If
+thefirstcontrol says Atten youhave theSingle- Attenuator configuration.
+Analog Demod Mode User's & Programmer's Reference 170
+=== PAGE 171 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+(Note thatdepending onthemeasurement, there may benoAuto/Man functionality
+ontheMech Atten control.)
+IntheSingle- Attenuator configuration, youcontrol theattenuation with asingle
+control, asthefixed stage hasonly twostates. IntheDual- Attenuator configuration,
+both stages have significant range, soyouaregiven separate control ofthe
+mechanical andelectronic attenuator stages.
+When youhave theDual- Attenuator configuration, youmay stillhave only aSingle-
+Attenuator, because unless Option EA3(theElectronic Attenuator option) is
+available, andyoupurchase it,youwillhave only themechanical attenuator.
+FullRangeAtten
+Thiscontrol andAttenuator Summary only appear inN9041B, when theRFinput is
+selected, theRFInput Port issettoRFInput 2, andtheFullRange Attenuator is
+installed. TheFullRange Attenuator adds asecond input attenuator infront ofRF
+Input 2, which enhances theprotection andoptimizes theperformance oftheextra
+internal mixers used byRFInput 2.
+Remote Command [:SENSe]:POWer [:RF]:FRATten <rel_ampl>
+[:SENSe]:POWer [:RF]:FRATten?
+Note that thisisthesame command asthat for"Atten >50GHz" onpage 538inN9042B
+Example :POW:FRAT 14
+:POW:FRAT?
+Notes When youenter anamplitude value that falls between valid values, thevalue willbeincremented to
+thenext smallest valid value
+Dependencies Available onN9041B UXA
+Only appears ifinput RFisselected, RFInput Port 2isselected, andtheFullRange Attenuator exists
+Couplings This value isnever changed byanycoupling, butother couplings usethisvalue. SeeReference Level
+and"Atten (Mech Atten)" onpage 530command descriptions
+Preset 20 dB
+State Saved Saved ininstrument state
+Min 0 dB
+Max Only valid values are0,6,14,20 dB
+Annotation When theInput isRF,andtheInput Port isRFInput 2,andtheFullRange Attenuator isinstalled:
+OntheMeas Bar, thefield “Atten” displays asfollows:
+–Ifthesweep isentirely <50 GHz, thevalue shown after “Atten:” isequal toMech Atten +Elec
+Atten +FullRange Atten
+–Ifthesweep isentirely >50 GHz, thevalue shown after “Atten:” isequal toFullRange Atten
+171 Analog Demod Mode User's & Programmer's Reference
+=== PAGE 172 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+–Ifthesweep straddles 50 GHz, thevalue shown after “Atten:” ispreceded bythesymbol “>=” and
+isequal toFullRange Atten
+IntheAmplitude ,"YScale" onpage 524menu, andtheAtten Meas Bardropdown menu panel, a
+summary isdisplayed asfollows:
+“Total Atten below 50 GHz” followed bythevalue ofFullRange Atten +Mech Atten +Elec Atten
+“Total Atten above 50GHz” followed bythevalue ofFullRange Atten
+Forexample, ifMech Atten =6 dB, Elec Atten =4 dB, andFullRange Atten =20 dB, thesummary
+below isshown:
+–Attenuator summary:
+–Total Atten below 50 GHz: 30 dB
+–Total Atten above 50 GHz: 20 dB
+Atten(MechAtten)
+Labeled Atten inSA6210A Opt.002, andsome Single- Attenuator instruments.
+Labeled Mech Atten inother instruments. IntheDual- Attenuator configuration, this
+control only affects themechanical attenuator.
+Lets youmodify theattenuation applied totheRFinput signal path. Thisvalue is
+normally auto- coupled toRefLevel ,"Internal Preamp" onpage 548Gain, any
+External Gain thatisentered, andMax Mixer Level, asdescribed inthetable below.
+See"Attenuator Configurations andAuto/Man" onpage 175
+Remote Command Forgeneral single port platforms:
+[:SENSe]:POWer [:RF]:ATTenuation <rel_ampl>
+[:SENSe]:POWer [:RF]:ATTenuation?
+ForSA6210A Opt.002
+[:SENSe]:POWer [:RF]|:RF2:ATTenuation <rel_ampl>
+[:SENSe]:POWer [:RF]|:RF2:ATTenuation?
+Example :POW:ATT 20
+Dual- Attenuator configuration: sets themechanical attenuator to20 dB
+Single- Attenuator mode: sets themain attenuation to20 dB (see below fordefinition of“main”
+attenuation)
+Ineither case, iftheattenuator wasinAuto, itissettoManual
+:POW:RF2:ATT 20
+:POW:PORT4:ATT 70
+Dependencies Available onbenchtop models
+Some measurements donotsupport Auto setting ofAtten .Inthese measurements, theAuto/Man
+selection isnotavailable, andtheAuto/Man toggle function isnotavailable
+Analog Demod Mode User's & Programmer's Reference 172
+=== PAGE 173 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+InDual- Attenuator configurations, when theelectronic attenuator isenabled, themechanical
+attenuator hasnoauto setting, andtheAuto/Man toggle function isnotavailable. Thestate of
+Auto/Man isremembered andrestored when theelectronic attenuator isonce again disabled. This is
+described inmore detail in"Elec Atten" onpage 534
+See"Attenuator Configurations andAuto/Man" onpage 175formore information ontheAuto/Man
+functionality
+Ifthecommand issent toaport that isunavailable, anadvisory message isgenerated. Thefollowing
+error isgenerated: -241, “Hardware missing; notavailable forthismodel number”
+Couplings IftheRFInput Port istheRFInput:
+–IftheUSB Preamp isconnected toUSB, use0 dB forAtten
+–Otherwise compute theauto- selected value ofAtten based onReference Level ,IntPreamp ,
+External Gain ,RefLevel Offset ,Max Mixer Level ,µWPath Control andIFGain settings. Limit this
+value tobenolessthan 6 dB (total attenuation below 6 dB cannever bechosen byAuto)
+–InN9041B, iftheRFInput Port isRFInput 2, usetheformula above andsubtract thevalue of"Full
+Range Atten" onpage 529from theresult todetermine theAtten .Limit thevalue sothat itis
+never lower than 0 dB andsothat total attenuation, including FullRange Atten ,isnever lessthan
+6 dB (total attenuation, including FullRange Atten below 6 dB, cannever bechosen byAuto)
+InExternal Mixing andBBIQ, where theattenuator isnotinthesignal path, theattenuator setting
+changes asdescribed above when Atten isinAuto ,butnochanges aremade totheactual attenuator
+hardware setting until theinput ischanged back totheRFInput
+ForCXA- mwith Option FSA (Fine- Step Attenuator or2 dB steps), theFSA- likebehavior isonly
+available when thefrequency setting is<= 7.5 GHz. So,when thefrequency ischanged from below
+7.5 GHz toabove 7.5 GHz, theattenuation setting changes toamultiple of10 dB that isnosmaller
+than theprevious setting. Forexample, 4 dB attenuation changes to10 dB
+Preset Auto value ifAuto/Manual function issupported
+TheAuto value isvarious
+10dBifAuto/Manual function isnotsupported
+State Saved Saved ininstrument state
+Min 0 dB
+Theattenuation setbythiscontrol cannot bedecreased below 6 dB with theknob orstep keys. Values
+below 6 dB must bedirectly entered from thekeypad orviaSCPI. This protects against setting a
+dangerously small attenuation value, which canputtheinstrument atriskofdamage toinput circuitry.
+Ifthecurrent mechanical attenuation isbelow 6 dB, itcanbeincreased with theknob andstep keys,
+butnotdecreased
+MaxCXA Option 503or507 50 dB
+EXA 60 dB
+Allother models 70 dB
+Note that intheSingle- Attenuator configuration, thetotal ofATTandEATT cannot exceed 50 dB. So,if
+theEATT issetto24 dB first, themain attenuation cannot begreater than 26 dB andwillbereduced
+accordingly; ifthemain attenuator issetto40 dB first, EATT cannot begreater than 10 dB
+173 Analog Demod Mode User's & Programmer's Reference
+=== PAGE 174 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+Annotation Thecurrent value forTotal Atten isdisplayed intheMeasurement Baratthetopofthedisplay. Avalue
+appears forElectronic Attenuation only iftheElectronic Attenuator isenabled. Theannotation appears
+as:
+Atten:<total> dB (e<elec>)
+Theeletter isinamber inSingle- Attenuator configurations
+Forexample:
+Dual- Attenuator configuration:
+Atten:24 dB(e14)
+Indicating thetotal attenuation isat24 dB andtheelectronic attenuation isat14 dB
+Single- Attenuator configuration:
+A:24 dB(e14)
+Indicating thetotal attenuation isat24 dB andthe“soft” attenuation isat14 dB (see below for
+definition of“soft” attenuation)
+When inManual, a#sign appears infront ofAtten intheannotation
+Auto Function
+Remote Command Forgeneral single port platforms:
+[:SENSe]:POWer [:RF]:ATTenuation:AUTO OFF|ON|0|1
+[:SENSe]:POWer [:RF]:ATTenuation:AUTO?
+ForSA6210A Opt002
+[:SENSe]:POWer [:RF]|:RF2:ATTenuation:AUTO OFF|ON|0|1
+[:SENSe]:POWer [:RF]|:RF2:ATTenuation:AUTO?
+Example Turn Auto Mech AttenON:
+:POW:ATT:AUTO ON
+:POW:RF2:ATT:AUTO ON
+:POW:PORT4:ATT:AUTO ON
+Dependencies Available onbenchtop models
+Available in:
+–Spectrum Analyzer Mode –Swept SAmeasurement
+–Real- Time Spectrum Analyzer Mode –Spectrum &PvTmeasurement
+–Remote Language Compatibility Mode –Swept SAmeasurement (Remote command depends on
+Compatibility Model setting)
+–SCPI Language Compatibility Mode –Swept SAmeasurement (Remote command depends on
+Compatibility Model setting)
+–Avionics Mode –allmeasurements
+–Measuring Receiver Mode –allmeasurements except forAudio measurements
+Preset ON
+Analog Demod Mode User's & Programmer's Reference 174
+=== PAGE 175 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+Attenuator Configurations andAuto/Man
+Asdescribed under "Attenuation" onpage 527,there aretwodistinct attenuator
+configurations available inX-Series, theSingle Attenuator andDual- Attenuator
+configurations.
+InDual- Attenuator configurations, wehave mechanical attenuation andelectronic
+attenuation, andcurrent total attenuation isthesum ofelectronic +mechanical
+attenuation.
+InSingle- Attenuator configurations, werefer totheattenuation setusing "Atten
+(Mech Atten)" onpage 172(or:POW:ATT )asthe“main” attenuation; andthe
+attenuation thatissetby:POW:EATT asthe“soft” attenuation (:POW:EATT is
+honored even intheSingle- Attenuator configuration, forcompatibility purposes).
+Then current total attenuation isthesum ofmain +softattenuation.
+See"Elec Atten" onpage 534formore about “soft” attenuation.
+NOTE Insomemeasurements, theAttencontrolhasanAuto/Man function.Inthese
+measurements, anAuto/Man switchisshownontheAttencontrol:
+Notethatinconfigurations thatincludeanElectronic Attenuator, thisswitchis
+onlyshownwhentheElectronic Attenuator isdisabled.
+Inothermeasurements, AttenhasnoAuto/Man function.Inthese
+measurements, noswitchisshownontheAttencontrol:
+MechAttenalsoappearswithnoswitch,asabove,inconfigurations thatinclude
+anElectronic Attenuator butwhentheElectronic Attenuator isenabled.
+ElecAtten
+Controls theElectronic Attenuator inDual- Attenuator configurations. Does not
+appear inSingle- Attenuator configurations, because thecontrol ofboth the
+mechanical andelectronic stages oftheSingle- Attenuator isintegrated intothe
+single Atten control.
+175 Analog Demod Mode User's & Programmer's Reference
+=== PAGE 176 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+Thiscontrol includes anEnable/Disable toggle switch; itisonly possible toenter a
+value fortheElectronic Attenuator when thisswitch isintheEnable position.
+Formore details oftheElectronic Attenuator, see"More Information" onpage 177
+Remote Command [:SENSe]:POWer [:RF]:EATTenuation <rel_ampl>
+[:SENSe]:POWer [:RF]:EATTenuation?
+Example :POW:EATT 10
+:POW:EATT?
+Notes Electronic Attenuation’s specification isdefined only when Atten is6 dB
+Dependencies Only appears inDual- Attenuator models with anElectronic Attenuator installed andlicensed. Does
+notappear inmodels with theSingle- Attenuator configuration, because intheSingle- Attenuator
+configuration there isno“electronic attenuator”; there isonly asingle integrated attenuator (which
+hasboth amechanical andelectronic stage). However, intheSingle- Attenuator configuration, EATT
+SCPI commands areaccepted forcompatibility with other X-series instruments, andseta“soft”
+attenuation. The“soft” attenuation istreated asanaddition tothe“main” attenuation value setbythe
+Attenuation control or:POW:ATT ,andaffects thetotal attenuation displayed ontheAttenuation
+control andtheMeas Bar
+Theelectronic attenuator, andthe“soft” attenuation function provided inSingle- Attenuator config -
+urations, areunavailable above thelowband (0-3.6 GHz, 0-3.4 GHz, 0-3 GHz, depending onthe
+model). Ifthelowband range isfrom 0-3.6 GHz, andStop Frequency oftheinstrument is>3.6 GHz,
+then theEnabled/Disabled section oftheElec Atten control willbeOFF andgrayed- out
+If"Internal Preamp" onpage 548isON(that is,settoLow Band orFull), theelectronic attenuator (and
+the“soft” attenuation function provided inSingle- Attenuator configurations) isunavailable. Inthis
+case theEnabled/Disabled section oftheElec Atten control willbeOFF andgrayed- out
+Ifeither oftheabove istrue, andtheSCPI command issent, anerror indicating that theelectronic
+attenuator isunavailable isreturned
+Ifboth theabove aretrue, pressing thecontrol generates error message -221, inother words, the
+frequency range lockout takes precedence
+Iftheelectronic/soft Attenuator isenabled, then theStop Freq oftheinstrument islimited to3.6 GHz
+andInternal Preamp isunavailable
+If"Internal Preamp" onpage 548isON,theelectronic attenuator (and the“soft” attenuation function
+provided inSingle- Attenuator configurations) isunavailable. Inthiscase theEnabled/Disabled section
+oftheElec Atten control willbeOFF andgrayed- out.This coupling works inthefollowing
+modes/measurements:
+–Channel Power, Occupied BW, ACP, SEM, Spurious Emissions, Power Stat CCDF measurements
+inallModes
+–Transmit On|Off Power measurement in5GNR Mode
+–Power vs.Time andTransmit Power measurement inGSM/EDGE Mode
+–Burst Power measurement inSpectrum Analyzer Mode
+TheSCPI- only “soft” electronic attenuation forthesingle- attenuator configuration isnotavailable in
+allmeasurements; inparticular, itisnotavailable intheSwept SAmeasurement
+Couplings Enabling anddisabling theElectronic Attenuator affects thesetting oftheMechanical Attenuator (in
+Analog Demod Mode User's & Programmer's Reference 176
+=== PAGE 177 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+Dual- Attenuator configurations). This isdescribed inmore detail below andin"Mechanical Attenuator
+Transition Rules" onpage 178
+Preset 0 dB
+State Saved Saved ininstrument state
+Min 0 dB
+Max Dual- Attenuator configuration: 24 dB
+Single- Attenuator configuration: thetotal ofATTandEATT cannot exceed 50 dB. So,iftheEATT isset
+to24 dB first, themain attenuation cannot begreater than 26 dB andwillbereduced accordingly; if
+themain attenuator issetto40 dB first, EATT cannot begreater than 10 dB
+Annotation SeeAnnotation under theAtten control description
+Auto Function
+Remote Command [:SENSe]:POWer [:RF]:EATTenuation:STATe OFF|ON|0|1
+[:SENSe]:POWer [:RF]:EATTenuation:STATe?
+Example :POW:EATT:STAT ON
+:POW:EATT:STAT?
+Preset OFF (Disabled) forSwept SAmeasurement
+ON(Enabled) forallother measurements that support theelectronic attenuator
+NOTE Themaximum Centerfrequency forLowBandcanchangebasedonthe
+selectedIFBWformeasurements thatsupportIFBW(forexample,Waveform
+measurement acrossallModesthatsupportit).Incertainmodels(suchas
+N9042B&N9032B), IFBWvalues<=40 MHzhaveamaximum LowBand
+frequency of3.6 GHz,while40 MHz<IFBW<=1 GHzhaveamaximum of
+3.3 GHz,and1 GHz<IFBW<=1.5 GHzhaveamaximum of3.5 GHz.This
+frequency isreflectedinthedisabledmessagedisplayed forelectronic
+attenuator.  ForN9032BandN9042BIFBWvalues>1.5 GHzdonotsupporta
+Centerfrequency thatcanreachtheLowBandmaximum frequency. Inthese
+cases,theelectronic attenuator willremaindisablednomattertheCenter
+Frequency.
+MoreInformation
+Theelectronic attenuator offers finer steps than themechanical attenuator, hasno
+acoustical noise, isfaster, andislesssubject towear. These advantages primarily
+aidinremote operation andarenegligible forfront panel use.See"Using the
+Electronic Attenuator: Pros andCons" onpage 179foradetailed discussion ofthe
+pros andcons ofusing theelectronic attenuator.
+FortheSingle- Attenuator configuration, forSCPI backwards compatibility, the
+“soft” attenuation feature replaces theDual- Attenuator configuration’s electronic
+177 Analog Demod Mode User's & Programmer's Reference
+=== PAGE 178 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+attenuator. Allthesame couplings andlimitations apply. See"Atten (Mech Atten)"
+onpage 530
+Mechanical Attenuator Transition Rules
+When theElectronic Attenuator isenabled, theMechanical Attenuator transitions to
+astate thathasnoAuto function. Below aretherules fortransitioning the
+Mechanical Attenuator. Note thattheinformation belowonly applies totheDual-
+Attenuator configurations, andonly when theElectronic Attenuator isinstalled:
+When theElectronic Attenuation isenabled from adisabled state:
+–TheMechanical Attenuator isinitialized to10 dB (this isitsoptimal performance
+setting). Youcanthen setitasdesired with SCPI, numeric keypad, step keys, or
+knob, anditbehaves asitnormally would inmanual mode
+–TheAuto/Man state of(Mech) Atten issaved
+–TheAuto/Man toggle onthe(Mech) Atten control disappears, andtheauto rules
+aredisabled
+–TheElectronic Attenuator issetto10 dB lessthan theprevious value ofthe
+Mechanical Attenuator, within thelimitation thatitmust staywithin therange of
+0to24 dB ofattenuation
+Examples intheDual- Attenuator configuration:
+–Mech Atten at20 dB. Elec Atten enabled, Mech Atten setto10 dB, andElec
+Atten setto10 dB. New total attenuation equals thevalue before Elec Atten
+enabled
+–Mech Atten at0 dB. Elec Atten enabled, Mech Atten setto10 dB, andElec Atten
+setto0 dB. New total attenuation does notequal thevalue before Elec Atten
+enabled
+–Mech Atten at40 dB. Elec Atten enabled, Mech Atten setto10 dB, andElec
+Atten setto24 dB. New total attenuation does notequal thevalue before Elec
+Atten enabled
+When theElectronic Attenuation isdisabled from anenabled state:
+–TheElec Atten control isgrayed out
+–TheAuto/Man state of(Mech) Atten isrestored
+–Ifnow inAuto, (Mech) Atten recouples
+–Ifnow inMan, (Mech) Atten issettothevalue oftotal attenuation thatexisted
+before theElec Atten wasdisabled. Theresulting value isrounded uptothe
+Analog Demod Mode User's & Programmer's Reference 178
+=== PAGE 179 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+smallest value possible given the(Mech) Atten Step setting -(That is,57 dB
+changes to58 dB when (Mech) Atten Step is2 dB)
+UsingtheElectronic Attenuator: ProsandCons
+Theelectronic attenuator offers finer steps than themechanical attenuator, hasno
+acoustical noise, isfaster, andislesssubject towear.
+The“finer steps” advantage oftheelectronic attenuator isbeneficial inoptimizing
+thealignment oftheinstrument dynamic range tothesignal power inthefront panel
+aswellasremote use.Thus, youcanachieve improved relative signal measurement
+accuracy. Compared toamechanical attenuator with 2 dB steps, the1 dB resolution
+oftheelectronic attenuator only gives better resolution when theodd- decibel steps
+areused. Those odd- decibel steps arelessaccurately calibrated than theeven-
+decibel steps, soonetradeoff forthissuperior relative accuracy isreduced absolute
+amplitude accuracy.
+Another disadvantage oftheelectronic attenuator isthatthespectrum analyzer
+loses its“Auto” setting, making operation lessconvenient.
+Also, therelationship between thedynamic range specifications (TOI, SHI,
+compression, andnoise) andinstrument performance arelesswell- known with the
+electronic attenuator. With themechanical attenuator, TOI,SHI, andcompression
+threshold levels increase dB-for-dBwith increasing attenuation, andthenoise floor
+does aswell. With theelectronic attenuator, there isanexcess attenuation ofabout
+1to3 dB between 0and3.6 GHz, making theeffective TOI,SHI, andsoforth, less
+wellknown. Excess attenuation istheactual attenuation relative tostated
+attenuation. Excess attenuation isaccounted forintheinstrument calibration.
+Atten>50GHz
+Only appears inN9042B with Option 575installed.
+Modifies theattenuation applied totheinternal frequency extender’s frequency path
+above 50GHz to75GHz. Thissetting isapplicable without anexternal frequency
+extender connected.
+Remote Command [:SENSe]:POWer [:RF]:FRATten <rel_ampl>
+[:SENSe]:POWer [:RF]:FRATten?
+Note that thisisthesame command asthat for"Full Range Atten" onpage 529inN9041B
+Example :POW:FRAT 14
+:POW:FRAT?
+Dependencies Only appears inN9042B with Option 575, ifinput RFisselected, andRFInput Port isselected
+Preset 10dB
+179 Analog Demod Mode User's & Programmer's Reference
+=== PAGE 180 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+State Saved Saved ininstrument state
+Min 0 dB
+Max 26dB
+Annotation When Input isRF,Input Port isRFInput ,andtheOption 575Internal Frequency Extender ispresent:
+OntheMeas Bar, thefield “Atten” displays asfollows:
+–Ifthesweep isentirely <50GHz, thevalue shown after “Atten:” isequal toMech Atten +Elec
+Atten
+–Ifthesweep isentirely >50GHz, thevalue shown after “Atten:” isequal toAtten >50GHz
+–Ifthesweep straddles 50GHz, thevalue shown after “Atten:” istheMech Atten +Elec Atten value,
+followed by“ |”then theAtten >50GHz. Example “Atten: 20 dB |24 dB”
+IntheAmplitude, "YScale" onpage 524menu, andtheAtten Meas Bardropdown menu panel, a
+summary isdisplayed asfollows:
+“Attenuation below 50GHz” followed bythevalue ofMech Atten +Elec Atten
+“Attenuation above 50GHz” followed bythevalue ofAtten >50GHz
+Forexample, if"Atten (Mech Atten)" onpage 530=6 dB, Elec Atten =4 dB, Atten >50GHz =20 dB,
+thesummary below isshown:
+–Attenuator summary:
+–Attenuation below 50 GHz: 10 dB
+–Attenuation above 50 GHz: 20 dB
+Frequency Extender Atten
+Lets youmodify theattenuation applied tothefrequency extender’s high frequency
+input signal path (forexample, with aV3050A frequency extender, thehigh
+frequency path is50 GHz to110 GHz). Thisvalue isnormally auto- coupled toRef
+Level andanyExternal Gain thatisentered, asdescribed inthefollowing table.
+See"Frequency Extender Attenuator Configurations andAuto/Man" onpage 182.
+Remote Command Forgeneral single port platforms:
+[:SENSe]:POWer [:RF]:FEXTender:ATTen <rel_ampl>
+[:SENSe]:POWer [:RF]:FEXTender:ATTen?
+Example Setthefrequency extender’s attenuator to20 dB:
+:POW:FEXT:ATT 20
+Iftheattenuator wasinAuto ,itissettoManual
+Dependencies Available onbenchtop models
+Some measurements donotsupport theAuto setting ofFrequency Extender Atten .Inthese
+measurements, theAuto/Man selection isnotavailable, andtheAuto/Man toggle function isnot
+available
+Analog Demod Mode User's & Programmer's Reference 180
+=== PAGE 181 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+See"Frequency Extender Attenuator Configurations andAuto/Man" onpage 182formore information
+ontheAuto/Man functionality
+IftheFrequency Extender isnotconnected, error -241, “Hardware missing; Input notavailable” is
+generated
+Couplings Only applies, andonly visible, when theExternal RF(ERFIN )input isselected
+Theauto- selected value ofFrequency Extender Atten depends onRefLevel ,External Gain, RefLevel
+Offset, andFrequency Extender Presel Bypass settings
+Preset Auto value ifAuto/Manual function issupported. TheAuto value varies
+10dBifAuto/Manual function isnotsupported
+State Saved Saved ininstrument state
+Min 0 dB
+Max V3050A: 26dB
+Annotation When Input isRF,andInput Port isExternal RF,andtheFrequency Extender isconnected:
+OntheMeas Bar, thefield “Atten” displays asfollows:
+–Ifthesweep isentirely <theextended frequency start, thevalue shown after “Atten:” isequal to
+Mech Atten +Elec Atten
+–Ifthesweep isentirely >theextended frequency start, thevalue shown after “Atten:” isequal to
+Frequency Extender Atten
+–Ifthesweep straddles theextended frequency start, thevalue shown after “Atten:” istheMech
+Atten +Elec Atten value, followed by“ |”then theFrequency Extender Atten. Example “Atten:
+20 dB |24 dB”
+When inManual andAuto isavailable, a#sign appears infront ofAtten intheannotation
+IntheAmplitude ,"YScale" onpage 524menu, andtheAtten Meas Bardropdown menu panel, a
+summary isdisplayed asfollows:
+“Attenuation below <ext freq start>” followed bythevalue ofMech Atten +Elec Atten
+“Attenuation above <ext freq start>” followed bythevalue ofFrequency Extender Atten
+Forexample, if"Atten (Mech Atten)" onpage 530=6 dB, Elec Atten =4 dB, andFrequency Extender
+Atten =20 dB, andtheextended frequency start is50 GHz, thesummary below isshown:
+–Attenuator summary:
+–Attenuation below 50 GHz: 10 dB
+–Attenuation above 50 GHz: 20 dB
+Auto Function
+Remote Command Forgeneral single port platforms:
+[:SENSe]:POWer [:RF]:FEXTender:ATTen:AUTO OFF|ON|0|1
+[:SENSe]:POWer [:RF]:FEXTender:ATTen:AUTO?
+Example Turn Auto Frequency Extender AttenON:
+:POW:FEXT:ATT:AUTO ON
+181 Analog Demod Mode User's & Programmer's Reference
+=== PAGE 182 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+Dependencies Available onbenchtop models
+Available in:
+–Spectrum Analyzer Mode –Swept SAmeasurement
+–Real- Time Spectrum Analyzer Mode –Spectrum &PvTmeasurement
+Preset ON
+Frequency Extender Attenuator Configurations andAuto/Man
+NOTE Insomemeasurements, MechAttenhasanAuto/Man function.Inthese
+measurements, anAuto/Man switchisshownontheFrequency Extender Atten
+control:
+Inothermeasurements, Frequency Extender AttenhasnoAuto/Man function.
+Inthesemeasurements, noswitchisshownontheFrequency Extender Atten
+control:
+AdjustAttenforMinClipping
+Sets thecombination ofmechanical andelectronic attenuation andgain based on
+thecurrent measured signal level sothatclipping willbeataminimum.
+Thisisanimmediate action function, thatis,itexecutes once, when thecontrol is
+pressed.
+Thealgorithms thatareused fortheadjustment aredocumented under "Pre- Adjust
+forMinClipping" onpage 542.
+Remote Command Forgeneral single port platforms:
+[:SENSe]:POWer [:RF]:RANGe:OPTimize IMMediate
+ForSA6210A Opt002
+[:SENSe]:POWer: [RF]|RF2|ALL:RANGe:OPTimize IMMediate
+Example Forgeneral single port platforms
+Analog Demod Mode User's & Programmer's Reference 182
+=== PAGE 183 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+:POW:RANG:OPT IMM
+ForSA6210A Opt.002:
+:POW:RANG:OPT IMM Adjusts only RFport
+:POW:RF2:RANG:OPT IMM Adjusts only RF2 port
+:POW:ALL:RANG:OPT IMM Adjusts allports which areused inthemeasurement
+Notes Executing Adjust Atten forMinClipping initiates themeasurement
+Dependencies Does notappear intheSwept SA,RTSA, Monitor Spectrum andComplex Spectrum measurements
+IfthisSCPI issent toaport that isunavailable, anadvisory message isgenerated. Iftheequivalent
+SCPI command issent, error –241isgenerated, “Hardware missing; notavailable forthismodel
+number”
+AdjustAtten
+Lets youselect;
+–Electronic attenuator only
+–Combination ofElectronic attenuator andMechanical attenuator
+when[:SENSe]:POWer [:RF]:RANGe:OPTimize IMMediate isexecuted.
+Remote Command [:SENSe]:POWer [:RF]:RANGe:OPTimize:TYPE EONLy|COMBined
+[:SENSe]:POWer [:RF]:RANGe:OPTimize:TYPE?
+Example :POW:RANG:OPT:TYPE EONL
+:POW:RANG:OPT:TYPE?
+Dependencies Does notappear intheSwept SA,RTSA, Monitor Spectrum andComplex Spectrum measurements
+Appears intheWaveform measurement inBASIC and5GNRModes
+Notavailable inSA6210A
+Preset COMBined
+State Saved Saved ininstrument state
+Pre-AdjustforMinClipping
+Ifthisfunction isON,itapplies theadjustment described under "Adjust Atten forMin
+Clipping" onpage 541each time ameasurement restarts. Therefore, inContinuous
+measurement mode, itonly executes before thefirstmeasurement.
+InDual- Attenuator models, youcansetElec+Mech Atten ,inwhich case both
+attenuators participate intheautoranging, orElec Atten Only,inwhich case the
+mechanical attenuator does notparticipate intheautoranging. Thislatter case
+results inlesswear onthemechanical attenuator andisusually faster.
+183 Analog Demod Mode User's & Programmer's Reference
+=== PAGE 184 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+See"Adjustment Algorithm" onpage 185
+Selection SCPI Note
+Off OFF This isthedefault setting
+On ON Available inSingle- Attenuator instruments. For
+compatibility with models that donothave aninput
+attenuator, theONparameter issupported andmapped to
+COMBined
+Elec Atten Only ELECtrical Selects only theelectronic attenuator toparticipate inauto
+ranging. This offers lesswear onthemechanical attenuator
+andisusually faster
+Elec+Mech
+AttenCOMBined InDual- Attenuator models, thisselects both attenuators to
+participate intheautoranging
+Remote Command [:SENSe]:POWer [:RF]:RANGe:OPTimize:ATTenuation OFF|ON|ELECtrical |
+COMBined
+[:SENSe]:POWer [:RF]:RANGe:OPTimize:ATTenuation?
+Example :POW:RANG:OPT:ATT OFF
+:POW:RANG:OPT:ATT?
+Notes Theparameter optionELECtrical sets thisfunction toONinSingle- Attenuator models
+Theparameter optionCOMBined ismapped toELECtrical inSingle- Attenuator models. Ifyou
+sendCOMBined ,itsets thefunction toONandreturnsELEC toaquery
+ForSCPI compatibility with models that donothave aninput attenuator, theONparameter ishonored
+andmapped toCOMBined
+Dependencies Only appears inDual- Attenuator models with anElectronic Attenuator installed
+Ininstruments with Dual- Attenuator model, when "Elec Atten" onpage 534isOFF orgrayed- out,
+"Pre- Adjust forMinClipping" onpage 183isgrayed out
+Does notappear intheSwept SA,RTSA, Monitor Spectrum andComplex Spectrum measurements
+Appears intheWaveform measurement inBASIC and5GNRModes
+Notavailable inSA6210A
+Preset OFF when Elec Atten isDisabled atpreset, otherwise ELEC
+State Saved Saved ininstrument state
+RangeDual- Attenuator models: Off|Elec Atten Only |Mech +Elec Atten
+Single- Attenuator models: Off|On
+Backwards Compatibility Command
+Notes ONaliases to"Elec Atten Only" (:POW:RANG:OPT:ATT ELEC )
+OFF aliases to"Off" (:POW:RANG:OPT:ATT OFF)
+:POW:RANG:AUTO? returns true if:POW:RANG:OPT:ATT isnotOFF
+Backwards
+Compatibility
+SCPI[:SENSe]:POWer [:RF]:RANGe:AUTO ON|OFF|1|0
+[:SENSe]:POWer [:RF]:RANGe:AUTO?
+Analog Demod Mode User's & Programmer's Reference 184
+=== PAGE 185 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+Adjustment Algorithm
+Thealgorithms fortheadjustment aredocumented below:
+Single-Attenuator Models
+Dual-Attenuator models
+"Adjust Atten forMinClipping" onpage 541or"Pre- Adjust forMinClipping" onpage
+183selection isMech +Elec Atten:
+185 Analog Demod Mode User's & Programmer's Reference
+=== PAGE 186 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+Analog Demod Mode User's & Programmer's Reference 186
+=== PAGE 187 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+"Pre- Adjust forMinClipping" onpage 183selection isElec Only.
+Note thattheMech Atten value isnotadjusted, andthevalue previously setisused.
+Therefore, there isacase thatIFOverload isstillobserved depending ontheinput
+signal level andtheMech Atten setting.
+AttenStep(MechAttenStep)
+Controls thestep sizeused when making adjustments totheinput attenuation.
+Labeled Mech Atten Step insome instruments. IntheDual- Attenuator
+configuration, only affects thestep sizeofthemechanical attenuator.
+Remote Command [:SENSe]:POWer [:RF]:ATTenuation:STEP [:INCRement] 10DB|2DB
+[:SENSe]:POWer [:RF]:ATTenuation:STEP [:INCRement]?
+187 Analog Demod Mode User's & Programmer's Reference
+=== PAGE 188 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+Example :POW:ATT:STEP 2
+:POW:ATT:STEP?
+Notes Hasatoggle control onthemenu panel, buttakes aspecific value (indB)when used remotely. The
+only valid values are2and10
+Dependencies Blanked inEXA, CXA andCXA- mifOption FSA (2 dB steps) isnotpresent. Ifblanked, attempts tosetit
+viaSCPI yield anerror
+Blanked inSA6210A
+Couplings When theattenuation step sizechanges, thecurrent mechanical attenuation value isadjusted (if
+necessary) tobequantized tothenew step size. That is,ifstep issetto10 dB, mech atten isincreased
+ifnecessary soitisamultiple of10 dB
+Preset EXA, CXA andCXA- m:10 dB (2 dB with Option FSA)
+Allother models: 2 dB
+State Saved Saved ininstrument state
+3.1.3.3SignalPath
+Contains controls thatpertain totherouting ofthesignal through thefront endof
+theinstrument.
+Ingeneral, only appears ininstruments whose hardware supports thissignal
+routing. Forexample, thisgroup does notappear inmany modular instrument
+products, including VXTModel M9420A, orUXM.
+Thisgroupdoes appear inVXTModels M9410A/11A/15A/16A and
+M9410E/11E/15E/16E, because Software Preselection isinthisgroup, andVXT
+Models M9410A/11A/15A/16A andM9410E/11E/15E/16E implement aversion of
+Software Preselection .
+PreselAdjust
+Lets youmanually adjust thepreselector filter frequency tooptimize itsresponse to
+thesignal ofinterest. Only available when Presel Center isavailable.
+Forgeneral purpose signal analysis, using Presel Center isrecommended. Centering
+thefilter minimizes theimpact oflong- term preselector drift. Presel Adjust canbe
+used instead tomanually optimize thepreselector. Oneapplication ofmanual
+optimization would betopeak thepreselector response, which both optimizes the
+signal- to-noise ratio andminimizes amplitude variations duetosmall (short- term)
+preselector drifting.
+When Presel Center isperformed, theoffset applied todothecentering becomes
+thenew value ofPresel Adjust .
+Remote Command [:SENSe]:POWer [:RF]:PADJust <freq>
+Analog Demod Mode User's & Programmer's Reference 188
+=== PAGE 189 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+[:SENSe]:POWer [:RF]:PADJust?
+ForSA6210A Opt002:
+[:SENSe]:POWer [:RF]|:RF2:PADJust <freq>
+[:SENSe]:POWer [:RF]|:RF2:PADJust?
+Example :POW:PADJ 100KHz
+:POW:PADJ?
+Notes Thevalue onthecontrol isdisplayed to0.1 MHz resolution
+Dependencies –Does notappear inCXA- m
+–Does notappear inVXTModels M9410A/11A/15A/16A
+–Does notappear inM9410E/11E/15E/16E
+–Grayed- outifmicrowave preselector isoff
+–Grayed- outifentirely inBand 0,that is,ifStop Freq islower than about 3.6GHz
+–Grayed- outifentirely above 50 GHz, that is,ifStart ishigher than 50 GHz
+–Blank inmodels that donotinclude apreselector, such asOption 503. Ifthecommand issent in
+these instruments, itisaccepted without error, andthequery always returns 0
+–Grayed- outintheSpectrogram View
+Preset 0 MHz
+State Saved ThePresel Adjust value setbyPresel Center ,orbymanually adjusting Presel Adjust
+Notsaved ininstrument state, anddoes notsurvive aPreset orpower cycle
+Min/Max –/+500 MHz
+Backwards
+Compatibility SCPI[:SENSe]:POWer [:RF]:MW:PADJust
+[:SENSe]:POWer [:RF]:MMW:PADJust
+Backwards Compatibility Command
+Notes Thecommand hasnoeffect, andthequery always returnsMWAVe
+Backwards
+Compatibility
+SCPI[:SENSe]:POWer [:RF]:PADJust:PRESelector MWAVe|MMWave|EXTernal
+[:SENSe]:POWer [:RF]:PADJust:PRESelector?
+InternalPreamp
+Accesses amenu ofcontrols fortheinternal preamps. Turning onthepreamp gives
+abetter noise figure, butapoorer inter- modulation distortion (TOI) tonoise floor
+dynamic range. Youcanoptimize thissetting foryour measurement.
+189 Analog Demod Mode User's & Programmer's Reference
+=== PAGE 190 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+Theinstrument takes thepreamp gain intoaccount asitsweeps. Ifyousweep
+outside oftherange ofthepreamp, theinstrument willalsoaccount forthat. The
+displayed result always reflects thecorrect gain.
+Forsome measurements, when thepreamp isonandanypartofthedisplayed
+frequency range isbelow thelowest frequency forwhich thepreamp has
+specifications, awarning condition message appears inthestatus line. Forexample,
+forapreamp with a9 kHz lowest specified frequency: "Preamp: Accy unspec’d
+below 9kHz".
+Selection Example Note
+Off :POW:GAIN OFF
+Low Band :POW:GAIN ON
+:POW:GAIN:BAND
+LOWSets theinternal preamp touseonly thelowband. The
+frequency range oftheinstalled (optional) low- band
+preamp isdisplayed insquare brackets ontheLow Band
+selection inthedropdown
+FullRange :POW:GAIN ON
+:POW:GAIN:BAND
+FULLSets theinternal preamp touseitsfullrange. Thelow
+band (0-3.6 GHz, 0-3.4 GHz, 0-3 GHz, depending on
+themodel) issupplied bythelowband preamp andthe
+frequencies above lowband aresupplied bythehigh
+band preamp
+Thefrequency range oftheinstalled (optional) low- band
+preamp isdisplayed insquare brackets ontheFull
+Range selection inthedropdown. Ifthehigh band
+option isnotinstalled, theFullRange selection does not
+appear
+NOTE Themaximum Centerfrequency forLowBand,displayed insquarebrackets,
+canchangebasedontheselectedIFBWformeasurements thatsupportIFBW
+(forexample,Waveform measurement acrossallModesthatsupportit).In
+certainmodels(suchasN9042B&N9032B), IFBWvalues<=40 MHzhavea
+maximum LowBandfrequency of3.6 GHz,while40 MHz<IFBW<=1 GHz
+haveamaximum of3.3 GHz,and1 GHz<IFBW<=1.5 GHzhaveamaximum of
+3.5 GHz.IFBWvalues>1.5 GHzdonotsupportaCenterfrequency thatcan
+reachtheLowBandmaximum frequency. Inthesecases,N/Aisdisplayed inthe
+squarebracketsforLowBand.
+Remote Command [:SENSe]:POWer [:RF]:GAIN:BAND LOW|FULL
+[:SENSe]:POWer [:RF]:GAIN:BAND?
+Example :POW:GAIN:BAND LOW
+:POW:GAIN:BAND?
+Dependencies Notavailable onallhardware platforms. Ifthepreamp isnotpresent orisunlicensed, thiscontrol is
+notshown
+Does notappear inVXTModels M9410A/11A/15A/16A, M9410E/11E/15E/16E
+Notavailable inSA6210A
+Analog Demod Mode User's & Programmer's Reference 190
+=== PAGE 191 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+If:POW:GAIN:BAND FULL issent when alowband preamp isavailable, thepreamp band
+parameter issettoLOW instead ofFULL ,andan"Option notinstalled" message isgenerated
+Notavailable when theelectronic/soft attenuator isenabled
+Preset LOW
+State Saved Saved ininstrument state
+Annotation When theUSB Preamp isnotconnected toUSB, thePreamp annotation intheMeas Barsays “Off” if
+thepreamp isoffanddisplays thefrequency range ofthelowband orfullrange preamp depending on
+thesetting. Forexample, ifthePreamp issettoLow Band andtheLow Band is3.6 GHz theannotation
+says “3.6 GHz”. Ifitisa13.6 GHz preamp anditissettoFullRange theannotation says “13.6 GHz”
+When theUSB Preamp isconnected toUSB, thePreamp annotation says “Preamp: USB” ifthe
+internal preamp isoffor“Preamp: USB, Int”iftheinternal preamp ison(only formeasurements that
+support theUSB preamp)
+Auto Function
+Remote Command [:SENSe]:POWer [:RF]:GAIN [:STATe] OFF|ON|0|1
+[:SENSe]:POWer [:RF]:GAIN [:STATe]?
+Example :POW:GAIN OFF
+:POW:GAIN?
+Preset OFF
+µWPathControl
+Options forthiscontrol include µWPreselector Bypass (Option MPB), LowNoise
+Path (Option LNP) andFullBypass Enable intheHigh Band path circuits.
+When theµWPreselector isbypassed, flatness isimproved, butwillbesubject to
+spurs from outofband interfering signals. When LowNoise Path Enable isselected,
+theinstrument automatically bypasses certain circuitry inthehigh frequency bands
+thatcancontribute tonoise, when itisappropriate based onother instrument
+settings.
+Formost applications, thepreset state isStandard Path,which provides thebest
+remote- control throughput, minimizes acoustic noise from switching andminimizes
+theriskofwear inthehardware switches, particularly inremote testscenarios where
+both lowband andhigh band setups willfollow inrapid succession. Inthispath, the
+bypass ofthelowband/high band switch andmicrowave preamp isnever activated,
+which cancause some noise degradation butpreserves thelifeofthebypass switch.
+Forapplications thatutilize thewideband IFpaths, thepreset state isµW
+Preselector Bypas s,ifoption MPB ispresent. Thisisbecause, when using a
+wideband IFsuch asthe140MHz IF,theµWPreselector’s bandwidth canbe
+narrower than theavailable IFbandwidth, causing degraded amplitude flatness and
+phase linearity, soitisdesirable tobypass thepreselector inthedefault case.
+191 Analog Demod Mode User's & Programmer's Reference
+=== PAGE 192 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+Youmay choose LowNoise Path Enable foralower noise floor, especially inthe21-
+26.5 GHz region, though without improving many measures ofdynamic range, and
+without giving thebest possible noise floor. Thepreamp, ifpurchased andused,
+gives better noise floor than does LowNoise Path Enable ,butthepreamp’s
+compression threshold andthird- order intercept aremuch poorer than thatofLow
+Noise Path Enable .
+Afourth choice isFullBypass Enable ,which combines µWPreselector Bypass and
+LowNoise Path Enable .Because thiscanbypass most ofthecircuitry between the
+input andthefirstmixer, care should betaken when using thissetting toavoid
+damaging themixer. FullBypass Enable isonly available ifboth options LNP and
+MPB arepresent, aswellasoption FBP.
+Path SCPI Note
+Standard Path STD Normal setting formost measurements. µWPreselector in
+circuit, Low Noise Path disabled
+Low Noise Path
+EnableLNPath See"Low Noise Path Enable" onpage 198
+Notavailable inSA6210A
+µWPreselector
+BypassMPBypass See"µW Preselector Bypass" onpage 200
+FullBypass Enable FULL See"Full Bypass Enable" onpage 201
+Notavailable inSA6210A
+Wideband
+Preselector EnableWPR See"Wideband Preselector Enable "onpage 202
+Available only inSA6210A
+Remote Command [:SENSe]:<meas>:POWer:MWPath STD|LNPath|MPBypass|FULL|WPReselector
+[:SENSe]:<meas>:POWer:MWPath?
+Example Enable theLow Noise path:
+:POW:MWP LNP
+:POW:MWP?
+Notes When Presel Center isperformed, theinstrument momentarily switches totheStandard Path,
+regardless ofthesetting ofµWPath Control
+TheDCBlock willalways beswitched inwhen thelownoise path isswitched in,toprotect succeeding
+circuitry from DC.Note that thisdoes notmean “when thelownoise path isenabled” butwhen, based
+ontheLow Noise Path rules, thepath isactually switched in.This canhappen when theselection is
+Low Noise Path Enable orFullBypass Enable .Inthecase where theDCBlock isswitched in,the
+instrument isnow AC-coupled. However, ifyouselected DCcoupling, theUIwould stillbehave as
+though itwere DC-coupled, including allannunciation, warnings, status bits, andresponses toSCPI
+queries. This isbecause, based onother settings, theinstrument could switch outthelownoise path
+atanytime andhence goback tobeing DC-coupled
+Alignment switching ignores thesettings inthismenu, andrestores them when finished
+Dependencies Does notappear inCXA- m,VXTModels M9410A/11A/15A/16A, norinM9410E/11E/15E/16E, BBIQ
+andExternal Mixing
+–Low Noise Path Enable does notappear unless Option LNP ispresent andlicensed
+Analog Demod Mode User's & Programmer's Reference 192
+=== PAGE 193 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+–µWPreselector Bypass does notappear unless Option MPB ispresent andlicensed
+–FullBypass Enable does notappear unless options LNP andMPB areboth present aswell as
+option FBP
+–Wideband Preselector Enable only appears inSA6210A
+Inanyofthese cases, iftherequired options arenotpresent andtheSCPI command issent, error -
+241, "Hardware missing; Option notinstalled" isgenerated
+Low Noise Path Enable andFullBypass Enable aregrayed- outifthecurrent measurement does not
+support them
+Low Noise Path Enable andFullBypass Enable arenotsupported inAvionics andMMR Modes (non-
+modulation measurements). Inanyofthese cases (that is,thefeature isnotsupported ineither
+measurement orMode), iftheSCPI command issent, thefollowing error isgenerated: -221, “Setting
+Conflict; Feature notsupported forthismeasurement”
+Sending theSCPI command toaport that isunavailable issues theerror -241, “Hardware missing; not
+available forthismodel number”
+Preset Mode Value
+IQAnalyzer
+Pulse
+RTSA
+AvionicsMPB option present andlicensed:MPB
+MPB option notpresent andlicensed:STD
+Allother
+ModesSTD
+Or,depends onauto- rulewhen “µW Path Control Auto State” isavailable andits
+Preset value isAuto
+State Saved Save ininstrument state
+Range Standard Path |Low Noise Path Enable |µWPresel Bypass |FullBypass Enable |Wideband
+Preselector Enable
+Annotation IntheMeas Bar, iftheStandard path ischosen:
+µWPath: Standard
+IfLow Noise Path isenabled buttheLNP switch isnotthrown:
+µWPath: LNP,Off
+IftheLow Noise Path isenabled andtheLNP switchisthrown:
+µWPath: LNP,On
+Ifthepreselector isbypassed:
+µWPath: Bypass
+IfFullBypass Enable isselected buttheLNP switch isnotthrown:
+µWPath: FByp,Off
+IfFullBypass Enable isselected andtheLNP switchisthrown:
+µWPath: FByp,On
+IfWideband Preselector Enable isselected:
+µWPath: WB
+193 Analog Demod Mode User's & Programmer's Reference
+=== PAGE 194 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+Backwards
+Compatibility SCPICommand #1:
+[:SENSe]:POWer [:RF]:MW:PATH STD|LNPath|MPBypass|FULL
+[:SENSe]:POWer [:RF]:MW:PATH?
+Thecommand applies thespecified value toallmeasurements intheMode. Thequery returns the
+current measurement’s value
+Command #2:
+[:SENSe]:<meas>:POWer:MW:PATH STD|MPBypass |WPReselector
+[:SENSe]:<meas>:POWer:MW:PATH?
+FortheSwept SAmeasurement inSAMode only:
+Most SCPI commands fortheSwept SAmeasurement donothave a<meas> node, butforthis
+setting,SAN (orSANalyzer inlong form) isrequired tospecify thetarget measurement ofthe
+command
+IfSANalyzer isomitted from thiscommand, itisinterpreted asaBackwards Compatibility
+Command #1above, which hasadifferent behavior
+µWPathControlAuto
+InVMA, WLAN, 5GNR,CQM Modes, anAuto/Man switch isadded toµWPath
+Control :
+Thisallows thefunction toautomatically switch based oncertain Auto Rules as
+shown below:
+VMA Mode (Allexcept SA6210A)
+Measurement µWPath Control Auto behavior
+Digital Demod UseStandard Path unless tuned frequency >3.6 GHz andIFBW >15 MHz, in
+which case choose Preselector Bypass
+Monitor Spectrum Always Presel Bypass
+IQWaveform UseStandard Path unless tuned frequency >3.6 GHz andIFBW > 15 MHz, in
+which case choose Preselector Bypass
+Custom OFDM UseStandard Path unless tuned frequency >3.6 GHz andIFBW >15 MHz, in
+which case choose Preselector Bypass
+Channel Power Always Presel Bypass
+Occupied BW Always Presel Bypass
+CCDF UseStandard Path unless tuned frequency >3.6 GHz andIFBW >15 MHz, in
+Analog Demod Mode User's & Programmer's Reference 194
+=== PAGE 195 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+Measurement µWPath Control Auto behavior
+which case choose Preselector Bypass
+ACP Always Presel Bypass
+SEM Always Presel Bypass
+Spurious
+EmissionsAlways Standard Path
+VMA Mode (SA6210A)
+Measurement µWPath Control Auto behavior
+Monitor Spectrum UseStandard Path unless RBW >15MHz, otherwise select Wideband
+Preselector
+IQWaveform Iftuned frequency <=8.4 GHz, useStandard Path
+Iftuned frequency >8.4GHz, useWideband Preselector unless IFBW >1GHz
+or9.5GHz <tuned frequency <12.5 GHz
+Channel Power UseStandard Path unless RBW >15MHz, otherwise select Wideband
+Preselector
+Occupied BW UseStandard Path unless RBW >15MHz, otherwise select Wideband
+Preselector
+CCDF Iftuned frequency <=8.4 GHz, useStandard Path
+Iftuned frequency >8.4GHz, useWideband Preselector unless IFBW >1GHz
+or9.5GHz <tuned frequency <12.5 GHz
+ACP UseStandard Path unless RBW >15MHz, otherwise select Wideband
+Preselector
+SEM UseStandard Path unless RBW >15MHz, otherwise select Wideband
+Preselector
+Spurious
+EmissionsUseStandard Path unless RBW >15MHz, otherwise select Wideband
+Preselector
+WLAN Mode
+Measurement µWPath Control Auto behavior
+Modulation
+AnalysisAlways Presel Bypass
+Spectral Flatness Always Presel Bypasss
+Power vsTime Always Presel Bypass
+Monitor Spectrum Always Presel Bypass
+IQWaveform Always Presel Bypass
+Channel Power Always Presel Bypass
+Occupied BW Always Presel Bypass
+CCDF Always Presel Bypass
+SEM For11be 320M, when ‘Enabled Wideband IFforFFT’ isOFF or‘Sweep Type
+195 Analog Demod Mode User's & Programmer's Reference
+=== PAGE 196 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+Measurement µWPath Control Auto behavior
+Rule’ isBest Dynamic Range, auto µWpath isstandard
+Forother cases, auto µWpath ispresel bypass ifpresel bypass isenabled, auto
+µWpath isstandard ifpresel bypass isnotenabled
+Spurious
+EmissionsAlways Standard Path
+5GNRMode
+Measurement µWPath Control Auto behavior
+Modulation
+AnalysisUseStandard Path unless tuned frequency >3.6 GHz andIFBW >15 MHz, in
+which case choose FullBypass ifconditions warrant (FBP Option isavailable
+and“Allow FullBypass inAuto” isOn),otherwise choose Preselector Bypass
+Monitor Spectrum Always Standard Path
+IQWaveform UseStandard Path unless tuned frequency >3.6 GHz andIFBW >15 MHz, in
+which case choose FullBypass ifconditions warrant (FBP Option isavailable
+and“Allow FullBypass inAuto” isOn),otherwise choose Preselector Bypass
+Channel Power Always Standard Path
+Occupied BW Always Standard Path
+CCDF UseStandard Path unless tuned frequency >3.6 GHz andIFBW >15 MHz, in
+which case choose Preselector Bypass
+ACP Always Standard Path
+SEM Always Standard Path
+Spurious
+EmissionsAlways Standard Path
+Transmit On|Off
+PowerUseStandard Path unless tuned frequency >3.6 GHz andInfoBW>15 MHz, in
+which case choose Preselector Bypass
+5GNRMode (SA6210A)
+Measurement µWPath Control Auto behavior
+Modulation
+AnalysisIftuned frequency <=8.4 GHz, useStandard Path
+Iftuned frequency >8.4GHz, useWideband Preselector unless IFBW >1GHz
+or9.5GHz <tuned frequency <12.5 GHz
+Monitor Spectrum UseStandard Path unless RBW >15MHz, otherwise select Wideband
+Preselector
+IQWaveform Iftuned frequency <=8.4 GHz, useStandard Path
+Iftuned frequency >8.4GHz, useWideband Preselector unless IFBW >1GHz
+or9.5GHz <tuned frequency <12.5 GHz
+Channel Power UseStandard Path unless RBW >15MHz, otherwise select Wideband
+Preselector
+Occupied BW UseStandard Path unless RBW >15MHz, otherwise select Wideband
+Preselector
+Analog Demod Mode User's & Programmer's Reference 196
+=== PAGE 197 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+Measurement µWPath Control Auto behavior
+CCDF Iftuned frequency <=8.4 GHz, useStandard Path
+Iftuned frequency >8.4GHz, useWideband Preselector unless IFBW >1GHz
+or9.5GHz <tuned frequency <12.5 GHz
+ACP UseStandard Path unless RBW >15MHz, otherwise select Wideband
+Preselector
+SEM UseStandard Path unless RBW >15MHz, otherwise select Wideband
+Preselector
+Spurious
+EmissionsUseStandard Path unless RBW >15MHz, otherwise select Wideband
+Preselector
+Transmit On|Off
+PowerIftuned frequency <=8.4 GHz, useStandard Path
+Iftuned frequency >8.4GHz, useWideband Preselector unless IFBW >1GHz
+or9.5GHz <tuned frequency <12.5 GHz
+Channel Quality Mode
+Measurement µWPath Control Auto behavior
+Group Delay UseStandard Path unless tuned frequency >3.6 GHz andIFBW >15 MHz, in
+which case choose FullBypass ifconditions warrant (FBP Option isavailable and
+“Allow FullBypass inAuto” isOn),otherwise choose Preselector Bypass
+Monitor Spectrum Always Standard Path
+IQWaveform UseStandard Path unless tuned frequency >3.6 GHz andIFBW >15 MHz, in
+which case choose Preselector Bypass
+CCDF UseStandard Path unless tuned frequency >3.6 GHz andIFBW >15 MHz, in
+which case choose Preselector Bypass
+Auto Function
+Remote Command [:SENSe]:<meas>:POWer:MWPath:AUTO ON|OFF|1|0
+[:SENSe]:<meas>:POWer:MWPath:AUTO?
+Example :POW:MWP:AUTO ON
+:POW:MWP:AUTO?
+Dependencies Only appears inVMA, WLAN, 5GNRandCQM Modes
+Sending thecommand toaport that isunavailable generates error –241, “Hardware missing; not
+available forthismodel number”
+Couplings See"µW Path Control Auto" onpage 194above
+Preset ON
+Range ON|OFF
+Backwards
+Compatibility SCPICommand #1:
+[:SENSe]:POWer [:RF]:MW:PATH:AUTO ON|OFF|1|0
+[:SENSe]:POWer [:RF]:MW:PATH:AUTO?
+197 Analog Demod Mode User's & Programmer's Reference
+=== PAGE 198 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+Thecommand sets thespecified value toallmeasurements intheMode. Thequery returns thecurrent
+measurement’s value
+Command #2:
+[:SENSe]:<meas>:POWer:MW:PATH:AUTO ON|OFF|1|0
+[:SENSe]:<meas>:POWer:MW:PATH:AUTO?
+FortheSwept SAmeasurement inSAMode only:
+Most SCPI commands fortheSwept SAmeasurement donothave a<meas> node, butforthis
+setting,SAN (orSANalyzer inlong form) isrequired tospecify thetarget measurement ofthe
+command
+!IfSANalyzer isomitted from thiscommand, itisinterpreted asBackwards Compatibility
+Command #1shown above, which hasadifferent behavior
+LowNoisePathEnable
+SCPI:LNPath
+Provides alower noise floor under some circumstances, particularly when operating
+inthe21–26.5 GHz region. With theLowNoise Path enabled, thelowband/high
+band switch andmicrowave preamp arebypassed whenever allthefollowing are
+true:
+–Theinstrument isnotintheLowBand, meaning:
+–thestart frequency isabove 3.5 GHz and
+–thestop frequency isabove 3.6 GHz
+–Theinternal preamp isnotinstalled, orifinstalled, issettoOfforLowBand
+Note thatthismeans that, when anypartofasweep isdone inLowBand, theLow
+Noise Path isnotused, whether ornottheLowNoise Path Enable isselected inthe
+user interface. Also, ifthepreamp isturned on,theLowNoise Path isnotused,
+whether ornottheLowNoise Path Enable isselected intheuser interface. Theonly
+time theLowNoise Path isused iswhen LowNoise Path Enable isselected, the
+sweep iscompletely inHigh Band (>3.6GHz) andnopreamp isinuse.
+Formeasurements thatuseIQacquisition, thelownoise path isused when Center
+Frequency isinHigh Band (>3.6 GHz), andnopreamp isinuse.Inother words, the
+rules above aremodified touseonly thecenter frequency toqualify which path to
+switch in.Thisisnotthecase forFFTs intheSwept SAmeasurement; they usethe
+same rules asswept measurements.
+Note thattheLowNoise Path, while giving improved DANL, hasthedisadvantage of
+decreased TOIperformance anddecreased gain compression performance relative
+tothestandard path.
+Analog Demod Mode User's & Programmer's Reference 198
+=== PAGE 199 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+Note alsothatthebypass switch isamechanical switch andhasfinite life,soifthe
+LowNoise Path Enable isselected, itispossible tocause frequent cycling ofthis
+switch byfrequently changing instrument settings such thattheabove conditions
+hold trueonly some ofthetime. Auser making tests ofthisnature should consider
+opting fortheStandard Path,which willnever throw thebypass switch, atthe
+expense ofsome degraded noise performance.
+Thelownoise path isuseful forsituations where thesignal level issolowthatthe
+instrument performance isdominated bynoise even with 0dBattenuation, butstill
+high enough thatthepreamp option would have excessive third- order
+intermodulation orcompression. Thepreamp, ifpurchased andused, gives better
+noise floor than does the“Low Noise Path.” However, itscompression threshold and
+third- order intercept aremuch poorer than thatofthenon- preamp path.
+There aresome applications, typically forsignals around −30 dBm, forwhich the
+third- order dynamic range ofthestandard path isgood enough, butthenoise floor
+isnotlowenough even with 0 dB input attenuation. When thethird- order dynamic
+range ofthepreamp path istoolittle andthenoise floor ofthestandard path istoo
+high, theLowNoise Path canprovide thebest dynamic range
+Thegraph below illustrates theconcept. Itshows, inred,theperformance ofan
+instrument atdifferent attenuation settings, both with thepreamp onandoff,ina
+measurement thatisaffected byboth instrument noise andinstrument TOI.The
+green shows thebest available dynamic range, offset by0.5 dB forclarity. Theblue
+shows how thebest available dynamic range improves formoderate signal levels
+with thelownoise path switched in.Inthisillustration, thepreamp improves the
+noise floor by15 dB while degrading thethird- order intercept by30 dB, andthelow
+noise path reduces lossby8 dB. Theattenuator step sizeis2 dB.
+199 Analog Demod Mode User's & Programmer's Reference
+=== PAGE 200 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+There areother times where selecting thelownoise path improves performance,
+too.Compression- limited measurements such asfinding thenulls inapulsed- RF
+spectrum canprofit from thelownoise path inawaysimilar totheTOI-limited
+measurement illustrated. Accuracy canbeimproved when thelownoise path allows
+theoptimum attenuation toincrease from asmall amount like0,2or4 dB toa
+larger amount, giving better return lossattheinstrument input. Harmonic
+measurements, such assecond andthird harmonic levels, aremuch improved using
+thelownoise path because ofthesuperiority ofthatpath forharmonic (though not
+intermodulation) distortion performance.
+µWPreselector Bypass
+SCPI:MPBypass
+Toggles thepreselector bypass switch forband 1andhigher. When themicrowave
+presel ison,thesignal path ispreselected. When themicrowave preselector isoff,
+thesignal path isnotpreselected. Thepreselected path isthenormal path forthe
+instrument.
+Thepreselector isatunable bandpass filter which prevents signals away from the
+frequency ofinterest from combining inthemixer togenerate in-band spurious
+signals (images). Theconsequences ofusing apreselector filter areitslimited
+bandwidth, theamplitude andphase ripple initspassband, andanyamplitude and
+phase instability duetocenter frequency drift.
+Analog Demod Mode User's & Programmer's Reference 200
+=== PAGE 201 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+Option MPB orpre-selector bypass provides anunpreselected input mixer path for
+certain X-Series signal analyzers with frequency ranges above 3.6 GHz. Thissignal
+path allows awider bandwidth andlessamplitude variability, which isanadvantage
+when doing modulation analysis andbroadband signal analysis. Thedisadvantage is
+that, without thepreselector, image signals willbedisplayed. Another disadvantage
+ofbypassing thepreselector isincreased LOemission levels atthefront panel input
+port.
+Image responses areseparated from therealsignal bytwice the1stIF.ForIFPaths
+of10 MHz and25 MHz, the1stIFis322.5 MHz, sotheimage response andthereal
+signal willbeseparated by645 MHz. The1stIFwillbedifferent forother IFPath
+settings. When viewing arealsignal anditscorresponding image response in
+internal mixing, theimage response willbetotheleftoftherealsignal.
+Also, theimage response andtherealsignal typically have thesame amplitude and
+exhibit thesame shape factor.
+However, ifOption FS1(Fast Sweep Capability) isenabled, theimage response in
+theSwept SAmeasurement appears lower inamplitude andhasamuch wider
+shape factor compared totherealsignal.
+FullBypassEnable
+SCPI:FULL
+Themicrowave preselector isbypassed. Inaddition, thelowband/high band switch
+andmicrowave preamp arebypassed whenever allthefollowing aretrue:
+–Theinstrument isnotintheLowBand, meaning:
+–thestart frequency isabove 3.5GHz and
+–thestop frequency isabove 3.6GHz.
+–theinternal preamp isnotinstalled orifinstalled, issettoOfforLowBand
+Note thatthismeans that, when anypartofasweep isdone inLowBand, theLow
+Noise Path isnotused, whether ornottheFullBypass Enable isselected intheuser
+interface. Also, ifthepreamp isturned on,theLowNoise Path isnotused, whether
+ornottheFullBypass Enable isselected intheuser interface. Theonly time theLow
+Noise Path isused iswhen FullBypass Enable isselected, thesweep iscompletely in
+High Band (>3.6 GHz) andnopreamp isinuse.
+CAUTION WhenFullBypassEnableisselected,and"YScale"onpage524issetto0 dB,
+therewillbeadirectACconnection betweentheinputandthefirstconverter
+whentheLowNoisePathswitchesin(whenStartFreq>3.6 GHz andthe
+Preampiseithernotlicensed,settoLowBand,orOff).Thisputsthefirst
+201 Analog Demod Mode User's & Programmer's Reference
+=== PAGE 202 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+converter atconsiderable riskofbeingdamaged byhighACpower.
+Consequently, whenever FullBypassEnableisselected,awarningmessage
+appearsinthestatusbar:
+“FullBypassEnabled,maximum safeinputpowerreduced”
+Wideband Preselector Enable
+InSA6210A, theWideband Preselector canbeselected. When itisselected, the
+signal path isswitched toafilter bank with a1GHz analysis bandwidth. Ifthe
+analysis bandwidth issettoexceed 1GHz, thefilter bank isbypassed.
+Thefilter bank isacollection ofbandpass filters thatdecompose theinput signal
+intomultiple frequency bands.
+Microwave Preselector BypassBackwards Compatibility
+Notes Included forMicrowave Preselector Bypass backwards compatibility
+TheONparameter sets theSTD path (:POW:MW:PATH STD)
+TheOFF parameter sets pathMPB (:POW:MW:PATH MPB)
+Preset ON
+Backwards
+Compatibility
+SCPI[:SENSe]:POWer [:RF]:MW:PRESelector [:STATe] ON|OFF|0|1
+[:SENSe]:POWer [:RF]:MW:PRESelector [:STATe]?
+Backwards
+Compatibility
+SCPI ExampleBypass themicrowave preselector:
+:POW:MW:PRES OFF
+Frequency Extender Preselection Bypass
+Only applies tothehigh frequency path oftheFrequency Extender, andonly ifthe
+Frequency Extender allows it.Forexample, theV3050A high frequency path is50–
+110 GHz anddoes allow control ofthepreselector bypass.
+When theFrequency Extender’s preselection isbypassed, flatness isimproved, but
+willbesubject tospurs from out-of-band interfering signals. Forbandwidths greater
+than 2.5 [GHz], itisrecommended thatthesignal bypass theFrequency Extender
+Preselector since themax bandwidth ofthePreselector canbeasnarrow as2.5 
+[GHz].
+Formost applications, thepreset state isOFF,which gives thebest remote- control
+throughput, minimizes acoustic noise from switching, minimizes outofband spurs,
+andminimizes theriskofwear inthehardware switches.
+Analog Demod Mode User's & Programmer's Reference 202
+=== PAGE 203 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+Preselector andBandwidth Conflict
+When theFrequency Extender Preselector isapplied andthesignal bandwidth is
+greater than 2.5[GHz], then asettings alert message willshow towarn theuser that
+thesignal may bedistorted duetothelimitation oftheFrequency Extender
+Preselector bandwidth.
+Anexample ofthesettings alert message isshown below.
+Settings Alert message intheStatus Baratthebottom ofthedisplay.
+Settings Alert message intheerror queue
+3.1.4BW
+3.1.4.1Settings
+Contains thebasic Bandwidth functions. Inmost measurements itistheonly tab
+under Bandwidth.
+RFResBW
+Activates theRFResBWfunction, which enables youtomanually settheresolution
+bandwidth used intheRFSpectrum window.
+Normally, theRFResBW(Auto) control selects automatic coupling oftheresolution
+bandwidth. Todecouple theresolution bandwidth, press theRFResBWcontrol
+until Man isselected, orenter adifferent value fortheresolution bandwidth.
+When theresolution bandwidth ismanually selected, itmay bereturned tothe
+coupled state bypressing theRFResBWcontrol until Auto isselected. Thismay
+alsobedone bypressing theAuto Couple control orbyperforming apreset.
+Only theGaussian filter type isused.
+Remote [:SENSe]:AM:BANDwidth [:RESolution] <bandwidth>
+203 Analog Demod Mode User's & Programmer's Reference
+=== PAGE 204 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+Command [:SENSe]:AM:BANDwidth [:RESolution]?
+Example :AM:BAND 5.1kHz
+:AM:BAND?
+Notes Only certain discrete resolution bandwidths areavailable. Fornumeric entries, allRBW Types choose
+thenearest (arithmetically, onalinear scale, rounding up)available RBW tothevalue entered
+Couplings When theRFResBWissettoAuto, theresolution bandwidth isauto- coupled tothespan. ForAM,FM
+andPM,theratio ofSpan/RBW isapproximately 106:1 when auto coupled, andtherange forauto-
+coupling isrestricted tonotexceed 3MHz. ForFMStereo, theRFResBWiscoupled toSpan inthe
+following ways:
+–RBW =Span/500, when Span >500 kHz
+–RBW =1kHz, when Span >=100kHzandSpan <=500kHz
+–RBW =Span/100, when Span <100kHz
+When theRFResBWissettoMan, andthebandwidths areentered manually, these bandwidths are
+used regardless ofother instrument settings
+Preset 680Hz
+State Saved Saved ininstrument state
+Min 1Hz
+Max 8MHz
+Annotation A“#”mark appears before “RFResBW” intheannotation when itisswitched from Auto toManual
+coupling
+Remote Command [:SENSe]:AM:BANDwidth [:RESolution]:AUTO ON|OFF|1|0
+[:SENSe]:AM:BANDwidth [:RESolution]:AUTO?
+Example :AM:BAND:AUTO ON
+:AM:BAND:AUTO?
+Preset Auto
+Channel BW
+Used todetermine thebandwidth used forthedemodulation. Theflattopfilter type
+must beused fordemodulation.
+Thisparameter alsocontrols theRBW hardware setting forthedemodulation fedto
+thespeaker.
+Remote Command [:SENSe]:AM:BANDwidth:CHANnel <freq>
+[:SENSe]:AM:BANDwidth:CHANnel?
+Example :AM:BAND:CHAN 200kHz
+:AM:BAND:CHAN?
+Analog Demod Mode User's & Programmer's Reference 204
+=== PAGE 205 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+Notes IftheChannel BWisgreater than 8MHz, awarning message “Settings Alert; Analog Output
+Undefined” isdisplayed
+Dependencies IntheAM,FMandPMmeasurements, themaximum value ofChannel BWdepends onthemaximum
+IFBWavailable intheinstrument anditisrestricted tonotexceed 160MHz atthesame time. For
+example, iftheinstrument hastheoptions B25, B40, andB1X installed, themaximum available IFBW
+oftheinstrument is140MHz. Thus, themaximum Channel BWisnotlimited to25MHz butis140
+MHz. Iftheinstrument hastheoption B2X (oroption B5X), themaximum available IFBWis255 MHz
+(or510MHz), butthemaximum value ofChannel BWis160 MHz
+Couplings Theacquisition time iscoupled totheChannel BW. AstheChannel BWchanges, theacquisition time
+ischanged tomaintain amplitude calibration
+Preset 25kHz
+State Saved Saved ininstrument state
+Min 390Hz
+Max Hardware- dependent:
+NoOption 10MHz
+Option B25 25MHz
+Option B40 40MHz
+Option B85 85.0 MHz
+Option B1A 125.0 MHz
+Option B1X 140MHz
+Option B1Y 160MHz
+Option B2X 160MHz
+Option B5X 160MHz
+M941xA- B3X 160MHz
+M941xA- B6X 160MHz
+M941xA- B12 160MHz
+AFResBW
+Activates theAFResBWfunction, which enables youtomanually settheresolution
+bandwidth oftheFFTofthedemodulated waveform intheAFSpectrum window.
+AFResBW(Auto) selects automatic coupling oftheAFResBWtotheAFSpan
+(defined asAFStop Freq –AFStart Freq) using thesame factor of106used bythe
+RFResBW. Todecouple theresolution bandwidth, press theAFResBWcontrol
+until Man isselected, orenter adifferent value fortheAFresolution bandwidth.
+When theAFresolution bandwidth ismanually selected, itmay bereturned tothe
+coupled state bypressing theAFResBWcontrol until Auto isselected. Thismay
+alsobedone bypressing theAuto Couple control orbyperforming aPreset.
+Only theGaussian filter type isused.
+205 Analog Demod Mode User's & Programmer's Reference
+=== PAGE 206 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+Remote
+Command[:SENSe]:AM:AFSPectrum:BANDwidth <freq>
+[:SENSe]:AM:AFSPectrum:BANDwidth?
+Example :AM:AFSP:BAND 1kHz
+:AM:AFSP:BAND?
+Notes Only certain discrete resolution bandwidths areavailable. Fornumeric entries, allRBW Types choose
+thenearest (arithmetically, onalinear scale, rounding up)available RBW tothevalue entered
+Couplings When theAFResBWissettoAuto, the3dBRBW ofthedesired filter istheclosest possible choice to
+that given bySpan divided by106(theSpan: 3dBRBW parameter), except that therange forauto-
+coupling isrestricted tonotexceed 3MHz
+When AFResBWissettoMan, andthebandwidths areentered manually, these bandwidths areused
+regardless ofother instrument settings
+Preset 180Hz
+State Saved Saved ininstrument state
+Min 1Hz
+Max 8MHz
+Annotation A“#”mark appears before “AFResBW” intheannotation when itisswitched from Auto toManual
+coupling
+Remote
+Command[:SENSe]:AM:AFSPectrum:BANDwidth:AUTO ON|OFF|1|0
+[:SENSe]:AM:AFSPectrum:BANDwidth:AUTO?
+Example :AM:AFSP:BAND:AUTO ON
+:AM:AFSP:BAND:AUTO?
+Preset Auto
+3.1.5Display
+3.1.5.1MeasDisplay
+Contains controls forsetting upthedisplay forthecurrent Measurement, View or
+Window.
+MetricsSettings
+Accesses amenu thatincludes a1-of-Nmenu thatallows youtocontrol which
+modulation magnitude metrics aredisplayed. Ifspeed isanissue, select only the
+metric (s)thatis(are) required. Ifmodulation magnitude issettoPeak+ Only, Pk-
+Pk/2 Only, orRMS Only, theother modulation magnitude metrics areloaded with
+notanumber andshow “---“ intheMetrics window.
+Remote :DISPlay:AM:VIEW:METRics:MMAGnitude ALL|PPK|PNPK|RMS|RMSRatio
+Analog Demod Mode User's & Programmer's Reference 206
+=== PAGE 207 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+Command :DISPlay:AM:VIEW:METRics:MMAGnitude?
+Example :DISP:AM:VIEW:METR:MMAG PPK
+Sets AMmodulation magnitude topeak +
+:DISP:AM:VIEW:METR:MMAG RMSR
+Sets ratio reference andsets AMmodulation magnitude toratio display
+Preset ALL
+State Saved Saved inState
+Normal
+Turns onallabsolute modulation magnitude metrics. Inthemetrics window, Peak +,
+Peak -,Pk-Pk/2 andRMS results areprovided.
+Example :DISP:AM:VIEW:METR:MMAG ALL
+Notes This control waslabeled “All” inearlier releases
+Peak+Only
+Turns onjustthePeak+ metric intheportion oftheMetrics window thatshows the
+modulation magnitude results.
+Example :DISP:AM:VIEW:METR:MMAG PPK
+Pk-Pk/2Only
+Turns onjustthePk-Pk/2 metric intheportion oftheMetrics window thatshows the
+modulation magnitude results.
+Example :DISP:AM:VIEW:METR:MMAG PNPK
+RMSOnly
+Turns onjusttheRMS metric intheportion oftheMetrics window thatshows the
+modulation magnitude results.
+Example :DISP:AM:VIEW:METR:MMAG RMS
+RMSRatio
+Turns ontheRMS Ratio metric intheMetrics window. Inthismode, theonly
+magnitude metrics thataredisplayed aretheRMS metrics, butbesides thedisplay
+ofRMS, theratio (indB)oftheRMS modulation toitsreference isdisplayed, aswell
+asthevalue ofthereference, asshown inthedisplay below:
+207 Analog Demod Mode User's & Programmer's Reference
+=== PAGE 208 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+Selecting RMS Ratio (orsending :DISP:AM:VIEW:METR:MMAG RMSR) establishes
+thereference. Selecting itagain (orsending theSCPI command again) establishes a
+new reference. IftheReference Selection isMeasured, thereference isfrom the
+previous measurement result, otherwise, itisfrom theoftheRatio Reference you
+entered. Whenever thishappens, thecurrent value oftheRMS modulation from the
+lefthand column (Current orAverage) istaken asthenew reference. If,when the
+ratio istobeestablished, there isnotavalid value being displayed touseasa
+reference, anerror isgenerated, theRMS Ratio andRatio Refvalues display ---and
+queries ofeither return notanumber (9.91 e37).
+Toturn offtheratio display, select oneoftheother modulation magnitude views.
+Note thateach measurement (AM, FMandPM)hasitsown reference; andthe
+reference isremembered when youleave themeasurement andreturn.
+Theratio references aresaved inState, andwhen therecalled state ofMetrics
+Settings isRMS Ratio, thesaved reference forthecurrent measurement should be
+recalled andused, rather than establishing anew one.
+Example :DISP:AM:VIEW:METR:MMAG RMSR
+Reference Selection
+Chooses thereference setting mode. IfMeasured (ON)isselected, thereference is
+from theprevious measurement result, otherwise, thereference isform theRatio
+Reference value youentered.
+IfMeasured (ON)isselected, pushing “RMS Ratio” does thefollowing:
+1.selects RMS Ratio astheMetrics Setting;
+2.establishes theRMS Ratio reference from previous measurement result
+3.displays theratio reference value instep 2onthe“Ratio Reference” label text
+IfManual (OFF)isselected, pushing “RMS Ratio” does thefollowing:
+Analog Demod Mode User's & Programmer's Reference 208
+=== PAGE 209 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+1.selects RMS Ratio astheMetrics Setting
+2.establishes theRMS Ratio reference from “Ratio Reference” label value what you
+entered
+Remote
+Command:DISPlay:AM:VIEW:METRics:MMAGnitude:REFerence:AUTO ON|OFF|1|0
+:DISPlay:AM:VIEW:METRics:MMAGnitude:REFerence:AUTO?
+Example :DISP:AM:VIEW:METR:MMAG:REF:AUTO OFF
+Sets thereference selection mode toManual
+Preset ON
+State Saved Saved ininstrument state
+RatioReference
+Sets ordisplays theRMS ratio reference value. Ifthereference selection mode is
+Measured, thiscontrol isgrayed outandthereference value thatistaken from the
+previous measurement result isdisplayed onthecontrol. Ifthereference selection is
+Manual, thiscontrol activates, andyoucanchange itsvalue asthereference.
+Remote
+Command:DISPlay:AM:VIEW:METRics:MMAGnitude:REFerence <real>
+:DISPlay:AM:VIEW:METRics:MMAGnitude:REFerence?
+Example :DISP:AM:VIEW:METR:MMAG:REF 1kHz
+:DISP:AM:VIEW:METR:MMAG:REF?
+Notes IfMeasured isselected, thiscontrol isgrayed- outanditsvalue depends ontheprevious measurement
+results
+IfManual isselected, activates using thevalue that youentered
+Preset 10%
+State Saved Yes
+Min 0.01 %
+Max 10000 %
+SetReference
+Sets theratio reference value forRMS ratio calculation. Thisisthesame assending
+:DISP:AM:VIEW:METR:MMAG RMSR .
+Modulation Rate
+Toggles theModulation Rate metric onoroff.When on,theModulation Rate metric
+isprovided. When off,theModulation Rate metric issettoNotaNumber andshows
+“---“ intheMetrics window.
+209 Analog Demod Mode User's & Programmer's Reference
+=== PAGE 210 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+Remote Command :DISPlay:AM:VIEW:METRics:MRATe [:STATe] ON|OFF|1|0
+:DISPlay:AM:VIEW:METRics:MRATe [:STATe]?
+Example :DISP:AM:VIEW:METR:MRAT OFF
+Sets AMmodulation rate tooff
+Preset ON
+State Saved Saved ininstrument state
+SINAD&DistTHD
+Toggles thedistortion metrics (SINAD, Distortion, &THD) onandoff.When turned
+on,theSINAD, Distortion, andTHD metrics areprovided. When turned off,the
+SINAD, Distortion, andTHD metrics aresettonotanumber andshow “---“ inthe
+metric window.
+SINAD istheratio oftotal received power (thereceived signal- plus- noise- plus-
+distortion power) tothereceived noise- plus- distortion power. Itisalways expressed
+indecibel units. Therejection ofthecarrier from thenoise- plus- distortion power
+measurement isusually notmuch more than 50dB,thus limiting themaximum
+SINAD.
+THD istheratio oftherootmean square voltage oftheharmonics referenced tothe
+fundamental voltage, expressed in%ordB.Note thedifferences with respect to
+Distortion. Thedenominator oftheratio isdifferent andtheitems inthenumerator
+donotinclude thenoise between harmonics, justtheharmonics themselves.
+Distortion/Total Voltage (rms) istheratio ofunwanted received power (noise plus
+distortion) tothetotal received power, expressed in%ordB.Therefore, thismetric
+isthenegative ofSINAD when expressed indecibels.
+Remote
+Command:DISPlay:AM:VIEW:METRics:DISTortion [:STATe] ON|OFF|1|0
+:DISPlay:AM:VIEW:METRics:DISTortion [:STATe]?
+Example :DISP:AM:VIEW:METR:DIST OFF
+Sets AMSINAD, Distortion, THD Metrics tooff
+Preset ON
+State Saved Saved ininstrument state
+Distortion &THDUnit
+Changes theunits ofdistortion andTHD intheMetrics screen between %anddB
+units.
+Remote
+Command:DISPlay:AM:VIEW:DISTortion:UNIT DB|PCT
+:DISPlay:AM:VIEW:DISTortion:UNIT?
+Analog Demod Mode User's & Programmer's Reference 210
+=== PAGE 211 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+Example :DISP:AM:VIEW:DIST:UNIT PCT
+Sets AMdistortion andTHD display topercent
+Preset PCT
+State Saved Saved inState
+CarrierPowerUnit
+Enables youtochange theunits ofcarrier power intheMetrics screen between
+watts anddBm.
+Remote
+Command:DISPlay:FM:VIEW:CARRier:POWer:UNIT DBM|W
+:DISPlay:FM:VIEW:CARRier:POWer:UNIT?
+Example :DISP:FM:VIEW:CARR:POW:UNIT DBM
+Sets FMcarrier power display towatts
+Preset DBM
+State Saved Saved inState
+PowerUnit
+Chooses theunitofthepower readouts intheMetrics screen between watts and
+dBm.
+Remote Command :DISPlay:AM:VIEW:POWer:UNIT DBM|W
+:DISPlay:AM:VIEW:POWer:UNIT?
+Example :DISP:AM:VIEW:POW:UNIT DBM
+Sets AMpower display towatts
+Preset DBM
+State Saved Saved inState
+3.1.5.2View
+Contains controls forselecting thecurrent View ,andforediting User Views.
+Views
+There arefourpredefined views, asbelow:
+211 Analog Demod Mode User's & Programmer's Reference
+=== PAGE 212 ===
+3 Analog Demod Mode
+3.1 AMDemod Measurement
+View Result
+"Quad" onpage 160 RFSpectrum Graph
+Demod Waveform Graph
+AFSpectrum Graph
+Metrics
+"RFSpectrum" onpage 160 RFSpectrum Graph
+Metrics
+"Demod Waveform" onpage 160 Demod Waveform Graph
+Metrics
+"AFSpectrum" onpage 160 AFSpectrum Graph
+Metrics
+Some ofthese aremultiple- window Views. When inamultiple- window View, you
+select awindow bytouching it.Themenu controls may sometimes change
+depending onwhich window isselected.
+Whenever theView changes, thedefault menu isFrequency ,unless otherwise
+specified intheView description.
+View–Selection byEnum
+Remote
+Command:DISPlay:AM:VIEW [:SELect] QUAD|RFSPectrum |DEMod|AFSPectrum
+:DISPlay:AM:VIEW [:SELect]?
+Example Select theQuad view:
+:DISP:AM:VIEW QUAD
+Preset QUAD
+State Saved Saved ininstrument state
+UserView
+Lets youchoose aView from thesaved User Views forthecurrent measurement.
+Thispanel only appears ifaUser View exists forthecurrent measurement.
+Remote
+Command:DISPlay:VIEW:ADVanced:SELect <alphanumeric>
+:DISPlay:VIEW:ADVanced:SELect?
+Example Select Baseband asthecurrent View
+:DISP:VIEW:ADV:SEL “Baseband”
+Notes Youmust beinthemeasurement whose View youaretrying tosettosend thecommand. Youcanonly
+setViews forthecurrent measurement using thiscommand
+Forpredefined views, theparameter isderived from theview name that isshown intheView listinthe
+Analog Demod Mode User's & Programmer's Reference 212

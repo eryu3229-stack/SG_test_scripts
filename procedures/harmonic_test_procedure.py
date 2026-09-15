@@ -7,12 +7,26 @@
 
 import time
 from datetime import datetime
-import pandas as pd
 from base_test_procedure import BaseTestProcedure
 
 
 class HarmonicTestProcedure(BaseTestProcedure):
-    """谐波测试流程类"""
+    """谐波测试流程类（长表：每 (基波频率, 阶数) 一行）"""
+
+    TEST_TYPE = "harmonic"
+
+    FIELDNAMES = [
+        # A 区：标识与数值
+        "run_id", "test_type", "carrier_hz", "set_power_dbm",
+        "measured_power_dbm", "delta_db", "delta_ref",
+        # B 区：频谱仪采集条件
+        "sa_ref_level_dbm", "sa_input_att_db", "sa_att_mode",
+        "sa_span_hz", "sa_rbw_hz", "sa_vbw_hz", "sa_noise_floor_dbm",
+        # C 区：源专有
+        "harmonic_order", "harmonic_freq_hz", "fundamental_power_dbm", "detected",
+        # 判定与时间
+        "status", "note", "timestamp",
+    ]
 
     def __init__(self, instrument_manager):
         """初始化谐波测试流程
@@ -22,6 +36,7 @@ class HarmonicTestProcedure(BaseTestProcedure):
         """
         super().__init__(instrument_manager)
         self._output_enabled = False
+        self.run_id = ""
 
     def measure_harmonic_power(self, spectrum_analyzer, fundamental_freq, harmonic_order, sa_config, average_count=3, harmonic_config=None, sync_kwargs=None):
         """测量谐波功率
@@ -238,24 +253,33 @@ class HarmonicTestProcedure(BaseTestProcedure):
         else:
             harmonic_note = f"{harmonic_order}次谐波测量失败"
 
-        # 创建测试结果
+        # 创建测试结果（长表：每 (基波频率, 阶数) 一行）
         result = {
-            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'frequency_hz': frequency,
-            'frequency_mhz': frequency / 1e6,
-            'set_power_dbm': set_power,
-            'fundamental_power_dbm': fundamental_power,
-            'harmonic_power_dbm': harmonic_power,
-            'harmonic_suppression_dbc': harmonic_suppression,
-            'harmonic_detected': harmonic_detected,
-            'harmonic_floor_dbm': harmonic_floor,
-            'harmonic_note': harmonic_note,
-            'harmonic_order': harmonic_order,
-            'sa_attenuation_db': sa_config.get('attenuation', 10),
-            'sa_reference_level_db': sa_config.get('reference_level', 10),
-            'sa_span_hz': sa_config.get('span', 10e6),
-            'sa_rbw_hz': sa_config.get('rbw', 100e3),
-            'sa_vbw_hz': sa_config.get('vbw', 100e3),
+            # A 区：标识与数值
+            "run_id": getattr(self, "run_id", ""),
+            "test_type": self.TEST_TYPE,
+            "carrier_hz": frequency,
+            "set_power_dbm": set_power,
+            "measured_power_dbm": harmonic_power,
+            "delta_db": None if harmonic_suppression is None else round(harmonic_suppression, 3),
+            "delta_ref": "fundamental",
+            # B 区：频谱仪采集条件
+            "sa_ref_level_dbm": sa_config.get('reference_level', 10),
+            "sa_input_att_db": sa_config.get('attenuation', 10),
+            "sa_att_mode": "manual",
+            "sa_span_hz": sa_config.get('span', 10e6),
+            "sa_rbw_hz": sa_config.get('rbw', 100e3),
+            "sa_vbw_hz": sa_config.get('vbw', 100e3),
+            "sa_noise_floor_dbm": harmonic_floor,
+            # C 区：源专有
+            "harmonic_order": harmonic_order,
+            "harmonic_freq_hz": frequency * harmonic_order,
+            "fundamental_power_dbm": fundamental_power,
+            "detected": self.bool_str(harmonic_detected),
+            # 判定与时间
+            "status": "OK" if harmonic_detected else ("SKIP" if harmonic_power is None else "SUSPECT"),
+            "note": harmonic_note,
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         }
 
         self.test_results.append(result)
@@ -273,19 +297,8 @@ class HarmonicTestProcedure(BaseTestProcedure):
 
     def start_csv_stream(self, csv_path):
         """开启 CSV 流式写入"""
-        fieldnames = [
-            "timestamp", "frequency_hz", "frequency_mhz", "set_power_dbm",
-            "fundamental_power_dbm", "harmonic_power_dbm",
-            "harmonic_suppression_dbc", "harmonic_detected",
-            "harmonic_floor_dbm", "harmonic_note", "harmonic_order",
-            "sa_attenuation_db", "sa_reference_level_db",
-            "sa_span_hz", "sa_rbw_hz", "sa_vbw_hz",
-        ]
-        super().start_csv_stream(csv_path, fieldnames)
-
-    def finish_xlsx(self, xlsx_path):
-        """关闭 CSV 流并转为 XLSX"""
-        super().finish_xlsx(xlsx_path, sheet_name="详细数据")
+        self.run_id = self.derive_run_id(csv_path)
+        super().start_csv_stream(csv_path, self.FIELDNAMES)
 
     def print_summary(self):
         """打印测试摘要（谐波专项）"""
@@ -297,27 +310,25 @@ class HarmonicTestProcedure(BaseTestProcedure):
         print("测试摘要")
         print(f"{'=' * 60}")
 
-        df = pd.DataFrame(self.test_results) if self.test_results else None
+        rows = self.test_results
+        print(f"总测试点数: {len(rows)}")
 
-        print(f"总测试点数: {len(self.test_results)}")
+        freqs = [r["carrier_hz"] for r in rows if r.get("carrier_hz") is not None]
+        if freqs:
+            print(f"频率范围: {self.format_frequency(min(freqs))} - {self.format_frequency(max(freqs))}")
+        if rows[0].get("set_power_dbm") is not None:
+            print(f"设置功率: {rows[0]['set_power_dbm']} dBm")
 
-        if df is not None and not df.empty:
-            freq_min = self.format_frequency(df['frequency_hz'].min())
-            freq_max = self.format_frequency(df['frequency_hz'].max())
-            print(f"频率范围: {freq_min} - {freq_max}")
-            print(f"设置功率: {df['set_power_dbm'].iloc[0]} dBm")
+        detected = [r for r in rows if r.get("detected") == "true"]
+        print(f"检出谐波点数: {len(detected)}/{len(rows)}")
 
-            if 'harmonic_detected' in df.columns:
-                detected_count = int(df['harmonic_detected'].sum())
-                print(f"检出谐波点数: {detected_count}/{len(df)}")
-
-            if not df['harmonic_suppression_dbc'].isnull().all():
-                best_idx = df['harmonic_suppression_dbc'].idxmin()
-                worst_idx = df['harmonic_suppression_dbc'].idxmax()
-                best_freq = self.format_frequency(df.loc[best_idx, 'frequency_hz'])
-                worst_freq = self.format_frequency(df.loc[worst_idx, 'frequency_hz'])
-                print(f"平均谐波抑制: {df['harmonic_suppression_dbc'].mean():.2f} dBc")
-                print(f"最佳谐波抑制: {df['harmonic_suppression_dbc'].min():.2f} dBc @ {best_freq}")
-                print(f"最差谐波抑制: {df['harmonic_suppression_dbc'].max():.2f} dBc @ {worst_freq}")
+        suppressions = [r["delta_db"] for r in rows if r.get("delta_db") is not None]
+        if suppressions:
+            avg = sum(suppressions) / len(suppressions)
+            best = min(suppressions)
+            worst = max(suppressions)
+            print(f"平均谐波抑制: {avg:.2f} dBc")
+            print(f"最佳谐波抑制: {best:.2f} dBc")
+            print(f"最差谐波抑制: {worst:.2f} dBc")
 
         print(f"{'=' * 60}")

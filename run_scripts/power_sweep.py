@@ -19,7 +19,7 @@ from datetime import datetime
 from power_sweep_config import project_name, test_configs
 from utils.formatting import format_frequency
 
-# 输出文件统一命名：结果 <OUTPUT_TAG>_results_<时间戳>.xlsx
+# 输出文件统一命名（只出 CSV）：<OUTPUT_TAG>_<时间戳>.csv
 OUTPUT_TAG = "power_sweep"
 
 
@@ -95,6 +95,10 @@ def main():
 
     # 运行测试
     test_procedure = TestProcedure(manager)
+    output_dir = os.path.join(parent_dir, "output")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    csv_path = os.path.join(output_dir, f"{OUTPUT_TAG}_{timestamp}.csv")
+    test_procedure.start_csv_stream(csv_path)
 
     # 使用TestProcedure的prepare_test方法进行测试前准备
     test_procedure.prepare_test(signal_gen, power_meter)
@@ -182,12 +186,8 @@ def main():
             pass
         raise  # 重新抛出异常
 
-    # 保存测试结果
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    output_dir = os.path.join(parent_dir, 'output')
-    filename = f"{OUTPUT_TAG}_results_{timestamp}.xlsx"
-    filepath = os.path.join(output_dir, filename)
-    test_procedure.finish_xlsx(filepath, test_configs=selected_configs)
+    # 保存测试结果（CSV 流已在测试过程中逐点落盘）
+    test_procedure.finish_csv()
 
     # 断开所有仪器连接
     manager.disconnect_all()

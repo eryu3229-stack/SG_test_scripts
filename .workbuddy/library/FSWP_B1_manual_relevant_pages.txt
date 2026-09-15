@@ -1,0 +1,1732 @@
+
+
+=== PAGE 714 ===
+Remote control commands for the spectrum application R&S®FSWP-B1
+714 User Manual 1177.5656.02 ─ 11//--------------Configuring a new conversion loss table --------------
+//Define cvl table for range 1 of band as described in previous example
+// (extended V band)
+SENS:CORR:CVL:SEL 'UserTable'
+SENS:CORR:CVL:COMM 'User-defined conversion loss table for USER band'
+SENS:CORR:CVL:BAND USER
+SENS:CORR:CVL:HARM 6
+SENS:CORR:CVL:BIAS -1mA
+SENS:CORR:CVL:MIX 'FS_Z60'
+SENS:CORR:CVL:SNUM '123.4567'
+SENS:CORR:CVL:PORT 3
+//Conversion loss is linear from 55 GHz to 75 GHz
+SENS:CORR:CVL:DATA 55GHZ,-20DB,75GHZ,-30DB
+//----------- Configuring the mixer and band settings -------------
+//Use user-defined band and assign new cvl table.
+SENS:MIX:HARM:BAND USER
+//Define band by two ranges;
+//range 1 covers 47.48 GHz to 80 GHz; harmonic 6, cvl table 'UserTable'
+//range 2 covers 80 GHz to 138.02 GHz; harmonic 8, average conv.loss of 30 dB
+SENS:MIX:HARM:TYPE EVEN
+SENS:MIX:HARM:HIGH:STAT ON
+SENS:MIX:FREQ:HAND 80GHz
+SENS:MIX:HARM:LOW 6
+SENS:MIX:LOSS:TABL:LOW 'UserTable'
+SENS:MIX:HARM:HIGH 8
+SENS:MIX:LOSS:HIGH 30dB
+//Query the possible range
+SENS:MIX:FREQ:STAR?
+//Result: 47480000000 (47.48 GHz)
+SENS:MIX:FREQ:STOP?
+//Result: 138020000000 (138.02 GHz)
+//--------------Performing the Measurement-----
+//Select single sweep mode.
+INIT:CONT OFF
+//Initiate a basic frequency sweep and wait until the sweep has finished.
+INIT;*WAI
+//---------------Retrieving Results-------------
+//Return the trace data (default screen configuration)
+TRAC:DATA? TRACe1
+6.8.2  Defining the frequency
+[SENSe:]FREQuency:CENTer .........................................................................................715
+[SENSe:]FREQuency:CENTer:STEP ................................................................................715
+[SENSe:]FREQuency:CENTer:STEP:AUTO ......................................................................716
+[SENSe:]FREQuency:CENTer:STEP:LINK ........................................................................716
+[SENSe:]FREQuency:CENTer:STEP:LINK:FACTor ............................................................717Common measurement settings
+
+=== PAGE 715 ===
+Remote control commands for the spectrum application R&S®FSWP-B1
+715 User Manual 1177.5656.02 ─ 11[SENSe:]FREQuency:OFFSet .........................................................................................717
+[SENSe:]FREQuency:SPAN ............................................................................................717
+[SENSe:]FREQuency:SPAN:FULL ...................................................................................718
+[SENSe:]FREQuency:STARt ........................................................................................... 718
+[SENSe:]FREQuency:STOP ............................................................................................718
+CALCulate<n>:MARKer<m>:FUNCtion:CENTer ................................................................718
+CALCulate<n>:MARKer<m>:FUNCtion:CSTep ..................................................................719
+CALCulate<n>:MARKer<m>:FUNCtion:STRack[:STATe] ....................................................719
+CALCulate<n>:MARKer<m>:FUNCtion:STRack:BANDwidth .............................................. 719
+CALCulate<n>:MARKer<m>:FUNCtion:STRack:THReshold ...............................................720
+CALCulate<n>:MARKer<m>:FUNCtion:STRack:TRACe .................................................... 720
+DEVice:INFO:HWBand? ................................................................................................. 720
+[SENSe:]FREQuency:CENTer <Frequency>
+Defines the center frequency.
+CW, pulsed and VCO measurements:
+This command defines or queries (in case of automatic frequency search) the current
+signal frequency.
+Transient measurement:
+This command defines the center frequency of the transient measurement.
+Parameters:
+<Frequency> For the allowed range and f max, refer to the specifications docu-
+ment.
+UP
+Increases the center frequency by the step defined using the
+[SENSe:]FREQuency:CENTer:STEP  command.
+DOWN
+Decreases the center frequency by the step defined using the
+[SENSe:]FREQuency:CENTer:STEP  command.
+*RST: fmax/2
+Default unit: Hz
+Example: FREQ:CENT 100 MHz
+FREQ:CENT:STEP 10 MHz
+FREQ:CENT UP
+Sets the center frequency to 110 MHz.
+Manual operation: See "fAnalyzer " on page 126
+[SENSe:]FREQuency:CENTer:STEP <StepSize>
+Defines the center frequency step size.
+You can increase or decrease the center frequency quickly in fixed steps using the
+SENS:FREQ UP  AND SENS:FREQ DOWN  commands, see [SENSe:]FREQuency:
+CENTer  on page 715.Common measurement settings
+
+=== PAGE 716 ===
+Remote control commands for the spectrum application R&S®FSWP-B1
+716 User Manual 1177.5656.02 ─ 11Parameters:
+<StepSize> For f max, refer to the specifications document.
+Range: 1  to  fMAX
+*RST: 0.1 x span
+Default unit: Hz
+Example: //Set the center frequency to 110 MHz.
+FREQ:CENT 100 MHz
+FREQ:CENT:STEP 10 MHz
+FREQ:CENT UP
+Manual operation: See "Center Frequency Stepsize"  on page 309
+[SENSe:]FREQuency:CENTer:STEP:AUTO <State>
+This command couples or decouples the center frequency step size to the span.
+In time domain (zero span) measurements, the center frequency is coupled to the
+RBW.
+Parameters:
+<State> ON | OFF | 0 | 1
+*RST: 1
+Example: FREQ:CENT:STEP:AUTO ON
+Activates the coupling of the step size to the span.
+[SENSe:]FREQuency:CENTer:STEP:LINK <CouplingType>
+Couples and decouples the center frequency step size to the span or the resolution
+bandwidth.
+Parameters:
+<CouplingType> SPAN | RBW | OFF
+SPAN
+Couples the step size to the span. Available for measurements
+in the frequency domain.
+RBW
+Couples the step size to the resolution bandwidth. Available for
+measurements in the time domain.
+OFF
+Decouples the step size.
+*RST: SPAN
+Example: //Couple step size to span
+FREQ:CENT:STEP:LINK SPAN
+Manual operation: See "Center Frequency Stepsize"  on page 309Common measurement settings
+
+=== PAGE 717 ===
+Remote control commands for the spectrum application R&S®FSWP-B1
+717 User Manual 1177.5656.02 ─ 11[SENSe:]FREQuency:CENTer:STEP:LINK:FACTor <Factor>
+Defines a step size factor if the center frequency step size is coupled to the span or the
+resolution bandwidth.
+Parameters:
+<Factor> 1 to 100 PCT
+*RST: 10
+Default unit: PCT
+Example: //Couple frequency step size to span and define a step size fac-
+tor
+FREQ:CENT:STEP:LINK SPAN
+FREQ:CENT:STEP:LINK:FACT 20PCT
+Manual operation: See "Center Frequency Stepsize"  on page 309
+[SENSe:]FREQuency:OFFSet <Offset>
+Defines a frequency offset.
+If this value is not 0  Hz, the application assumes that the input signal was frequency
+shifted outside the application. All results of type "frequency" will be corrected for this
+shift numerically by the application.
+See also "Frequency Offset"  on page 309.
+Note:  In MSRA mode, the setting command is only available for the MSRA primary
+application. For MSRA secondary applications, only the query command is available.
+Parameters:
+<Offset> Range: -1 THz  to  1 THz
+*RST: 0 Hz
+Default unit: HZ
+Example: FREQ:OFFS 1GHZ
+Manual operation: See "Frequency Offset"  on page 309
+[SENSe:]FREQuency:SPAN <Span>
+Defines the frequency span.
+If you set a span of 0  Hz in the Spectrum application, the R&S  FSWP starts a mea-
+surement in the time domain.
+Parameters:
+<Span> The minimum span for measurements in the frequency domain
+is 10  Hz.
+For SEM and spurious emission measurements, the minimum
+span is 20  Hz.
+Range: 0 Hz  to  fmax
+*RST: Full span
+Default unit: HzCommon measurement settings
+
+=== PAGE 718 ===
+Remote control commands for the spectrum application R&S®FSWP-B1
+718 User Manual 1177.5656.02 ─ 11Manual operation: See "Zero Span"  on page 31
+[SENSe:]FREQuency:SPAN:FULL
+Restores the full span.
+Manual operation: See "Full Span"  on page 308
+[SENSe:]FREQuency:STARt <Frequency>
+Defines a start frequency for measurements in the frequency domain.
+Parameters:
+<Frequency> 0 to (fmax - min span)
+*RST: 0
+Default unit: HZ
+Example: FREQ:STAR 20MHz
+Manual operation: See "Frequency Sweep"  on page 30
+[SENSe:]FREQuency:STOP <Frequency>
+Defines a stop frequency for measurements in the frequency domain.
+Parameters:
+<Frequency> min span to fmax
+*RST: fmax
+Default unit: HZ
+Example: FREQ:STOP 2000 MHz
+Manual operation: See "Frequency Sweep"  on page 30
+CALCulate<n>:MARKer<m>:FUNCtion:CENTer
+Matches the center frequency to the frequency of a marker.
+If you use the command in combination with a delta marker, that delta marker is turned
+into a normal marker.
+Suffix: 
+<n>.
+Window
+<m> Marker
+Example: CALC:MARK2:FUNC:CENT
+Sets the center frequency to the frequency of marker 2.
+Manual operation: See "Center Frequency = Marker Frequency"  on page 443Common measurement settings
+
+=== PAGE 719 ===
+Remote control commands for the spectrum application R&S®FSWP-B1
+719 User Manual 1177.5656.02 ─ 11CALCulate<n>:MARKer<m>:FUNCtion:CSTep
+Matches the center frequency step size to the current marker frequency.
+The command turns delta markers into normal markers.
+Suffix: 
+<n>.
+Window
+<m> Marker
+CALCulate<n>:MARKer<m>:FUNCtion:STRack[:STATe] <State>
+Turns signal tracking on and off.
+Suffix: 
+<n>.
+irrelevant
+<m> irrelevant
+Parameters:
+<State> ON | OFF | 0 | 1
+OFF | 0
+Switches the function off
+ON | 1
+Switches the function on
+Example: //Activate signal tracking to keep the center frequency on the signal peak.
+//After each sweep the maximum on trace 1 is searched within a range of 20 MHz
+//around the center frequency. It must have a minimum power of -90dBm.
+CALC:MARK:FUNC:STR ON
+CALC:MARK:FUNC:STR:BAND 20MHz
+CALC:MARK:FUNC:STR:THR -90dBm
+CALC:MARK:FUNC:STR:TRAC 1
+Manual operation: See "Signal Tracking"  on page 310
+CALCulate<n>:MARKer<m>:FUNCtion:STRack:BANDwidth <Bandwidth>
+Defines the bandwidth around the center frequency that is included in the signal track-
+ing process.
+Note that you have to turn on signal tracking before you can use the command.
+Suffix: 
+<n>.
+irrelevant
+<m> irrelevant
+Parameters:
+<Bandwidth> Range: 10 Hz  to  Max span
+*RST: (= span/10 on activating the function)
+Default unit: Hz
+Manual operation: See "Signal Tracking"  on page 310Common measurement settings
+
+=== PAGE 720 ===
+Remote control commands for the spectrum application R&S®FSWP-B1
+720 User Manual 1177.5656.02 ─ 11CALCulate<n>:MARKer<m>:FUNCtion:STRack:THReshold <Level>
+Defines the threshold level for the signal tracking process.
+Note that you have to turn on signal tracking before you can use the command.
+Suffix: 
+<n>.
+irrelevant
+<m> irrelevant
+Parameters:
+<Level> The unit depends on CALCulate<n>:UNIT:POWer .
+Range: -130 dBm  to  30 dBm
+*RST: -120 dBm
+Default unit: DBM
+Manual operation: See "Signal Tracking"  on page 310
+CALCulate<n>:MARKer<m>:FUNCtion:STRack:TRACe <TraceNumber>
+Selects the trace on which the largest signal is searched for.
+Suffix: 
+<n>.
+irrelevant
+<m> irrelevant
+Parameters:
+<TraceNumber> 1 to 6
+Range: 1  to  6
+*RST: 1
+Manual operation: See "Signal Tracking"  on page 310
+DEVice:INFO:HWBand?
+Queries the frequency bands used for measurement by the R&S  FSWP hardware. The
+start frequency of each band is provided.
+The bands are instrument-specific and depend on the currently defined RBW, VBW
+and YIG preselector state. The precise frequency bands are required to define correc-
+tion data for the correct bands, in particular for frequency-drifting DUTs.
+This query is only available in zero span mode.
+Return values: 
+<StartFreq>Common measurement settings
+
+=== PAGE 721 ===
+Remote control commands for the spectrum application R&S®FSWP-B1
+721 User Manual 1177.5656.02 ─ 11Example: //Set to zero span mode
+FREQ:SPAN 0
+//Set RBW
+BAND:RES 1000000
+//Set VBW
+BAND:VID 10000
+//Query used hardware bands
+DEV:INFO:HWB?
+//Result:
+//0,50000000,450000000,1000000000,3000000000,4000000000,5200000000,...
+The used bands for this instrument and measurement setup are:
+0 Hz to 49999999 Hz
+50000000 Hz to 44999999
+450000000 Hz to 999999999
+1000000000 Hz to 2999999999
+3000000000 Hz to 3999999999
+4000000000 Hz to 5199999999
+5200000000 Hz to ...
+Usage: Query only
+6.8.3  Amplitude settings
+Remote commands to configure level characteristics described elsewhere:
+●INPut:COUPling  on page 666
+[SENSe:]POWer:NCORrection ........................................................................................ 721
+CALCulate<n>:MARKer<m>:FUNCtion:REFerence ...........................................................722
+UNIT:POWer ..................................................................................................................722
+CALCulate<n>:UNIT:POWer ........................................................................................... 722
+DISPlay[:WINDow<n>][:SUBWindow<w>]:TRACe<t>:Y[:SCALe]:RLEVel .............................722
+DISPlay[:WINDow<n>][:SUBWindow<w>]:TRACe<t>:Y[:SCALe]:RLEVel:OFFSet ................ 723
+INPut:ATTenuation ......................................................................................................... 723
+INPut:ATTenuation:AUTO ............................................................................................... 724
+INPut:GAIN:STATe ......................................................................................................... 724
+INPut:GAIN[:VALue] ....................................................................................................... 724
+[SENSe:]POWer:NCORrection <State>
+Turns noise cancellation on and off.
+If noise cancellation is on, the R&S  FSWP performs a reference measurement to
+determine its inherent noise and subtracts the result from the channel power measure-
+ment result (first active trace only).
+For more information see "Noise Cancellation"  on page 69.
+Parameters:
+<State> ON | OFF | 1 | 0
+*RST: 0Common measurement settings
+
+=== PAGE 722 ===
+Remote control commands for the spectrum application R&S®FSWP-B1
+722 User Manual 1177.5656.02 ─ 11Example: POW:NCOR ON
+Manual operation: See "Noise Cancellation"  on page 69
+CALCulate<n>:MARKer<m>:FUNCtion:REFerence
+Matches the reference level to the power level of a marker.
+If you use the command in combination with a delta marker, that delta marker is turned
+into a normal marker.
+Suffix: 
+<n>.
+Window
+<m> Marker
+Example: CALC:MARK2:FUNC:REF
+Sets the reference level to the level of marker 2.
+Manual operation: See "Reference Level = Marker Level"  on page 444
+UNIT:POWer <Unit>
+CALCulate<n>:UNIT:POWer <Unit>
+Selects the power unit.
+The unit applies to all power-based measurement windows with absolute values.
+In addition, the unit of the reference level is adapted to the same unit.
+Suffix: 
+<n>.
+irrelevant
+Parameters:
+<Unit> DBM | V | A | W | DBPW | WATT | DBUV | DBMV | VOLT |
+DBUA | AMPere
+*RST: dBm
+Example: CALC:UNIT:POW DBM
+Sets the power unit to dBm.
+Manual operation: See "Unit"  on page 316
+DISPlay[:WINDow<n>][:SUBWindow<w>]:TRACe<t>:Y[:SCALe]:RLEVel
+<ReferenceLevel>
+Defines the reference level (for all traces in all windows).
+With a reference level offset ≠ 0, the value range of the reference level is modified by
+the offset.
+Suffix: 
+<n>.
+irrelevant
+<w> subwindow
+Not supported by all applicationsCommon measurement settings
+
+=== PAGE 723 ===
+Remote control commands for the spectrum application R&S®FSWP-B1
+723 User Manual 1177.5656.02 ─ 11<t> irrelevant
+Parameters:
+<ReferenceLevel> The unit is variable.
+Range: see specifications document
+*RST: 0 dBm
+Default unit: DBM
+Example: DISP:TRAC:Y:RLEV -60dBm
+Manual operation: See "Reference Level"  on page 316
+DISPlay[:WINDow<n>][:SUBWindow<w>]:TRACe<t>:Y[:SCALe]:RLEVel:OFFSet
+<Offset>
+Defines a reference level offset (for all traces in all windows).
+Suffix: 
+<n>.
+irrelevant
+<w> subwindow
+Not supported by all applications
+<t> irrelevant
+Parameters:
+<Offset> Range: -200 dB  to  200 dB
+*RST: 0dB
+Default unit: DB
+Example: DISP:TRAC:Y:RLEV:OFFS -10dB
+Manual operation: See "Shifting the Display (Offset)"  on page 195
+INPut:ATTenuation <Attenuation>
+Defines the total attenuation for RF input.
+If you set the attenuation manually, it is no longer coupled to the reference level, but
+the reference level is coupled to the attenuation. Thus, if the current reference level is
+not compatible with an attenuation that has been set manually, the command also
+adjusts the reference level.
+Parameters:
+<Attenuation> Range: see specifications document
+Increment: 5 dB (with optional electr. attenuator: 1 dB)
+*RST: 10 dB (AUTO is set to ON)
+Default unit: DB
+Example: INP:ATT 30dB
+Defines a 30 dB attenuation and decouples the attenuation from
+the reference level.
+Manual operation: See "Attenuation Mode / Value"  on page 317Common measurement settings
+
+=== PAGE 724 ===
+Remote control commands for the spectrum application R&S®FSWP-B1
+724 User Manual 1177.5656.02 ─ 11INPut:ATTenuation:AUTO <State>
+Couples or decouples the attenuation to the reference level. Thus, when the reference
+level is changed, the R&S  FSWP determines the signal level for optimal internal data
+processing and sets the required attenuation accordingly.
+Parameters:
+<State> ON | OFF | 0 | 1
+*RST: 1
+Example: INP:ATT:AUTO ON
+Couples the attenuation to the reference level.
+Manual operation: See "Attenuation Mode / Value"  on page 317
+INPut:GAIN:STATe <State>
+Turns the internal preamplifier on and off. It requires the optional preamplifier hard-
+ware.
+The preamplification value is defined using the INPut:GAIN[:VALue]  on page 724.
+Parameters:
+<State> ON | OFF | 0 | 1
+OFF | 0
+Switches the function off
+ON | 1
+Switches the function on
+*RST: 0
+Example: INP:GAIN:STAT ON
+INP:GAIN:VAL 15
+Switches on 15 dB preamplification.
+Manual operation: See "Preamplifier"  on page 317
+INPut:GAIN[:VALue] <Gain>
+Selects the "gain" if the preamplifier is activated ( INP:GAIN:STAT ON , see INPut:
+GAIN:STATe  on page 724).
+The command requires the additional preamplifier hardware option.
+Parameters:
+<Gain> For R&S  FSWP models 1322.8003K08, 1322.8003K09,
+1322.8003K27 and 1322.8003K51, the following settings are
+available:
+15 dB and 30 dB
+All other values are rounded to the nearest of these two.
+For R&S  FSWP models 1322.8003K26 and 1322.8003K50:
+30 dB
+Default unit: DBCommon measurement settings
+
+=== PAGE 725 ===
+Remote control commands for the spectrum application R&S®FSWP-B1
+725 User Manual 1177.5656.02 ─ 11Example: INP:GAIN:STAT ON
+INP:GAIN:VAL 30
+Switches on 30 dB preamplification.
+Manual operation: See "Preamplifier"  on page 317
+6.8.4  Scaling the Y-Axis
+DISPlay[:WINDow<n>][:SUBWindow<w>]:TRACe<t>:Y[:SCALe] ........................................ 725
+DISPlay[:WINDow<n>][:SUBWindow<w>]:TRACe<t>:Y[:SCALe]:AUTO ONCE .................... 725
+DISPlay[:WINDow<n>][:SUBWindow<w>]:TRACe<t>:Y[:SCALe]:MODE ..............................726
+DISPlay[:WINDow<n>][:SUBWindow<w>]:TRACe<t>:Y[:SCALe]:RPOSition ........................ 726
+DISPlay[:WINDow<n>][:SUBWindow<w>]:TRACe<t>:Y[:SCALe]:RVALue ............................727
+DISPlay[:WINDow<n>][:SUBWindow<w>]:TRACe<t>:Y:SPACing ........................................727
+DISPlay[:WINDow<n>][:SUBWindow<w>]:TRACe<t>:Y[:SCALe] <Range>
+Defines the display range of the y-axis (for all traces).
+Note that the command works only for a logarithmic scaling. You can select the scaling
+with DISPlay[:WINDow<n>][:SUBWindow<w>]:TRACe<t>:Y:SPACing .
+Suffix: 
+<n>.
+Window
+<w> subwindow
+Not supported by all applications
+<t> irrelevant
+Parameters:
+<Range> Range: 1 dB  to  200 dB
+*RST: 100 dB
+Default unit: HZ
+Example: DISP:TRAC:Y 110dB
+Manual operation: See "Range"  on page 319
+DISPlay[:WINDow<n>][:SUBWindow<w>]:TRACe<t>:Y[:SCALe]:AUTO ONCE
+Automatic scaling of the y-axis is performed once, then switched off again (for all
+traces).
+Suffix: 
+<n>.
+Window
+<t> irrelevant
+Manual operation: See "Auto Scale Once"  on page 319Common measurement settings
+
+=== PAGE 726 ===
+Remote control commands for the spectrum application R&S®FSWP-B1
+726 User Manual 1177.5656.02 ─ 11DISPlay[:WINDow<n>][:SUBWindow<w>]:TRACe<t>:Y[:SCALe]:MODE <Mode>
+Selects the type of scaling of the y-axis (for all traces).
+When the display update during remote control is off, this command has no immediate
+effect.
+Suffix: 
+<n>.
+Window
+<w> subwindow
+<t> irrelevant
+Parameters:
+<Mode> ABSolute
+absolute scaling of the y-axis
+RELative
+relative scaling of the y-axis
+*RST: ABSolute
+Example: DISP:TRAC:Y:MODE REL
+Manual operation: See "Scaling"  on page 319
+DISPlay[:WINDow<n>][:SUBWindow<w>]:TRACe<t>:Y[:SCALe]:RPOSition
+<Position>
+Defines the vertical position of the reference level on the display grid (for all traces).
+The R&S  FSWP adjusts the scaling of the y-axis accordingly.
+For measurements with the optional external generator control, the command defines
+the position of the reference value.
+Suffix: 
+<n>.
+Window
+<w> subwindow
+Not supported by all applications
+<t> irrelevant
+Parameters:
+<Position> 0 PCT corresponds to the lower display border, 100% corre-
+sponds to the upper display border.
+*RST: 100 PCT = frequency display; 50 PCT = time dis-
+play
+Default unit: PCT
+Example: DISP:TRAC:Y:RPOS 50PCT
+Manual operation: See "Reference Position"  on page 263Common measurement settings
+
+=== PAGE 727 ===
+Remote control commands for the spectrum application R&S®FSWP-B1
+727 User Manual 1177.5656.02 ─ 11DISPlay[:WINDow<n>][:SUBWindow<w>]:TRACe<t>:Y[:SCALe]:RVALue <Value>
+Defines the reference value assigned to the reference position in the specified window.
+Separate reference values are maintained for the various displays.
+Suffix: 
+<n>.
+Window
+<w> subwindow
+<t> irrelevant
+Parameters:
+<Value> Default unit: DB
+Example: DISP:TRAC:Y:RVAL 0
+Sets the value assigned to the reference position to 0 Hz
+Manual operation: See "Reference Value"  on page 264
+DISPlay[:WINDow<n>][:SUBWindow<w>]:TRACe<t>:Y:SPACing <ScalingType>
+Selects the scaling of the y-axis (for all traces, <t> is irrelevant).
+Suffix: 
+<n>.
+Window
+<w> subwindow
+<t> Trace
+Parameters:
+<ScalingType> LOGarithmic
+Logarithmic scaling.
+LINear
+Linear scaling in %.
+LDB
+Linear scaling in the specified unit.
+PERCent
+Linear scaling in %.
+*RST: LOGarithmic
+Example: DISP:TRAC:Y:SPAC LIN
+Selects linear scaling in %.
+Manual operation: See "Scaling"  on page 319
+6.8.5  Remote commands to define filter characteristics
+[SENSe:]BWIDth[:RESolution] .........................................................................................728
+[SENSe:]BANDwidth[:RESolution] ................................................................................... 728
+[SENSe:]BWIDth[:RESolution]:AUTO ...............................................................................728
+[SENSe:]BANDwidth[:RESolution]:AUTO ..........................................................................728Common measurement settings
+
+=== PAGE 728 ===
+Remote control commands for the spectrum application R&S®FSWP-B1
+728 User Manual 1177.5656.02 ─ 11[SENSe:]BWIDth[:RESolution]:RATio ............................................................................... 728
+[SENSe:]BANDwidth[:RESolution]:RATio ..........................................................................728
+[SENSe:]BWIDth[:RESolution]:TYPE ................................................................................729
+[SENSe:]BANDwidth[:RESolution]:TYPE .......................................................................... 729
+[SENSe:]BWIDth:VIDeo ..................................................................................................729
+[SENSe:]BANDwidth:VIDeo ............................................................................................ 729
+[SENSe:]BWIDth:VIDeo:AUTO ........................................................................................729
+[SENSe:]BANDwidth:VIDeo:AUTO ...................................................................................729
+[SENSe:]BWIDth:VIDeo:RATio ........................................................................................ 730
+[SENSe:]BANDwidth:VIDeo:RATio ...................................................................................730
+[SENSe:]BWIDth:VIDeo:TYPE .........................................................................................730
+[SENSe:]BANDwidth:VIDeo:TYPE ................................................................................... 730
+[SENSe:]BWIDth[:RESolution] <Bandwidth>
+[SENSe:]BANDwidth[:RESolution] <Bandwidth>
+Defines the resolution bandwidth and decouples the resolution bandwidth from the
+span.
+For statistics measurements, this command defines the demodulation  bandwidth.
+Parameters:
+<Bandwidth> refer to specifications document
+*RST: RBW: AUTO is set to ON; DBW: 3MHz
+Default unit: Hz
+Example: BAND 1 MHz
+Sets the resolution bandwidth to 1 MHz
+Manual operation: See "Analysis Bandwidth"  on page 191
+[SENSe:]BWIDth[:RESolution]:AUTO <State>
+[SENSe:]BANDwidth[:RESolution]:AUTO <State>
+Couples and decouples the resolution bandwidth to the span.
+Parameters:
+<State> ON | OFF | 0 | 1
+*RST: 1
+Example: BAND:AUTO OFF
+Switches off the coupling of the resolution bandwidth to the
+span.
+Manual operation: See "RBW"  on page 328
+[SENSe:]BWIDth[:RESolution]:RATio <Ratio>
+[SENSe:]BANDwidth[:RESolution]:RATio <Ratio>
+Defines the ratio between the resolution bandwidth (Hz) and the span (Hz).
+Note that the ratio defined with this remote command (RBW/span) is reciprocal to that
+of the coupling ratio (span/RBW).Common measurement settings
+
+=== PAGE 729 ===
+Remote control commands for the spectrum application R&S®FSWP-B1
+729 User Manual 1177.5656.02 ─ 11Parameters:
+<Ratio> Range: 0.0001  to  1
+*RST: 0.01
+Example: BAND:RAT 0.1
+Manual operation: See "Span/RBW"  on page 330
+[SENSe:]BWIDth[:RESolution]:TYPE <FilterType>
+[SENSe:]BANDwidth[:RESolution]:TYPE <FilterType>
+This command selects the resolution filter type.
+When you change the filter type, the command selects the next larger filter bandwidth if
+the same bandwidth is unavailable for that filter.
+Example: BAND:TYPE NORM
+Example: See Section 6.3.17, "Programming example: performing a basic
+frequency sweep" , on page 649.
+Manual operation: See "Filter Type"  on page 330
+[SENSe:]BWIDth:VIDeo <Bandwidth>
+[SENSe:]BANDwidth:VIDeo <Bandwidth>
+Defines the video bandwidth.
+The command decouples the video bandwidth from the resolution bandwidths.
+Parameters:
+<Bandwidth> refer to specifications document
+*RST: AUTO is set to ON
+Default unit: HZ
+Example: BAND:VID 10 kHz
+Manual operation: See "VBW"  on page 329
+[SENSe:]BWIDth:VIDeo:AUTO <State>
+[SENSe:]BANDwidth:VIDeo:AUTO <State>
+Couples and decouples the video bandwidth to the resolution bandwidth.
+Parameters:
+<State> ON | OFF | 0 | 1
+*RST: 1
+Example: BAND:VID:AUTO OFF
+Manual operation: See "VBW"  on page 329Common measurement settings
+
+=== PAGE 730 ===
+Remote control commands for the spectrum application R&S®FSWP-B1
+730 User Manual 1177.5656.02 ─ 11[SENSe:]BWIDth:VIDeo:RATio <Ratio>
+[SENSe:]BANDwidth:VIDeo:RATio <Ratio>
+Defines the coupling ratio of the video bandwidth to the resolution bandwidth (VBW/
+RBW).
+Parameters:
+<Ratio> Range: 0,001  to  1000
+*RST: 1
+Example: BAND:VID:RAT 3
+Sets the video bandwidth to 3*resolution bandwidth.
+Manual operation: See "RBW/VBW"  on page 330
+[SENSe:]BWIDth:VIDeo:TYPE <Mode>
+[SENSe:]BANDwidth:VIDeo:TYPE <Mode>
+Enables or disables the logarithmic amplifier in front of the video filter in the signal
+path.
+Parameters:
+<Mode> LINear
+The logarithmic amplifier in front of the video filter is bypassed to
+process linear detector samples.
+LOGarithmic
+The logarithmic amplifier in front of the video filter is enabled to
+process logarithmic detector samples.
+*RST: LOGarithmic
+Example: BAND:VID:TYPE LIN
+Logarithmic amplifier in front of the video filter is disabled.
+Manual operation: See "VBW"  on page 329
+6.8.6  Remote commands to control a measurement
+[SENSe:]AVERage<n>:COUNt ........................................................................................731
+[SENSe:]AVERage<n>[:STATe<t>] ...................................................................................731
+[SENSe:]AVERage<n>:TYPE ..........................................................................................731
+[SENSe:]BWIDth[:RESolution]:FFT ..................................................................................732
+[SENSe:]BANDwidth[:RESolution]:FFT .............................................................................732
+[SENSe:]SWEep:COUNt .................................................................................................732
+[SENSe:]SWEep:DURation? ........................................................................................... 733
+[SENSe:]SWEep:OPTimize .............................................................................................733
+[SENSe:]SWEep[:WINDow<n>]:POINts ............................................................................734
+[SENSe:]SWEep:TIME ................................................................................................... 734
+[SENSe:]SWEep:TIME:AUTO ......................................................................................... 735
+[SENSe:]SWEep:TYPE ...................................................................................................735
+[SENSe:]SWEep:TYPE:USED .........................................................................................735Common measurement settings
+
+=== PAGE 731 ===
+Remote control commands for the spectrum application R&S®FSWP-B1
+731 User Manual 1177.5656.02 ─ 11[SENSe:]AVERage<n>:COUNt <AverageCount>
+Defines the number of measurements that the application uses to average traces.
+In case of continuous sweep mode, the application calculates the moving average over
+the average count.
+In case of single sweep mode, the application stops the measurement and calculates
+the average after the average count has been reached.
+Suffix: 
+<n>.
+irrelevant
+Parameters:
+<AverageCount> If you set an average count of 0 or 1, the application performs
+one single measurement in single sweep mode.
+In continuous sweep mode, if the average count is set to 0, a
+moving average over 10 measurements is performed.
+Range: 0  to  200000
+*RST: 0
+Manual operation: See "Sweep/Average Count"  on page 331
+[SENSe:]AVERage<n>[:STATe<t>] <State>
+Turns averaging for a particular trace in a particular window on and off.
+Suffix: 
+<n>.
+Window
+<t> Trace
+Parameters:
+<State> ON | OFF | 1 | 0
+[SENSe:]AVERage<n>:TYPE <Mode>
+Selects the trace averaging mode.
+Suffix: 
+<n>.
+1..n
+Window
+Parameters:
+<Mode> LOGarithmic
+The logarithmic power values are averaged.
+LINear
+The power values are averaged before they are converted to
+logarithmic values.
+POWer
+The power level values are converted into unit Watt prior to
+averaging. After the averaging, the data is converted back into
+its original unit.Common measurement settings
+
+=== PAGE 880 ===
+Remote control commands for the spectrum application R&S®FSWP-B1
+880 User Manual 1177.5656.02 ─ 11Supported 89600 commands
+*STB?
+*TRG
+*TST?
+*WAI
+:CALibration:AUTO OFF|ON|ALERt
+:CALibration:TCORrections AUTO|ON|OFF
+:CONFigure:WAVeform
+:DIAGnostic:EABY ON|OFF
+:DIAGnostic:LATCh:VALue <numeric>
+:DIAGnostic:LATCh:SELect <string>
+:DISPlay:ANNotation:TITLe:DATA <string>
+:DISPlay:ENABle OFF|ON
+:DISPlay:WINDow:TRACe:Y:[SCALe]:PDIVision <numeric>
+:DISPlay:WINDow:TRACe:Y:[SCALe]:RLEVel <numeric>
+:DISPlay:WINDow:TRACe:Y:[SCALe]:RLEVel:OFFSet <numeric>
+:DISPlay:WINDow:TRACe:Y[:SCALe]:SPACing LINear|LOGarithmic|LDB
+:FORMat:BORDer NORMal|SWAPped
+:FORMat[:DATA] ASCii|REAL|UINT|MATLAB,<numeric>
+:INITiate:CONTinuous OFF|ON
+:INITiate[:IMMediate]
+:INSTrument:CATalog?
+:INSTrument:NSELect <numeric>
+:MMEMory:CATalog? <dir_name>
+:MMEMory:COPY <‘file_name1’>,<‘file_name2’>
+:MMEMory:DATA <‘file_name’>,<definite_length_block>
+:MMEMory:DELete <‘file_name’>
+:MMEMory:LOAD:STATe 1,<‘file_name’>
+:MMEMory:LOAD:TRACe 1,<‘file_name’>
+:MMEMory:MDIRectory <‘dir_name’>
+:MMEMory:MOVE <‘file_name1’>,<‘file_name2’>
+:MMEMory:STORe:STATe 1,<‘file_name’>
+:MMEMory:STORe:TRACe <numeric>,<‘file_name’>
+:READ:WAVform?Emulating other instruments' commands
+
+=== PAGE 881 ===
+Remote control commands for the spectrum application R&S®FSWP-B1
+881 User Manual 1177.5656.02 ─ 11Supported 89600 commands
+[:SENSe]:CORRection:CSET:All[STATe] <booleon>
+[:SENSe]:FREQuency:CENTer <numeric>
+[:SENSe]:FREQuency:STARt <numeric>
+[:SENSe]:FREQuency:STOP <numeric>
+[:SENSe]:FREQuency:SPAN <numeric>
+[:SENSe]:POWer:ATTenuation <numeric>
+[:SENSe]:ROSCillator:EXTernal:FREQuency <numeric>
+[:SENSe]:ROSCillator:OUTPut OFF|ON
+[:SENSe]:ROSCillator:SOURce INTernal|EXTernal|EAUTo
+[:SENSe]:SPECtrum:TRIGger:SOURce EXTernal<1|2>|IF|IMMediate
+[:SENSe]:WAVeform:ADC:RANGe P6
+[:SENSe]:WAVeform:APER?
+[:SENSe]:WAVeform:AVERage:TACount <numeric>
+[:SENSe]:WAVeform:BWIDth:ACTive?
+[:SENSe]:WAVeform:BWIDth:TYPE FLAT|GAUSsian
+[:SENSe]:WAVeform:IFGain <numeric>
+[:SENSe]:WAVeform:IFPath NARRow|WIDE
+[:SENSe]:WAVeform:NCPTrace ON|OFF
+[:SENSe]:WAVeform:PDIT ON|OFF
+[:SENSe]:WAVeform:SRATe <numeric>
+[:SENSe]:WAVeform:SWEep:TIME <numeric>
+[:SENSe]:WAVeform:TRIGger:EOFFset?
+[:SENSe]:WAVeform:TRIGger:INTerpolation ON|OFF
+[:SENSe]:WAVeform:TRIGger:SOURce EXTernal<1|2>|IF|IMMediate
+:STATus:QUEStionable:CONDition?
+:STATus:QUEStionable:ENABle <number>
+:STATus:QUEStionable:NTRansition <number>
+:STATus:QUEStionable:PTRansition <number>
+:STATus:QUEStionable[:EVENt]?
+:STATus:QUEStionable:CALibration:CONDition?
+:STATus:QUEStionable:CALibration:ENABle <number>
+:STATus:QUEStionable:CALibration:NTRansition <number>
+:STATus:QUEStionable:CALibration:PTRansition <number>Emulating other instruments' commands
+
+=== PAGE 882 ===
+Remote control commands for the spectrum application R&S®FSWP-B1
+882 User Manual 1177.5656.02 ─ 11Supported 89600 commands
+:STATus:QUEStionable:CALibration[:EVENt]?
+:STATus:QUEStionable:FREQuency:CONDition?
+:STATus:QUEStionable:FREQuency:ENABle <number>
+:STATus:QUEStionable:FREQuency:NTRansition <number>
+:STATus:QUEStionable:FREQuency:PTRansition <number>
+:STATus:QUEStionable:FREQuency[:EVENt]?
+:STATus:QUEStionable:INTegrity:CONDition?
+:STATus:QUEStionable:INTegrity:ENABle <number>
+:STATus:QUEStionable:INTegrity:NTRansition <number>
+:STATus:QUEStionable:INTegrity:PTRansition <number>
+:STATus:QUEStionable:INTegrity[:EVENt]?
+:STATus:OPERation:CONDition?
+:STATus:OPERation:ENABle <integer>
+:STATus:OPERation:NTRansition <integer>
+:STATus:OPERation:PTRansition <integer>
+:STATus:OPERation[:EVENt]?
+:SYSTem:COMMunicate:GPIB[:SELF]:ADDRess <integer>
+:SYSTem:DATE <year>,<month>,<day>
+:SYSTem:ERRor[:NEXT]?
+:SYSTem:KLOCK?
+:SYSTem:MESSage <string>
+:SYSTem:PRESet
+:SYSTem:TIME <hour>,<minute>,<second>
+:SYSTem:VERSion?
+:TRACe:COPY <src_trace>,<dest_trace>
+:TRACe[:DATA] TRACE1 | TRACE2 | TRACE3 | TRACE4 | TRACE5 | TRACE6, <definite_length_block> |
+<comma_separated_ASCII_data>
+:TRACe:MODE WRITe|MAXHold|MINHold|VIEW|BLANk
+:TRIGger[:SEQuence]:DELay <numeric>
+:TRIGger[:SEQuence]:DELay:STATe OFF|ON|0|1
+:TRIGger[:SEQuence]:EXTermal:DELay <numeric>
+:TRIGger[:SEQuence]:EXTermal:LEVel <numeric>
+:TRIGger[:SEQuence]:EXTermal:SLOPe POSitive|NEGative
+:TRIGger[:SEQuence]:HOLDoff <numeric>Emulating other instruments' commands
+
+=== PAGE 883 ===
+Remote control commands for the spectrum application R&S®FSWP-B1
+883 User Manual 1177.5656.02 ─ 11Supported 89600 commands
+:TRIGger[:SEQuence]:IF:DELay <numeric>
+:TRIGger[:SEQuence]:IF:LEVel <numeric>
+:TRIGger[:SEQuence]:IF:SLOPe POSitive|NEGative
+:TRIGger[:SEQuence]:SLOPe POSitive|NEGative
+:TRIGger[:SEQuence]:SOURce IMMediate|VIDeo|EXTernal<1|2>
+:TRIGger[:SEQuence]:VIDeo:LEVel <numeric>
+:TRIGger[:SEQuence]:VIDeo:LEVel:FREQuency <freq>Emulating other instruments' commands
+
+=== PAGE 884 ===
+Maintenance R&S®FSWP-B1
+884 User Manual 1177.5656.02 ─ 117  Maintenance
+The R&S  FSWP does not require regular maintenance. Maintenance is essentially
+restricted to cleaning the R&S  FSWP. It is, however, recommended that you check the
+nominal data from time to time.
+The data sheet specifies the storage temperature range for the R&S  FSWP. Protect the
+instrument against dust if it is to be stored for a long period.
+7.1  Cleaning
+Risk of electric shock
+If moisture enters the casing, for example if you clean the instrument using a moist
+cloth, contact with the instrument can lead to electric shock. Before cleaning the instru-
+ment other than with a dry cloth, make sure that the instrument is switched off and dis-
+connected from all power supplies.
+Instrument damage caused by cleaning agents
+Cleaning agents contain substances such as solvents (thinners, acetone, etc.), acids,
+bases, or other substances. Solvents can damage the front panel labeling, plastic
+parts, or screens, for example.
+Never use cleaning agents to clean the outside of the instrument. Use a soft, dry, lint-
+free dust cloth instead.
+Risk of instrument damage due to obstructed fans
+If the instrument is operated in dusty areas, the fans become obstructed by dust or
+other particles over time. Check and clean the fans regularly to ensure that they always
+operate properly. If the instrument is run with obstructed fans for a longer period, the
+instrument overheats, which can disturb the operation and even cause damage.
+1. Clean the outside of the instrument using a soft, dry, lint-free dust cloth.
+2. Check and clean the fans regularly to ensure that they always operate properly.
+3. Clean the touchscreen as follows:
+a) Apply a small amount of standard screen cleaner to a soft cloth.
+b) Wipe the screen gently with the moist, but not wet, cloth.Cleaning
+
+=== PAGE 885 ===
+Maintenance R&S®FSWP-B1
+885 User Manual 1177.5656.02 ─ 11c) If necessary, remove any excess moisture with a dry, soft cloth.Cleaning
+
+=== PAGE 886 ===
+List of commands R&S®FSWP-B1
+886 User Manual 1177.5656.02 ─ 11List of commands
+[SENSe:][WINDow<n>:]DETector<t>[:FUNCtion]..........................................................................................759
+[SENSe:][WINDow<n>:]DETector<t>[:FUNCtion]:AUTO...............................................................................758
+[SENSe:]ADJust:ALL..................................................................................................................................... 744
+[SENSe:]ADJust:CONFigure:HYSTeresis:LOWer......................................................................................... 746
+[SENSe:]ADJust:CONFigure:HYSTeresis:UPPer..........................................................................................746
+[SENSe:]ADJust:CONFigure:LEVel:DURation.............................................................................................. 745
+[SENSe:]ADJust:CONFigure:LEVel:DURation:MODE...................................................................................745
+[SENSe:]ADJust:CONFigure:TRIGger...........................................................................................................746
+[SENSe:]ADJust:FREQuency........................................................................................................................747
+[SENSe:]ADJust:LEVel.................................................................................................................................. 747
+[SENSe:]AVERage<n>:COUNt......................................................................................................................731
+[SENSe:]AVERage<n>:TYPE........................................................................................................................731
+[SENSe:]AVERage<n>[:STATe<t>]................................................................................................................731
+[SENSe:]BANDwidth:VIDeo...........................................................................................................................729
+[SENSe:]BANDwidth:VIDeo:AUTO................................................................................................................729
+[SENSe:]BANDwidth:VIDeo:RATio................................................................................................................ 730
+[SENSe:]BANDwidth:VIDeo:TYPE................................................................................................................ 730
+[SENSe:]BANDwidth[:RESolution].................................................................................................................728
+[SENSe:]BANDwidth[:RESolution]:AUTO......................................................................................................728
+[SENSe:]BANDwidth[:RESolution]:FFT......................................................................................................... 732
+[SENSe:]BANDwidth[:RESolution]:RATio...................................................................................................... 728
+[SENSe:]BANDwidth[:RESolution]:TYPE...................................................................................................... 729
+[SENSe:]BWIDth:VIDeo.................................................................................................................................729
+[SENSe:]BWIDth:VIDeo:AUTO......................................................................................................................729
+[SENSe:]BWIDth:VIDeo:RATio...................................................................................................................... 730
+[SENSe:]BWIDth:VIDeo:TYPE...................................................................................................................... 730
+[SENSe:]BWIDth[:RESolution].......................................................................................................................728
+[SENSe:]BWIDth[:RESolution]:AUTO............................................................................................................728
+[SENSe:]BWIDth[:RESolution]:FFT............................................................................................................... 732
+[SENSe:]BWIDth[:RESolution]:RATio............................................................................................................ 728
+[SENSe:]BWIDth[:RESolution]:TYPE............................................................................................................ 729
+[SENSe:]CORRection:COLLect[:ACQuire]....................................................................................................687
+[SENSe:]CORRection:CVL:BAND.................................................................................................................695
+[SENSe:]CORRection:CVL:BIAS...................................................................................................................696
+[SENSe:]CORRection:CVL:CATalog?............................................................................................................696
+[SENSe:]CORRection:CVL:CLEar.................................................................................................................697
+[SENSe:]CORRection:CVL:COMMent...........................................................................................................697
+[SENSe:]CORRection:CVL:DATA..................................................................................................................697
+[SENSe:]CORRection:CVL:HARMonic..........................................................................................................698
+[SENSe:]CORRection:CVL:MIXer................................................................................................................. 698
+[SENSe:]CORRection:CVL:PORTs................................................................................................................698
+[SENSe:]CORRection:CVL:SELect............................................................................................................... 699
+[SENSe:]CORRection:CVL:SNUMber........................................................................................................... 699
+[SENSe:]CORRection:METHod.....................................................................................................................687
+[SENSe:]CORRection:RECall........................................................................................................................688
+[SENSe:]CORRection:TRANsducer:ADJust:RLEVel[:STATe]....................................................................... 750
+[SENSe:]CORRection:TRANsducer:COMMent.............................................................................................750 
+
+=== PAGE 887 ===
+List of commands R&S®FSWP-B1
+887 User Manual 1177.5656.02 ─ 11[SENSe:]CORRection:TRANsducer:DATA.................................................................................................... 750
+[SENSe:]CORRection:TRANsducer:DELete................................................................................................. 751
+[SENSe:]CORRection:TRANsducer:GENerate............................................................................................. 688
+[SENSe:]CORRection:TRANsducer:SCALing............................................................................................... 751
+[SENSe:]CORRection:TRANsducer:SELect..................................................................................................751
+[SENSe:]CORRection:TRANsducer:UNIT.....................................................................................................751
+[SENSe:]CORRection:TRANsducer[:STATe]................................................................................................. 752
+[SENSe:]CORRection[:STATe].......................................................................................................................688
+[SENSe:]ESPectrum<sb>:BWID....................................................................................................................581
+[SENSe:]ESPectrum<sb>:FILTer[:RRC]:ALPHa............................................................................................581
+[SENSe:]ESPectrum<sb>:FILTer[:RRC][:STATe]...........................................................................................581
+[SENSe:]ESPectrum<sb>:HSPeed................................................................................................................566
+[SENSe:]ESPectrum<sb>:MSR:APPLy......................................................................................................... 588
+[SENSe:]ESPectrum<sb>:MSR:BAND..........................................................................................................588
+[SENSe:]ESPectrum<sb>:MSR:BCATegory..................................................................................................589
+[SENSe:]ESPectrum<sb>:MSR:CLASs.........................................................................................................589
+[SENSe:]ESPectrum<sb>:MSR:GSM:CARRier.............................................................................................590
+[SENSe:]ESPectrum<sb>:MSR:GSM:CPResent.......................................................................................... 591
+[SENSe:]ESPectrum<sb>:MSR:LTE:CPResent............................................................................................ 591
+[SENSe:]ESPectrum<sb>:MSR:MPOWer..................................................................................................... 592
+[SENSe:]ESPectrum<sb>:MSR:RFBWidth....................................................................................................592
+[SENSe:]ESPectrum<sb>:PRESet:RESTore.................................................................................................563
+[SENSe:]ESPectrum<sb>:PRESet:STORe................................................................................................... 563
+[SENSe:]ESPectrum<sb>:PRESet[:STANdard].............................................................................................563
+[SENSe:]ESPectrum<sb>:RANGe<ri>:BANDwidth:RESolution....................................................................567
+[SENSe:]ESPectrum<sb>:RANGe<ri>:BANDwidth:VIDeo............................................................................567
+[SENSe:]ESPectrum<sb>:RANGe<ri>:COUNt?............................................................................................568
+[SENSe:]ESPectrum<sb>:RANGe<ri>:DELete............................................................................................. 568
+[SENSe:]ESPectrum<sb>:RANGe<ri>:FILTer:TYPE.....................................................................................568
+[SENSe:]ESPectrum<sb>:RANGe<ri>:INPut:ATTenuation........................................................................... 570
+[SENSe:]ESPectrum<sb>:RANGe<ri>:INPut:ATTenuation:AUTO................................................................ 570
+[SENSe:]ESPectrum<sb>:RANGe<ri>:INPut:GAIN:LNA:STATe................................................................... 571
+[SENSe:]ESPectrum<sb>:RANGe<ri>:INPut:GAIN:STATe........................................................................... 571
+[SENSe:]ESPectrum<sb>:RANGe<ri>:INPut:GAIN[:VALue].........................................................................572
+[SENSe:]ESPectrum<sb>:RANGe<ri>:INSert............................................................................................... 572
+[SENSe:]ESPectrum<sb>:RANGe<ri>:LIMit<li>:ABSolute:STARt................................................................ 573
+[SENSe:]ESPectrum<sb>:RANGe<ri>:LIMit<li>:ABSolute:STOP.................................................................573
+[SENSe:]ESPectrum<sb>:RANGe<ri>:LIMit<li>:RELative:STARt.................................................................574
+[SENSe:]ESPectrum<sb>:RANGe<ri>:LIMit<li>:RELative:STARt:ABS.........................................................574
+[SENSe:]ESPectrum<sb>:RANGe<ri>:LIMit<li>:RELative:STARt:FUNCtion................................................575
+[SENSe:]ESPectrum<sb>:RANGe<ri>:LIMit<li>:RELative:STOP................................................................. 575
+[SENSe:]ESPectrum<sb>:RANGe<ri>:LIMit<li>:RELative:STOP:ABS......................................................... 576
+[SENSe:]ESPectrum<sb>:RANGe<ri>:LIMit<li>:RELative:STOP:FUNCtion.................................................577
+[SENSe:]ESPectrum<sb>:RANGe<ri>:LIMit<li>:STATe................................................................................ 577
+[SENSe:]ESPectrum<sb>:RANGe<ri>:MLCalc............................................................................................. 564
+[SENSe:]ESPectrum<sb>:RANGe<ri>:POINts:MINimum[:VALue]................................................................578
+[SENSe:]ESPectrum<sb>:RANGe<ri>:RLEVel............................................................................................. 578
+[SENSe:]ESPectrum<sb>:RANGe<ri>:SWEep:TIME....................................................................................579
+[SENSe:]ESPectrum<sb>:RANGe<ri>:SWEep:TIME:AUTO.........................................................................579
+[SENSe:]ESPectrum<sb>:RANGe<ri>:TRANsducer.....................................................................................580
+
+=== PAGE 888 ===
+List of commands R&S®FSWP-B1
+888 User Manual 1177.5656.02 ─ 11[SENSe:]ESPectrum<sb>:RANGe<ri>[:FREQuency]:STARt........................................................................ 569
+[SENSe:]ESPectrum<sb>:RANGe<ri>[:FREQuency]:STOP.........................................................................569
+[SENSe:]ESPectrum<sb>:RRANge?.............................................................................................................581
+[SENSe:]ESPectrum<sb>:RTYPe................................................................................................................. 582
+[SENSe:]ESPectrum<sb>:SCENter...............................................................................................................565
+[SENSe:]ESPectrum<sb>:SCOunt................................................................................................................ 565
+[SENSe:]ESPectrum<sb>:SSETup................................................................................................................580
+[SENSe:]FREQuency:CENTer.......................................................................................................................715
+[SENSe:]FREQuency:CENTer:STEP.............................................................................................................715
+[SENSe:]FREQuency:CENTer:STEP:AUTO..................................................................................................716
+[SENSe:]FREQuency:CENTer:STEP:LINK....................................................................................................716
+[SENSe:]FREQuency:CENTer:STEP:LINK:FACTor.......................................................................................717
+[SENSe:]FREQuency:OFFSet.......................................................................................................................717
+[SENSe:]FREQuency:SPAN..........................................................................................................................717
+[SENSe:]FREQuency:SPAN:FULL................................................................................................................ 718
+[SENSe:]FREQuency:STARt......................................................................................................................... 718
+[SENSe:]FREQuency:STOP..........................................................................................................................718
+[SENSe:]LIST:POWer:RESult?......................................................................................................................641
+[SENSe:]LIST:POWer:SET............................................................................................................................ 642
+[SENSe:]LIST:POWer:STATe.........................................................................................................................643
+[SENSe:]LIST:POWer[:SEQuence]................................................................................................................642
+[SENSe:]LIST:RANGe<ri>:BANDwidth:RESolution.......................................................................................599
+[SENSe:]LIST:RANGe<ri>:BANDwidth:VIDeo...............................................................................................600
+[SENSe:]LIST:RANGe<ri>:BREak................................................................................................................. 600
+[SENSe:]LIST:RANGe<ri>:COUNt?...............................................................................................................600
+[SENSe:]LIST:RANGe<ri>:DELete................................................................................................................ 601
+[SENSe:]LIST:RANGe<ri>:DETector..............................................................................................................601
+[SENSe:]LIST:RANGe<ri>:FILTer:TYPE........................................................................................................602
+[SENSe:]LIST:RANGe<ri>:INPut:ATTenuation.............................................................................................. 603
+[SENSe:]LIST:RANGe<ri>:INPut:ATTenuation:AUTO................................................................................... 603
+[SENSe:]LIST:RANGe<ri>:INPut:GAIN:STATe.............................................................................................. 604
+[SENSe:]LIST:RANGe<ri>:INPut:GAIN[:VALue]............................................................................................604
+[SENSe:]LIST:RANGe<ri>:LIMit:STARt......................................................................................................... 604
+[SENSe:]LIST:RANGe<ri>:LIMit:STATe......................................................................................................... 605
+[SENSe:]LIST:RANGe<ri>:LIMit:STOP..........................................................................................................605
+[SENSe:]LIST:RANGe<ri>:POINts[:VALue]................................................................................................... 605
+[SENSe:]LIST:RANGe<ri>:RLEVel................................................................................................................ 606
+[SENSe:]LIST:RANGe<ri>:SWEep:TIME.......................................................................................................606
+[SENSe:]LIST:RANGe<ri>:SWEep:TIME:AUTO............................................................................................606
+[SENSe:]LIST:RANGe<ri>:TRANsducer........................................................................................................607
+[SENSe:]LIST:RANGe<ri>[:FREQuency]:STARt........................................................................................... 602
+[SENSe:]LIST:RANGe<ri>[:FREQuency]:STOP............................................................................................603
+[SENSe:]LIST:XADJust..................................................................................................................................609
+[SENSe:]MIXer<x>:BIAS:HIGH..................................................................................................................... 699
+[SENSe:]MIXer<x>:BIAS[:LOW].................................................................................................................... 700
+[SENSe:]MIXer<x>:FREQuency:HANDover..................................................................................................700
+[SENSe:]MIXer<x>:FREQuency:STARt.........................................................................................................700
+[SENSe:]MIXer<x>:FREQuency:STOP......................................................................................................... 701
+[SENSe:]MIXer<x>:HARMonic:BAND........................................................................................................... 701
+[SENSe:]MIXer<x>:HARMonic:BAND:PRESet..............................................................................................701
+
+=== PAGE 889 ===
+List of commands R&S®FSWP-B1
+889 User Manual 1177.5656.02 ─ 11[SENSe:]MIXer<x>:HARMonic:HIGH:STATe................................................................................................. 703
+[SENSe:]MIXer<x>:HARMonic:HIGH[:VALue]...............................................................................................702
+[SENSe:]MIXer<x>:HARMonic:TYPE............................................................................................................702
+[SENSe:]MIXer<x>:HARMonic[:LOW]........................................................................................................... 703
+[SENSe:]MIXer<x>:LOPower.........................................................................................................................707
+[SENSe:]MIXer<x>:LOSS:HIGH....................................................................................................................703
+[SENSe:]MIXer<x>:LOSS:TABLe:HIGH........................................................................................................ 703
+[SENSe:]MIXer<x>:LOSS:TABLe[:LOW].......................................................................................................704
+[SENSe:]MIXer<x>:LOSS[:LOW]...................................................................................................................704
+[SENSe:]MIXer<x>:PORTs............................................................................................................................ 705
+[SENSe:]MIXer<x>:RFOVerrange[:STATe].................................................................................................... 705
+[SENSe:]MIXer<x>:SIGNal............................................................................................................................705
+[SENSe:]MIXer<x>:THReshold......................................................................................................................706
+[SENSe:]MIXer<x>[:STATe]........................................................................................................................... 706
+[SENSe:]MPOWer:FTYPe............................................................................................................................. 646
+[SENSe:]MPOWer:RESult:MIN?....................................................................................................................648
+[SENSe:]MPOWer:RESult[:LIST]?.................................................................................................................647
+[SENSe:]MPOWer[:SEQuence].....................................................................................................................647
+[SENSe:]NPRatio:CHANnel:BWIDth............................................................................................................. 547
+[SENSe:]NPRatio:CHANnel:INTegration:AUTO............................................................................................ 547
+[SENSe:]NPRatio:CHANnel:INTegration:BWIDth..........................................................................................547
+[SENSe:]NPRatio:CHANnel:INTegration:FREQuency:OFFSet..................................................................... 548
+[SENSe:]NPRatio:MODE...............................................................................................................................548
+[SENSe:]NPRatio:NOTCh<notch>:BWIDth:RELative....................................................................................548
+[SENSe:]NPRatio:NOTCh<notch>:BWIDth[:ABSolute]................................................................................. 549
+[SENSe:]NPRatio:NOTCh<notch>:COUNt....................................................................................................549
+[SENSe:]NPRatio:NOTCh<notch>:FREQuency:OFFSet.............................................................................. 549
+[SENSe:]NPRatio:STATe............................................................................................................................... 546
+[SENSe:]PMETer:MATH[:MINuend]...............................................................................................................678
+[SENSe:]PMETer:MATH[:RESult]?................................................................................................................ 678
+[SENSe:]PMETer:MATH[:STATe]................................................................................................................... 677
+[SENSe:]PMETer:MATH[:SUBTrahend].........................................................................................................678
+[SENSe:]PMETer<p>:DCYCle:VALue............................................................................................................673
+[SENSe:]PMETer<p>:DCYCle[:STATe]..........................................................................................................672
+[SENSe:]PMETer<p>:FREQuency.................................................................................................................673
+[SENSe:]PMETer<p>:FREQuency:LINK........................................................................................................674
+[SENSe:]PMETer<p>:MTIMe.........................................................................................................................674
+[SENSe:]PMETer<p>:MTIMe:AVERage:COUNt............................................................................................674
+[SENSe:]PMETer<p>:MTIMe:AVERage[:STATe]........................................................................................... 675
+[SENSe:]PMETer<p>:ROFFset[:STATe]........................................................................................................ 675
+[SENSe:]PMETer<p>:SOFFset......................................................................................................................676
+[SENSe:]PMETer<p>:TRIGger:DTIMe...........................................................................................................678
+[SENSe:]PMETer<p>:TRIGger:HOLDoff....................................................................................................... 679
+[SENSe:]PMETer<p>:TRIGger:HYSTeresis...................................................................................................679
+[SENSe:]PMETer<p>:TRIGger:LEVel............................................................................................................680
+[SENSe:]PMETer<p>:TRIGger:SLOPe..........................................................................................................680
+[SENSe:]PMETer<p>:TRIGger[:STATe]......................................................................................................... 680
+[SENSe:]PMETer<p>:UPDate[:STATe].......................................................................................................... 676
+[SENSe:]PMETer<p>[:STATe]........................................................................................................................676
+[SENSe:]POWer:ACHannel:ACPairs.............................................................................................................504
+
+=== PAGE 890 ===
+List of commands R&S®FSWP-B1
+890 User Manual 1177.5656.02 ─ 11[SENSe:]POWer:ACHannel:AGCHannels.....................................................................................................523
+[SENSe:]POWer:ACHannel:BANDwidth:ACHannel...................................................................................... 505
+[SENSe:]POWer:ACHannel:BANDwidth:ALTernate<ch>.............................................................................. 505
+[SENSe:]POWer:ACHannel:BANDwidth:GAP<gap>[:AUTO]........................................................................524
+[SENSe:]POWer:ACHannel:BANDwidth:UACHannel....................................................................................524
+[SENSe:]POWer:ACHannel:BANDwidth:UALTernate<ch>............................................................................524
+[SENSe:]POWer:ACHannel:BANDwidth[:CHANnel<ch>]..............................................................................506
+[SENSe:]POWer:ACHannel:BWIDth:GAP<gap>...........................................................................................524
+[SENSe:]POWer:ACHannel:BWIDth:UACHannel..........................................................................................524
+[SENSe:]POWer:ACHannel:BWIDth:UALTernate<ch>..................................................................................524
+[SENSe:]POWer:ACHannel:FILTer:ALPHa:ACHannel.................................................................................. 508
+[SENSe:]POWer:ACHannel:FILTer:ALPHa:ALTernate<ch>...........................................................................509
+[SENSe:]POWer:ACHannel:FILTer:ALPHa:CHANnel<ch>............................................................................509
+[SENSe:]POWer:ACHannel:FILTer:ALPHa:GAP<gap>[:AUTO]....................................................................525
+[SENSe:]POWer:ACHannel:FILTer:ALPHa:SBLock<sb>:CHANnel<ch>...................................................... 525
+[SENSe:]POWer:ACHannel:FILTer:ALPHa:UACHannel................................................................................525
+[SENSe:]POWer:ACHannel:FILTer:ALPHa:UALTernate<ch>........................................................................526
+[SENSe:]POWer:ACHannel:FILTer:ALPHa[:ALL].......................................................................................... 509
+[SENSe:]POWer:ACHannel:FILTer[:STATe]:ACHannel................................................................................. 510
+[SENSe:]POWer:ACHannel:FILTer[:STATe]:ALTernate<ch>..........................................................................510
+[SENSe:]POWer:ACHannel:FILTer[:STATe]:CHANnel<ch>...........................................................................510
+[SENSe:]POWer:ACHannel:FILTer[:STATe]:GAP<gap>[:AUTO]................................................................... 526
+[SENSe:]POWer:ACHannel:FILTer[:STATe]:SBLock<sb>:CHANnel<ch>..................................................... 526
+[SENSe:]POWer:ACHannel:FILTer[:STATe]:UACHannel...............................................................................527
+[SENSe:]POWer:ACHannel:FILTer[:STATe]:UALTernate<ch>....................................................................... 527
+[SENSe:]POWer:ACHannel:FILTer[:STATe][:ALL]......................................................................................... 510
+[SENSe:]POWer:ACHannel:GAP<gap>[:AUTO]:MSIZe................................................................................527
+[SENSe:]POWer:ACHannel:MODE............................................................................................................... 535
+[SENSe:]POWer:ACHannel:NAME:ACHannel.............................................................................................. 506
+[SENSe:]POWer:ACHannel:NAME:ALTernate<ch>...................................................................................... 506
+[SENSe:]POWer:ACHannel:NAME:CHANnel<ch>........................................................................................506
+[SENSe:]POWer:ACHannel:NAME:UACHannel............................................................................................528
+[SENSe:]POWer:ACHannel:NAME:UALTernate<ch>....................................................................................528
+[SENSe:]POWer:ACHannel:PRESet............................................................................................................. 501
+[SENSe:]POWer:ACHannel:PRESet:RLEVel................................................................................................ 502
+[SENSe:]POWer:ACHannel:REFerence:AUTO ONCE..................................................................................511
+[SENSe:]POWer:ACHannel:REFerence:TXCHannel:AUTO..........................................................................511
+[SENSe:]POWer:ACHannel:REFerence:TXCHannel:MANual.......................................................................511
+[SENSe:]POWer:ACHannel:SBCount............................................................................................................528
+[SENSe:]POWer:ACHannel:SBLock<sb>:BANDwidth[:CHANnel<ch>]........................................................ 528
+[SENSe:]POWer:ACHannel:SBLock<sb>:BWIDth[:CHANnel<ch>].............................................................. 528
+[SENSe:]POWer:ACHannel:SBLock<sb>:CENTer[:CHANnel<ch>]..............................................................529
+[SENSe:]POWer:ACHannel:SBLock<sb>:FREQuency:CENTer................................................................... 529
+[SENSe:]POWer:ACHannel:SBLock<sb>:NAME[:CHANnel<ch>]................................................................ 529
+[SENSe:]POWer:ACHannel:SBLock<sb>:RFBWidth.................................................................................... 530
+[SENSe:]POWer:ACHannel:SBLock<sb>:TECHnology[:CHANnel<ch>]...................................................... 530
+[SENSe:]POWer:ACHannel:SBLock<sb>:TXCHannel:COUNt..................................................................... 531
+[SENSe:]POWer:ACHannel:SPACing:ALTernate<ch>...................................................................................507
+[SENSe:]POWer:ACHannel:SPACing:CHANnel<ch>....................................................................................507
+[SENSe:]POWer:ACHannel:SPACing:GAP<gap>[:AUTO]............................................................................531
+
+=== PAGE 891 ===
+List of commands R&S®FSWP-B1
+891 User Manual 1177.5656.02 ─ 11[SENSe:]POWer:ACHannel:SPACing:UACHannel........................................................................................532
+[SENSe:]POWer:ACHannel:SPACing:UALTernate<ch>................................................................................532
+[SENSe:]POWer:ACHannel:SPACing[:ACHannel]........................................................................................ 508
+[SENSe:]POWer:ACHannel:SSETup.............................................................................................................533
+[SENSe:]POWer:ACHannel:TXCHannel:COUNt...........................................................................................508
+[SENSe:]POWer:BANDwidth.........................................................................................................................545
+[SENSe:]POWer:BWIDth...............................................................................................................................545
+[SENSe:]POWer:HSPeed..............................................................................................................................518
+[SENSe:]POWer:NCORrection......................................................................................................................721
+[SENSe:]POWer:TRACe................................................................................................................................502
+[SENSe:]PROBe<pb>:ID:PARTnumber?.......................................................................................................681
+[SENSe:]PROBe<pb>:ID:SRNumber?.......................................................................................................... 681
+[SENSe:]PROBe<pb>:SETup:ATTRatio........................................................................................................682
+[SENSe:]PROBe<pb>:SETup:CMOFfset...................................................................................................... 682
+[SENSe:]PROBe<pb>:SETup:DMOFfset...................................................................................................... 683
+[SENSe:]PROBe<pb>:SETup:MODE............................................................................................................683
+[SENSe:]PROBe<pb>:SETup:NAME?.......................................................................................................... 683
+[SENSe:]PROBe<pb>:SETup:NMOFfset...................................................................................................... 684
+[SENSe:]PROBe<pb>:SETup:PMODe..........................................................................................................684
+[SENSe:]PROBe<pb>:SETup:PMOFfset.......................................................................................................685
+[SENSe:]PROBe<pb>:SETup:STATe?...........................................................................................................685
+[SENSe:]PROBe<pb>:SETup:TYPE?........................................................................................................... 686
+[SENSe:]SWEep:COUNt............................................................................................................................... 732
+[SENSe:]SWEep:COUNt:CURRent?.............................................................................................................495
+[SENSe:]SWEep:DURation?......................................................................................................................... 733
+[SENSe:]SWEep:EGATe................................................................................................................................741
+[SENSe:]SWEep:EGATe:CONTinuous:PCOunt............................................................................................ 744
+[SENSe:]SWEep:EGATe:CONTinuous:PLENgth...........................................................................................743
+[SENSe:]SWEep:EGATe:CONTinuous[:STATe].............................................................................................743
+[SENSe:]SWEep:EGATe:HOLDoff.................................................................................................................741
+[SENSe:]SWEep:EGATe:LENGth..................................................................................................................741
+[SENSe:]SWEep:EGATe:POLarity.................................................................................................................742
+[SENSe:]SWEep:EGATe:SOURce.................................................................................................................742
+[SENSe:]SWEep:EGATe:TRACe<t>:COMMent............................................................................................ 614
+[SENSe:]SWEep:EGATe:TRACe<t>:PERiod.................................................................................................614
+[SENSe:]SWEep:EGATe:TRACe<t>:STARt<gr>........................................................................................... 615
+[SENSe:]SWEep:EGATe:TRACe<t>:STOP<gr>............................................................................................615
+[SENSe:]SWEep:EGATe:TRACe<t>[:STATe<gr>]......................................................................................... 616
+[SENSe:]SWEep:EGATe:TYPE..................................................................................................................... 743
+[SENSe:]SWEep:MODE................................................................................................................................ 564
+[SENSe:]SWEep:OPTimize........................................................................................................................... 733
+[SENSe:]SWEep:TIME.................................................................................................................................. 734
+[SENSe:]SWEep:TIME:AUTO....................................................................................................................... 735
+[SENSe:]SWEep:TYPE..................................................................................................................................735
+[SENSe:]SWEep:TYPE:USED.......................................................................................................................735
+[SENSe:]SWEep[:WINDow<n>]:POINts........................................................................................................734
+*RST.............................................................................................................................................................. 664
+ABORt............................................................................................................................................................492
+CALCulate<n>:DELTamarker<m>:AOFF.......................................................................................................780
+CALCulate<n>:DELTamarker<m>:FUNCtion:BPOWer:MODE......................................................................818
+
+=== PAGE 892 ===
+List of commands R&S®FSWP-B1
+892 User Manual 1177.5656.02 ─ 11CALCulate<n>:DELTamarker<m>:FUNCtion:BPOWer:RESult?................................................................... 818
+CALCulate<n>:DELTamarker<m>:FUNCtion:BPOWer:SPAN.......................................................................818
+CALCulate<n>:DELTamarker<m>:FUNCtion:BPOWer[:STATe].................................................................... 819
+CALCulate<n>:DELTamarker<m>:FUNCtion:FIXed:RPOint:MAXimum[:PEAK]........................................... 786
+CALCulate<n>:DELTamarker<m>:FUNCtion:FIXed:RPOint:X......................................................................787
+CALCulate<n>:DELTamarker<m>:FUNCtion:FIXed:RPOint:Y......................................................................787
+CALCulate<n>:DELTamarker<m>:FUNCtion:FIXed:RPOint:Y:OFFSet.........................................................787
+CALCulate<n>:DELTamarker<m>:FUNCtion:FIXed[:STATe].........................................................................788
+CALCulate<n>:DELTamarker<m>:FUNCtion:PNOise:AUTO........................................................................ 812
+CALCulate<n>:DELTamarker<m>:FUNCtion:PNOise:RESult?.....................................................................812
+CALCulate<n>:DELTamarker<m>:FUNCtion:PNOise[:STATe]......................................................................813
+CALCulate<n>:DELTamarker<m>:LINK........................................................................................................ 780
+CALCulate<n>:DELTamarker<m>:MAXimum:LEFT......................................................................................794
+CALCulate<n>:DELTamarker<m>:MAXimum:NEXT..................................................................................... 794
+CALCulate<n>:DELTamarker<m>:MAXimum:RIGHt.....................................................................................794
+CALCulate<n>:DELTamarker<m>:MAXimum[:PEAK]................................................................................... 795
+CALCulate<n>:DELTamarker<m>:MINimum:LEFT....................................................................................... 795
+CALCulate<n>:DELTamarker<m>:MINimum:NEXT...................................................................................... 795
+CALCulate<n>:DELTamarker<m>:MINimum:RIGHt......................................................................................796
+CALCulate<n>:DELTamarker<m>:MINimum[:PEAK].................................................................................... 796
+CALCulate<n>:DELTamarker<m>:MODE......................................................................................................782
+CALCulate<n>:DELTamarker<m>:MREFerence........................................................................................... 782
+CALCulate<n>:DELTamarker<m>:SGRam:FRAMe...................................................................................... 805
+CALCulate<n>:DELTamarker<m>:SGRam:SARea....................................................................................... 806
+CALCulate<n>:DELTamarker<m>:SGRam:XY:MAXimum[:PEAK]................................................................806
+CALCulate<n>:DELTamarker<m>:SGRam:XY:MINimum[:PEAK].................................................................807
+CALCulate<n>:DELTamarker<m>:SGRam:Y:MAXimum:ABOVe..................................................................807
+CALCulate<n>:DELTamarker<m>:SGRam:Y:MAXimum:BELow.................................................................. 807
+CALCulate<n>:DELTamarker<m>:SGRam:Y:MAXimum:NEXT.................................................................... 807
+CALCulate<n>:DELTamarker<m>:SGRam:Y:MAXimum[:PEAK].................................................................. 807
+CALCulate<n>:DELTamarker<m>:SGRam:Y:MINimum:ABOVe................................................................... 808
+CALCulate<n>:DELTamarker<m>:SGRam:Y:MINimum:BELow....................................................................808
+CALCulate<n>:DELTamarker<m>:SGRam:Y:MINimum:NEXT..................................................................... 808
+CALCulate<n>:DELTamarker<m>:SGRam:Y:MINimum[:PEAK]................................................................... 808
+CALCulate<n>:DELTamarker<m>:SPECtrogram:FRAMe.............................................................................805
+CALCulate<n>:DELTamarker<m>:SPECtrogram:SARea..............................................................................806
+CALCulate<n>:DELTamarker<m>:SPECtrogram:XY:MAXimum[:PEAK]...................................................... 806
+CALCulate<n>:DELTamarker<m>:SPECtrogram:XY:MINimum[:PEAK]........................................................807
+CALCulate<n>:DELTamarker<m>:SPECtrogram:Y:MAXimum:ABOVe.........................................................807
+CALCulate<n>:DELTamarker<m>:SPECtrogram:Y:MAXimum:BELow.........................................................807
+CALCulate<n>:DELTamarker<m>:SPECtrogram:Y:MAXimum:NEXT...........................................................807
+CALCulate<n>:DELTamarker<m>:SPECtrogram:Y:MAXimum[:PEAK].........................................................807
+CALCulate<n>:DELTamarker<m>:SPECtrogram:Y:MINimum:ABOVe..........................................................808
+CALCulate<n>:DELTamarker<m>:SPECtrogram:Y:MINimum:BELow.......................................................... 808
+CALCulate<n>:DELTamarker<m>:SPECtrogram:Y:MINimum:NEXT............................................................808
+CALCulate<n>:DELTamarker<m>:SPECtrogram:Y:MINimum[:PEAK]..........................................................808
+CALCulate<n>:DELTamarker<m>:TRACe.....................................................................................................783
+CALCulate<n>:DELTamarker<m>:X..............................................................................................................784
+CALCulate<n>:DELTamarker<m>:X:RELative?............................................................................................ 799
+CALCulate<n>:DELTamarker<m>:Y?............................................................................................................800
+
+=== PAGE 893 ===
+List of commands R&S®FSWP-B1
+893 User Manual 1177.5656.02 ─ 11CALCulate<n>:DELTamarker<m>[:STATe].................................................................................................... 783
+CALCulate<n>:DELTamarker<ms>:LINK:TO:DELTa<md>............................................................................782
+CALCulate<n>:DELTamarker<ms>:LINK:TO:MARKer<md>.........................................................................781
+CALCulate<n>:DLINe<dl>............................................................................................................................. 832
+CALCulate<n>:DLINe<dl>:STATe..................................................................................................................832
+CALCulate<n>:ESPectrum:PEAKsearch:AUTO............................................................................................593
+CALCulate<n>:ESPectrum:PEAKsearch:DETails..........................................................................................607
+CALCulate<n>:ESPectrum:PEAKsearch:MARGin........................................................................................ 594
+CALCulate<n>:ESPectrum:PEAKsearch:PSHow..........................................................................................594
+CALCulate<n>:ESPectrum:PEAKsearch[:IMMediate]...................................................................................594
+CALCulate<n>:ESPectrum:PSEarch:AUTO..................................................................................................593
+CALCulate<n>:ESPectrum:PSEarch:MARGin.............................................................................................. 594
+CALCulate<n>:ESPectrum:PSEarch:PSHow................................................................................................594
+CALCulate<n>:ESPectrum:PSEarch[:IMMediate]......................................................................................... 594
+CALCulate<n>:FLINe<dl>..............................................................................................................................832
+CALCulate<n>:FLINe<dl>:STATe.................................................................................................................. 833
+CALCulate<n>:LIMit<li>:ACPower:ACHannel:ABSolute............................................................................... 512
+CALCulate<n>:LIMit<li>:ACPower:ACHannel:ABSolute:STATe....................................................................513
+CALCulate<n>:LIMit<li>:ACPower:ACHannel:RESult?.................................................................................514
+CALCulate<n>:LIMit<li>:ACPower:ACHannel[:RELative]..............................................................................513
+CALCulate<n>:LIMit<li>:ACPower:ACHannel[:RELative]:STATe.................................................................. 513
+CALCulate<n>:LIMit<li>:ACPower:ALTernate<ch>:ABSolute....................................................................... 515
+CALCulate<n>:LIMit<li>:ACPower:ALTernate<ch>:ABSolute:STATe............................................................ 515
+CALCulate<n>:LIMit<li>:ACPower:ALTernate<ch>:RESult?......................................................................... 517
+CALCulate<n>:LIMit<li>:ACPower:ALTernate<ch>[:RELative]......................................................................516
+CALCulate<n>:LIMit<li>:ACPower:ALTernate<ch>[:RELative]:STATe...........................................................516
+CALCulate<n>:LIMit<li>:ACPower:GAP<gap>:ACLR:RESult?.....................................................................533
+CALCulate<n>:LIMit<li>:ACPower:GAP<gap>[:AUTO]:ABSolute.................................................................520
+CALCulate<n>:LIMit<li>:ACPower:GAP<gap>[:AUTO]:ABSolute:STATe......................................................520
+CALCulate<n>:LIMit<li>:ACPower:GAP<gap>[:AUTO]:ACLR[:RELative].....................................................521
+CALCulate<n>:LIMit<li>:ACPower:GAP<gap>[:AUTO]:ACLR[:RELative]:STATe......................................... 521
+CALCulate<n>:LIMit<li>:ACPower:GAP<gap>[:AUTO][:CACLr][:RELative]................................................. 521
+CALCulate<n>:LIMit<li>:ACPower:GAP<gap>[:AUTO][:CACLr][:RELative]:STATe...................................... 522
+CALCulate<n>:LIMit<li>:ACPower:GAP<gap>[:CACLr]:RESult?..................................................................522
+CALCulate<n>:LIMit<li>:ACPower[:STATe]................................................................................................... 518
+CALCulate<n>:LIMit<li>:ACTive?..................................................................................................................835
+CALCulate<n>:LIMit<li>:CLEar[:IMMediate]..................................................................................................835
+CALCulate<n>:LIMit<li>:COMMent............................................................................................................... 836
+CALCulate<n>:LIMit<li>:CONTrol:DOMain................................................................................................... 836
+CALCulate<n>:LIMit<li>:CONTrol:MODE......................................................................................................837
+CALCulate<n>:LIMit<li>:CONTrol:OFFSet.................................................................................................... 837
+CALCulate<n>:LIMit<li>:CONTrol:SHIFt....................................................................................................... 837
+CALCulate<n>:LIMit<li>:CONTrol:SPACing.................................................................................................. 838
+CALCulate<n>:LIMit<li>:CONTrol[:DATA]......................................................................................................836
+CALCulate<n>:LIMit<li>:COPY......................................................................................................................838
+CALCulate<n>:LIMit<li>:DELete....................................................................................................................838
+CALCulate<n>:LIMit<li>:ESPectrum<sb>:LIMits...........................................................................................582
+CALCulate<n>:LIMit<li>:ESPectrum<sb>:MODE..........................................................................................583
+CALCulate<n>:LIMit<li>:ESPectrum<sb>:PCLass<pc>:COUNt................................................................... 584
+CALCulate<n>:LIMit<li>:ESPectrum<sb>:PCLass<pc>:LIMit[:STATe]..........................................................584
+
+=== PAGE 894 ===
+List of commands R&S®FSWP-B1
+894 User Manual 1177.5656.02 ─ 11CALCulate<n>:LIMit<li>:ESPectrum<sb>:PCLass<pc>:MAXimum.............................................................. 585
+CALCulate<n>:LIMit<li>:ESPectrum<sb>:PCLass<pc>:MINimum................................................................586
+CALCulate<n>:LIMit<li>:ESPectrum<sb>:PCLass<pc>[:EXCLusive]........................................................... 586
+CALCulate<n>:LIMit<li>:ESPectrum<sb>:RESTore...................................................................................... 562
+CALCulate<n>:LIMit<li>:ESPectrum<sb>:VALue..........................................................................................587
+CALCulate<n>:LIMit<li>:FAIL?...................................................................................................................... 839
+CALCulate<n>:LIMit<li>:LOWer:MARGin......................................................................................................840
+CALCulate<n>:LIMit<li>:LOWer:MODE.........................................................................................................840
+CALCulate<n>:LIMit<li>:LOWer:OFFSet.......................................................................................................840
+CALCulate<n>:LIMit<li>:LOWer:SHIFt.......................................................................................................... 841
+CALCulate<n>:LIMit<li>:LOWer:SPACing.....................................................................................................841
+CALCulate<n>:LIMit<li>:LOWer:STATe......................................................................................................... 841
+CALCulate<n>:LIMit<li>:LOWer:THReshold................................................................................................. 842
+CALCulate<n>:LIMit<li>:LOWer[:DATA]........................................................................................................ 839
+CALCulate<n>:LIMit<li>:NAME..................................................................................................................... 842
+CALCulate<n>:LIMit<li>:STATe..................................................................................................................... 843
+CALCulate<n>:LIMit<li>:TRACe<t>...............................................................................................................843
+CALCulate<n>:LIMit<li>:TRACe<t>:CHECk..................................................................................................843
+CALCulate<n>:LIMit<li>:UNIT....................................................................................................................... 844
+CALCulate<n>:LIMit<li>:UPPer:MARGin.......................................................................................................845
+CALCulate<n>:LIMit<li>:UPPer:MODE......................................................................................................... 845
+CALCulate<n>:LIMit<li>:UPPer:OFFSet........................................................................................................846
+CALCulate<n>:LIMit<li>:UPPer:SHIFt...........................................................................................................846
+CALCulate<n>:LIMit<li>:UPPer:SPACing......................................................................................................846
+CALCulate<n>:LIMit<li>:UPPer:STATe..........................................................................................................847
+CALCulate<n>:LIMit<li>:UPPer:THReshold.................................................................................................. 847
+CALCulate<n>:LIMit<li>:UPPer[:DATA]......................................................................................................... 844
+CALCulate<n>:MARKer<m>:AOFF...............................................................................................................784
+CALCulate<n>:MARKer<m>:COUNt.............................................................................................................809
+CALCulate<n>:MARKer<m>:COUNt:FREQuency?...................................................................................... 810
+CALCulate<n>:MARKer<m>:COUNt:RESolution..........................................................................................810
+CALCulate<n>:MARKer<m>:FUNCtion:BPOWer:MODE..............................................................................820
+CALCulate<n>:MARKer<m>:FUNCtion:BPOWer:RESult?........................................................................... 819
+CALCulate<n>:MARKer<m>:FUNCtion:BPOWer:SPAN............................................................................... 820
+CALCulate<n>:MARKer<m>:FUNCtion:BPOWer[:STATe]............................................................................ 820
+CALCulate<n>:MARKer<m>:FUNCtion:CENTer........................................................................................... 718
+CALCulate<n>:MARKer<m>:FUNCtion:CSTep.............................................................................................719
+CALCulate<n>:MARKer<m>:FUNCtion:FPEaks:ANNotation:LABel[:STATe]................................................821
+CALCulate<n>:MARKer<m>:FUNCtion:FPEaks:COUNt?.............................................................................821
+CALCulate<n>:MARKer<m>:FUNCtion:FPEaks:LIST:SIZE..........................................................................822
+CALCulate<n>:MARKer<m>:FUNCtion:FPEaks:SORT................................................................................ 823
+CALCulate<n>:MARKer<m>:FUNCtion:FPEaks:STATe................................................................................823
+CALCulate<n>:MARKer<m>:FUNCtion:FPEaks:X?......................................................................................823
+CALCulate<n>:MARKer<m>:FUNCtion:FPEaks:Y?......................................................................................824
+CALCulate<n>:MARKer<m>:FUNCtion:FPEaks[:IMMediate]....................................................................... 822
+CALCulate<n>:MARKer<m>:FUNCtion:HARMonics:BANDwidth:AUTO...................................................... 632
+CALCulate<n>:MARKer<m>:FUNCtion:HARMonics:DISTortion?.................................................................633
+CALCulate<n>:MARKer<m>:FUNCtion:HARMonics:LIST............................................................................ 634
+CALCulate<n>:MARKer<m>:FUNCtion:HARMonics:NHARmonics.............................................................. 633
+CALCulate<n>:MARKer<m>:FUNCtion:HARMonics:PRESet.......................................................................633
+
+=== PAGE 895 ===
+List of commands R&S®FSWP-B1
+895 User Manual 1177.5656.02 ─ 11CALCulate<n>:MARKer<m>:FUNCtion:HARMonics[:STATe]....................................................................... 632
+CALCulate<n>:MARKer<m>:FUNCtion:MDEPth:RESult<t>?.......................................................................638
+CALCulate<n>:MARKer<m>:FUNCtion:MDEPth:SEARchsignal ONCE.......................................................639
+CALCulate<n>:MARKer<m>:FUNCtion:MDEPth[:STATe]............................................................................. 639
+CALCulate<n>:MARKer<m>:FUNCtion:MSUMmary.....................................................................................645
+CALCulate<n>:MARKer<m>:FUNCtion:NDBDown.......................................................................................814
+CALCulate<n>:MARKer<m>:FUNCtion:NDBDown:FREQuency?................................................................ 815
+CALCulate<n>:MARKer<m>:FUNCtion:NDBDown:QFACtor?......................................................................816
+CALCulate<n>:MARKer<m>:FUNCtion:NDBDown:RESult?.........................................................................816
+CALCulate<n>:MARKer<m>:FUNCtion:NDBDown:STATe............................................................................816
+CALCulate<n>:MARKer<m>:FUNCtion:NDBDown:TIME?........................................................................... 817
+CALCulate<n>:MARKer<m>:FUNCtion:NOISe:RESult?...............................................................................811
+CALCulate<n>:MARKer<m>:FUNCtion:NOISe[:STATe]................................................................................811
+CALCulate<n>:MARKer<m>:FUNCtion:PNOise:RESult?............................................................................. 813
+CALCulate<n>:MARKer<m>:FUNCtion:PNOise[:STATe].............................................................................. 814
+CALCulate<n>:MARKer<m>:FUNCtion:POWer<sb>:MODE........................................................................ 498
+CALCulate<n>:MARKer<m>:FUNCtion:POWer<sb>:PRESet...................................................................... 503
+CALCulate<n>:MARKer<m>:FUNCtion:POWer<sb>:RESult:PHZ................................................................534
+CALCulate<n>:MARKer<m>:FUNCtion:POWer<sb>:RESult:UNIT.............................................................. 535
+CALCulate<n>:MARKer<m>:FUNCtion:POWer<sb>:RESult?......................................................................498
+CALCulate<n>:MARKer<m>:FUNCtion:POWer<sb>:SELect....................................................................... 500
+CALCulate<n>:MARKer<m>:FUNCtion:POWer<sb>:STANdard:CATalog?.................................................. 503
+CALCulate<n>:MARKer<m>:FUNCtion:POWer<sb>:STANdard:DELete..................................................... 504
+CALCulate<n>:MARKer<m>:FUNCtion:POWer<sb>:STANdard:SAVE........................................................ 504
+CALCulate<n>:MARKer<m>:FUNCtion:POWer<sb>[:STATe].......................................................................501
+CALCulate<n>:MARKer<m>:FUNCtion:REFerence......................................................................................722
+CALCulate<n>:MARKer<m>:FUNCtion:STRack:BANDwidth........................................................................719
+CALCulate<n>:MARKer<m>:FUNCtion:STRack:THReshold........................................................................720
+CALCulate<n>:MARKer<m>:FUNCtion:STRack:TRACe.............................................................................. 720
+CALCulate<n>:MARKer<m>:FUNCtion:STRack[:STATe]..............................................................................719
+CALCulate<n>:MARKer<m>:FUNCtion:SUMMary:AOFF............................................................................. 622
+CALCulate<n>:MARKer<m>:FUNCtion:SUMMary:AVERage....................................................................... 623
+CALCulate<n>:MARKer<m>:FUNCtion:SUMMary:MEAN:AVERage:RESult?..............................................626
+CALCulate<n>:MARKer<m>:FUNCtion:SUMMary:MEAN:PHOLd:RESult?................................................. 626
+CALCulate<n>:MARKer<m>:FUNCtion:SUMMary:MEAN:RESult?.............................................................. 626
+CALCulate<n>:MARKer<m>:FUNCtion:SUMMary:MEAN[:STATe]............................................................... 623
+CALCulate<n>:MARKer<m>:FUNCtion:SUMMary:PHOLd...........................................................................624
+CALCulate<n>:MARKer<m>:FUNCtion:SUMMary:PPEak:AVERage:RESult?.............................................627
+CALCulate<n>:MARKer<m>:FUNCtion:SUMMary:PPEak:PHOLd:RESult?.................................................627
+CALCulate<n>:MARKer<m>:FUNCtion:SUMMary:PPEak:RESult?..............................................................627
+CALCulate<n>:MARKer<m>:FUNCtion:SUMMary:PPEak[:STATe].............................................................. 624
+CALCulate<n>:MARKer<m>:FUNCtion:SUMMary:RMS:AVERage:RESult?................................................628
+CALCulate<n>:MARKer<m>:FUNCtion:SUMMary:RMS:PHOLd:RESult?....................................................628
+CALCulate<n>:MARKer<m>:FUNCtion:SUMMary:RMS:RESult?.................................................................629
+CALCulate<n>:MARKer<m>:FUNCtion:SUMMary:RMS[:STATe]................................................................. 624
+CALCulate<n>:MARKer<m>:FUNCtion:SUMMary:SDEViation:AVERage:RESult?......................................629
+CALCulate<n>:MARKer<m>:FUNCtion:SUMMary:SDEViation:PHOLd:RESult?......................................... 630
+CALCulate<n>:MARKer<m>:FUNCtion:SUMMary:SDEViation:RESult?...................................................... 630
+CALCulate<n>:MARKer<m>:FUNCtion:SUMMary:SDEViation[:STATe]....................................................... 625
+CALCulate<n>:MARKer<m>:FUNCtion:SUMMary[:STATe].......................................................................... 625
+
+=== PAGE 896 ===
+List of commands R&S®FSWP-B1
+896 User Manual 1177.5656.02 ─ 11CALCulate<n>:MARKer<m>:FUNCtion:TOI:RESult:MAXimum?..................................................................636
+CALCulate<n>:MARKer<m>:FUNCtion:TOI:RESult:MINimum?................................................................... 636
+CALCulate<n>:MARKer<m>:FUNCtion:TOI:RESult?....................................................................................635
+CALCulate<n>:MARKer<m>:FUNCtion:TOI:SEARchsignal ONCE.............................................................. 637
+CALCulate<n>:MARKer<m>:FUNCtion:TOI[:STATe].....................................................................................637
+CALCulate<n>:MARKer<m>:LOEXclude...................................................................................................... 790
+CALCulate<n>:MARKer<m>:MAXimum:AUTO.............................................................................................796
+CALCulate<n>:MARKer<m>:MAXimum:LEFT.............................................................................................. 797
+CALCulate<n>:MARKer<m>:MAXimum:NEXT............................................................................................. 797
+CALCulate<n>:MARKer<m>:MAXimum:RIGHt.............................................................................................797
+CALCulate<n>:MARKer<m>:MAXimum[:PEAK]........................................................................................... 797
+CALCulate<n>:MARKer<m>:MINimum:AUTO.............................................................................................. 798
+CALCulate<n>:MARKer<m>:MINimum:LEFT............................................................................................... 798
+CALCulate<n>:MARKer<m>:MINimum:NEXT...............................................................................................798
+CALCulate<n>:MARKer<m>:MINimum:RIGHt.............................................................................................. 799
+CALCulate<n>:MARKer<m>:MINimum[:PEAK].............................................................................................799
+CALCulate<n>:MARKer<m>:PEXCursion.....................................................................................................790
+CALCulate<n>:MARKer<m>:SGRam:FRAMe...............................................................................................801
+CALCulate<n>:MARKer<m>:SGRam:SARea............................................................................................... 802
+CALCulate<n>:MARKer<m>:SGRam:XY:MAXimum[:PEAK]........................................................................802
+CALCulate<n>:MARKer<m>:SGRam:XY:MINimum[:PEAK]......................................................................... 802
+CALCulate<n>:MARKer<m>:SGRam:Y:MAXimum:ABOVe.......................................................................... 803
+CALCulate<n>:MARKer<m>:SGRam:Y:MAXimum:BELow...........................................................................803
+CALCulate<n>:MARKer<m>:SGRam:Y:MAXimum:NEXT............................................................................ 803
+CALCulate<n>:MARKer<m>:SGRam:Y:MAXimum[:PEAK].......................................................................... 803
+CALCulate<n>:MARKer<m>:SGRam:Y:MINimum:ABOVe........................................................................... 804
+CALCulate<n>:MARKer<m>:SGRam:Y:MINimum:BELow............................................................................804
+CALCulate<n>:MARKer<m>:SGRam:Y:MINimum:NEXT..............................................................................804
+CALCulate<n>:MARKer<m>:SGRam:Y:MINimum[:PEAK]............................................................................804
+CALCulate<n>:MARKer<m>:SPECtrogram:FRAMe..................................................................................... 801
+CALCulate<n>:MARKer<m>:SPECtrogram:SARea......................................................................................802
+CALCulate<n>:MARKer<m>:SPECtrogram:XY:MAXimum[:PEAK]...............................................................802
+CALCulate<n>:MARKer<m>:SPECtrogram:XY:MINimum[:PEAK]................................................................802
+CALCulate<n>:MARKer<m>:SPECtrogram:Y:MAXimum:ABOVe.................................................................803
+CALCulate<n>:MARKer<m>:SPECtrogram:Y:MAXimum:BELow................................................................. 803
+CALCulate<n>:MARKer<m>:SPECtrogram:Y:MAXimum:NEXT...................................................................803
+CALCulate<n>:MARKer<m>:SPECtrogram:Y:MAXimum[:PEAK].................................................................803
+CALCulate<n>:MARKer<m>:SPECtrogram:Y:MINimum:ABOVe..................................................................804
+CALCulate<n>:MARKer<m>:SPECtrogram:Y:MINimum:BELow.................................................................. 804
+CALCulate<n>:MARKer<m>:SPECtrogram:Y:MINimum:NEXT.................................................................... 804
+CALCulate<n>:MARKer<m>:SPECtrogram:Y:MINimum[:PEAK].................................................................. 804
+CALCulate<n>:MARKer<m>:TRACe.............................................................................................................785
+CALCulate<n>:MARKer<m>:X...................................................................................................................... 786
+CALCulate<n>:MARKer<m>:X:SLIMits:LEFT............................................................................................... 791
+CALCulate<n>:MARKer<m>:X:SLIMits:RIGHt.............................................................................................. 791
+CALCulate<n>:MARKer<m>:X:SLIMits:ZOOM[:STATe]................................................................................ 792
+CALCulate<n>:MARKer<m>:X:SLIMits[:STATe]............................................................................................792
+CALCulate<n>:MARKer<m>:X:SSIZe........................................................................................................... 788
+CALCulate<n>:MARKer<m>:Y:PERCent...................................................................................................... 613
+CALCulate<n>:MARKer<m>:Y?.................................................................................................................... 800
+
+=== PAGE 897 ===
+List of commands R&S®FSWP-B1
+897 User Manual 1177.5656.02 ─ 11CALCulate<n>:MARKer<m>[:STATe]............................................................................................................ 785
+CALCulate<n>:MARKer<ms>:LINK:TO:MARKer<md>.................................................................................784
+CALCulate<n>:MATH<t>:MODE................................................................................................................... 768
+CALCulate<n>:MATH<t>:POSition................................................................................................................769
+CALCulate<n>:MATH<t>:STATe....................................................................................................................769
+CALCulate<n>:MATH<t>[:EXPRession][:DEFine].........................................................................................768
+CALCulate<n>:NPRatio:RESult?...................................................................................................................560
+CALCulate<n>:PEAKsearch:AUTO...............................................................................................................608
+CALCulate<n>:PEAKsearch:MARGin........................................................................................................... 608
+CALCulate<n>:PEAKsearch:PSHow.............................................................................................................609
+CALCulate<n>:PEAKsearch:SUBRanges..................................................................................................... 609
+CALCulate<n>:PMETer<p>:RELative:STATe................................................................................................ 672
+CALCulate<n>:PMETer<p>:RELative[:MAGNitude]...................................................................................... 671
+CALCulate<n>:PMETer<p>:RELative[:MAGNitude]:AUTO ONCE................................................................671
+CALCulate<n>:PSEarch:AUTO..................................................................................................................... 608
+CALCulate<n>:PSEarch:MARGin..................................................................................................................608
+CALCulate<n>:PSEarch:PSHow................................................................................................................... 609
+CALCulate<n>:PSEarch:SUBRanges........................................................................................................... 609
+CALCulate<n>:SGRam:CLEar[:IMMediate]...................................................................................................770
+CALCulate<n>:SGRam:CONTinuous............................................................................................................770
+CALCulate<n>:SGRam:FRAMe:COUNt........................................................................................................771
+CALCulate<n>:SGRam:FRAMe:SELect........................................................................................................771
+CALCulate<n>:SGRam:HDEPth....................................................................................................................772
+CALCulate<n>:SGRam:LAYout..................................................................................................................... 772
+CALCulate<n>:SGRam:THReedim[:STATe].................................................................................................. 773
+CALCulate<n>:SGRam:TSTamp:DATA?....................................................................................................... 773
+CALCulate<n>:SGRam:TSTamp[:STATe]......................................................................................................774
+CALCulate<n>:SGRam[:STATe].................................................................................................................... 774
+CALCulate<n>:SPECtrogram:CLEar[:IMMediate]......................................................................................... 770
+CALCulate<n>:SPECtrogram:CONTinuous.................................................................................................. 770
+CALCulate<n>:SPECtrogram:FRAMe:COUNt.............................................................................................. 771
+CALCulate<n>:SPECtrogram:FRAMe:SELect.............................................................................................. 771
+CALCulate<n>:SPECtrogram:HDEPth.......................................................................................................... 772
+CALCulate<n>:SPECtrogram:LAYout............................................................................................................772
+CALCulate<n>:SPECtrogram:THReedim[:STATe].........................................................................................773
+CALCulate<n>:SPECtrogram:TSTamp:DATA?..............................................................................................773
+CALCulate<n>:SPECtrogram:TSTamp[:STATe]............................................................................................ 774
+CALCulate<n>:SPECtrogram[:STATe]...........................................................................................................774
+CALCulate<n>:STATistics:APD[:STATe]........................................................................................................ 613
+CALCulate<n>:STATistics:CCDF:X<t>?........................................................................................................ 619
+CALCulate<n>:STATistics:CCDF[:STATe]......................................................................................................613
+CALCulate<n>:STATistics:NSAMples............................................................................................................614
+CALCulate<n>:STATistics:PRESet................................................................................................................616
+CALCulate<n>:STATistics:RESult<res>?...................................................................................................... 620
+CALCulate<n>:STATistics:SCALe:AUTO ONCE........................................................................................... 617
+CALCulate<n>:STATistics:SCALe:X:RANGe.................................................................................................617
+CALCulate<n>:STATistics:SCALe:X:RLEVel.................................................................................................617
+CALCulate<n>:STATistics:SCALe:Y:LOWer..................................................................................................618
+CALCulate<n>:STATistics:SCALe:Y:UNIT.....................................................................................................618
+CALCulate<n>:STATistics:SCALe:Y:UPPer...................................................................................................618
+
+=== PAGE 898 ===
+List of commands R&S®FSWP-B1
+898 User Manual 1177.5656.02 ─ 11CALCulate<n>:THReshold............................................................................................................................ 793
+CALCulate<n>:THReshold:STATe.................................................................................................................793
+CALCulate<n>:TLINe<dl>..............................................................................................................................833
+CALCulate<n>:TLINe<dl>:STATe.................................................................................................................. 834
+CALCulate<n>:UNIT:POWer..........................................................................................................................722
+CALibration:PMETer<p>:ZERO:AUTO ONCE...............................................................................................671
+CONFigure:GENerator:CONNection:CSTate?...............................................................................................495
+CONFigure:GENerator:CONNection[:STATe]................................................................................................ 495
+CONFigure:GENerator:EXTernal:ROSCillator...............................................................................................550
+CONFigure:GENerator:FREQuency:CENTer................................................................................................ 551
+CONFigure:GENerator:IPConnection:ADDRess........................................................................................... 496
+CONFigure:GENerator:NPRatio:BB:ARBitrary:WAVeform:SELect?..............................................................551
+CONFigure:GENerator:NPRatio:BB:STANdard?...........................................................................................551
+CONFigure:GENerator:NPRatio:CONNection:CSTate?................................................................................ 551
+CONFigure:GENerator:NPRatio:CONTrol[:STATe]........................................................................................552
+CONFigure:GENerator:NPRatio:EXTernal:ROSCillator:CSTate?..................................................................552
+CONFigure:GENerator:NPRatio:FREQuency:CENTer:CSTate?................................................................... 552
+CONFigure:GENerator:NPRatio:FREQuency:COUPling[:STATe]................................................................. 553
+CONFigure:GENerator:NPRatio:FREQuency:OFFSet..................................................................................553
+CONFigure:GENerator:NPRatio:FREQuency[:FACTor]:DENominator..........................................................553
+CONFigure:GENerator:NPRatio:FREQuency[:FACTor]:NUMerator..............................................................554
+CONFigure:GENerator:NPRatio:NOTCh<notch>:BWIDth:ABSolute:CSTate?..............................................554
+CONFigure:GENerator:NPRatio:NOTCh<notch>:CLOCk?........................................................................... 556
+CONFigure:GENerator:NPRatio:NOTCh<notch>:COUNt:CSTate?...............................................................556
+CONFigure:GENerator:NPRatio:NOTCh<notch>:FREQuency:OFFSet:CSTate?.........................................554
+CONFigure:GENerator:NPRatio:NOTCh<notch>:STATe:CSTate?................................................................555
+CONFigure:GENerator:NPRatio:NOTCh<notch>[:STATe].............................................................................555
+CONFigure:GENerator:NPRatio:POWer:LEVel:CSTate?.............................................................................. 556
+CONFigure:GENerator:NPRatio:POWer:LEVel:OFFSet:CSTate?.................................................................557
+CONFigure:GENerator:NPRatio:RFOutput:STATe:CSTate?......................................................................... 557
+CONFigure:GENerator:NPRatio:SETTings:NOTCh:UPDate.........................................................................558
+CONFigure:GENerator:NPRatio:SETTings:UPDate......................................................................................558
+CONFigure:GENerator:NPRatio:STATe:CSTate?.......................................................................................... 558
+CONFigure:GENerator:NPRatio[:STATe].......................................................................................................558
+CONFigure:GENerator:POWer:LEVel........................................................................................................... 559
+CONFigure:GENerator:POWer:LEVel:OFFSet..............................................................................................559
+CONFigure:GENerator:RFOutput[:STATe].....................................................................................................559
+CONFigure:GENerator:TARGet:PATH:BB?...................................................................................................559
+CONFigure:GENerator:TARGet:PATH:RF.....................................................................................................560
+CONFigure:SETTings:NPRatio......................................................................................................................560
+CONFigure:SETTings:NPRatio:NOTCh........................................................................................................ 560
+DEVice:INFO:HWBand?................................................................................................................................720
+DIAGnostic:SERVice:NSOurce......................................................................................................................707
+DISPlay:FORMat........................................................................................................................................... 656
+DISPlay:WSELect?........................................................................................................................................657
+DISPlay[:WINDow<n>]:MINFo[:STATe]......................................................................................................... 789
+DISPlay[:WINDow<n>]:MTABle.....................................................................................................................789
+DISPlay[:WINDow<n>]:SGRam:COLor:DEFault........................................................................................... 775
+DISPlay[:WINDow<n>]:SGRam:COLor:LOWer.............................................................................................775
+DISPlay[:WINDow<n>]:SGRam:COLor:SHAPe............................................................................................ 775
+
+=== PAGE 899 ===
+List of commands R&S®FSWP-B1
+899 User Manual 1177.5656.02 ─ 11DISPlay[:WINDow<n>]:SGRam:COLor:UPPer..............................................................................................776
+DISPlay[:WINDow<n>]:SGRam:COLor[:STYLe]........................................................................................... 776
+DISPlay[:WINDow<n>]:SIZE..........................................................................................................................656
+DISPlay[:WINDow<n>]:SPECtrogram:COLor:DEFault..................................................................................775
+DISPlay[:WINDow<n>]:SPECtrogram:COLor:LOWer................................................................................... 775
+DISPlay[:WINDow<n>]:SPECtrogram:COLor:SHAPe...................................................................................775
+DISPlay[:WINDow<n>]:SPECtrogram:COLor:UPPer.................................................................................... 776
+DISPlay[:WINDow<n>]:SPECtrogram:COLor[:STYLe]..................................................................................776
+DISPlay[:WINDow<n>]:STATistics:CCDF:GAUSs.........................................................................................620
+DISPlay[:WINDow<n>][:SUBWindow<w>]:SELect........................................................................................656
+DISPlay[:WINDow<n>][:SUBWindow<w>]:TRACe<t>:MODE.......................................................................760
+DISPlay[:WINDow<n>][:SUBWindow<w>]:TRACe<t>:MODE:HCONtinuous................................................761
+DISPlay[:WINDow<n>][:SUBWindow<w>]:TRACe<t>:SMOothing:APERture...............................................759
+DISPlay[:WINDow<n>][:SUBWindow<w>]:TRACe<t>:SMOothing[:STATe].................................................. 761
+DISPlay[:WINDow<n>][:SUBWindow<w>]:TRACe<t>:X:SPACing................................................................762
+DISPlay[:WINDow<n>][:SUBWindow<w>]:TRACe<t>:Y:SPACing................................................................727
+DISPlay[:WINDow<n>][:SUBWindow<w>]:TRACe<t>:Y[:SCALe].................................................................725
+DISPlay[:WINDow<n>][:SUBWindow<w>]:TRACe<t>:Y[:SCALe]:AUTO ONCE.......................................... 725
+DISPlay[:WINDow<n>][:SUBWindow<w>]:TRACe<t>:Y[:SCALe]:MODE.....................................................726
+DISPlay[:WINDow<n>][:SUBWindow<w>]:TRACe<t>:Y[:SCALe]:RLEVel....................................................722
+DISPlay[:WINDow<n>][:SUBWindow<w>]:TRACe<t>:Y[:SCALe]:RLEVel:OFFSet...................................... 723
+DISPlay[:WINDow<n>][:SUBWindow<w>]:TRACe<t>:Y[:SCALe]:RPOSition...............................................726
+DISPlay[:WINDow<n>][:SUBWindow<w>]:TRACe<t>:Y[:SCALe]:RVALue...................................................727
+DISPlay[:WINDow<n>][:SUBWindow<w>]:TRACe<t>[:STATe]..................................................................... 762
+DISPlay[:WINDow<n>][:SUBWindow<w>]:ZOOM:AREA..............................................................................752
+DISPlay[:WINDow<n>][:SUBWindow<w>]:ZOOM:MULTiple<zn>:AREA......................................................754
+DISPlay[:WINDow<n>][:SUBWindow<w>]:ZOOM:MULTiple<zn>[:STATe]................................................... 755
+DISPlay[:WINDow<n>][:SUBWindow<w>]:ZOOM[:STATe]........................................................................... 755
+FETCh:PMETer<p>?......................................................................................................................................672
+FORMat:DEXPort:CSEParator...................................................................................................................... 764
+FORMat:DEXPort:DSEParator...................................................................................................................... 764
+FORMat:DEXPort:FORMat............................................................................................................................765
+FORMat:DEXPort:HEADer............................................................................................................................ 765
+FORMat:DEXPort:TRACes............................................................................................................................765
+FORMat:DIMPort:TRACes.............................................................................................................................766
+FORMat[:DATA]............................................................................................................................................. 763
+INITiate:SEQuencer:ABORt...........................................................................................................................496
+INITiate:SEQuencer:IMMediate.....................................................................................................................496
+INITiate:SEQuencer:MODE...........................................................................................................................497
+INITiate<n>:CONMeas.................................................................................................................................. 493
+INITiate<n>:CONTinuous...............................................................................................................................493
+INITiate<n>:ESPectrum.................................................................................................................................564
+INITiate<n>:SPURious...................................................................................................................................599
+INITiate<n>[:IMMediate]................................................................................................................................ 494
+INPut:ATTenuation.........................................................................................................................................723
+INPut:ATTenuation:AUTO..............................................................................................................................724
+INPut:ATTenuation:PROTection:RESet......................................................................................................... 665
+INPut:CONNector.......................................................................................................................................... 666
+INPut:COUPling.............................................................................................................................................666
+INPut:DPATh..................................................................................................................................................666
+
+=== PAGE 900 ===
+List of commands R&S®FSWP-B1
+900 User Manual 1177.5656.02 ─ 11INPut:FILTer:HPASs[:STATe]......................................................................................................................... 667
+INPut:FILTer:YIG[:STATe]...............................................................................................................................667
+INPut:GAIN:STATe.........................................................................................................................................724
+INPut:GAIN[:VALue].......................................................................................................................................724
+INPut:IMPedance...........................................................................................................................................667
+INPut:IMPedance:PTYPe.............................................................................................................................. 668
+INPut:SELect................................................................................................................................................. 665
+INPut:UPORt:STATe...................................................................................................................................... 668
+INPut:UPORt[:VALue]....................................................................................................................................668
+INSTrument:CREate:DUPLicate....................................................................................................................652
+INSTrument:CREate:REPLace......................................................................................................................653
+INSTrument:CREate[:NEW]...........................................................................................................................652
+INSTrument:DELete.......................................................................................................................................653
+INSTrument:LIST?.........................................................................................................................................654
+INSTrument:REName....................................................................................................................................654
+INSTrument[:SELect].....................................................................................................................................655
+LAYout:ADD[:WINDow]?................................................................................................................................657
+LAYout:CATalog[:WINDow]?.......................................................................................................................... 658
+LAYout:IDENtify[:WINDow]?.......................................................................................................................... 659
+LAYout:MOVE[:WINDow]...............................................................................................................................659
+LAYout:REMove[:WINDow]............................................................................................................................660
+LAYout:REPLace[:WINDow].......................................................................................................................... 660
+LAYout:SPLitter..............................................................................................................................................660
+LAYout:WINDow<n>:ADD?............................................................................................................................662
+LAYout:WINDow<n>:IDENtify?...................................................................................................................... 662
+LAYout:WINDow<n>:REMove........................................................................................................................663
+LAYout:WINDow<n>:REPLace...................................................................................................................... 663
+MMEMory:COPY........................................................................................................................................... 847
+MMEMory:LOAD<n>:LIMit.............................................................................................................................848
+MMEMory:LOAD<n>:TFACtor....................................................................................................................... 748
+MMEMory:LOAD<n>:TRACe.........................................................................................................................766
+MMEMory:SELect[:ITEM]:TRANsducer:ALL................................................................................................. 749
+MMEMory:STORe<1|2>:STATe..................................................................................................................... 749
+MMEMory:STORe<n>:LIMit...........................................................................................................................848
+MMEMory:STORe<n>:LIST...........................................................................................................................594
+MMEMory:STORe<n>:PEAK.........................................................................................................................824
+MMEMory:STORe<n>:SPECtrogram............................................................................................................ 776
+MMEMory:STORe<n>:SPURious..................................................................................................................610
+MMEMory:STORe<n>:TFACtor.....................................................................................................................749
+MMEMory:STORe<n>:TRACe.......................................................................................................................766
+OUTPut:IF:IFFRequency............................................................................................................................... 707
+OUTPut:IF[:SOURce].....................................................................................................................................708
+OUTPut:TRIGger<tp>:DIRection................................................................................................................... 708
+OUTPut:TRIGger<tp>:LEVel..........................................................................................................................708
+OUTPut:TRIGger<tp>:OTYPe....................................................................................................................... 709
+OUTPut:TRIGger<tp>:PULSe:IMMediate......................................................................................................709
+OUTPut:TRIGger<tp>:PULSe:LENGth..........................................................................................................710
+OUTPut:UPORt:STATe.................................................................................................................................. 710
+OUTPut:UPORt[:VALue]................................................................................................................................710
+READ:PMETer<p>?.......................................................................................................................................672
+
+=== PAGE 901 ===
+List of commands R&S®FSWP-B1
+901 User Manual 1177.5656.02 ─ 11SOURce<si>:EXTernal<gen>:FREQuency....................................................................................................689
+SOURce<si>:EXTernal<gen>:FREQuency:COUPling[:STATe]..................................................................... 689
+SOURce<si>:EXTernal<gen>:FREQuency:OFFSet......................................................................................690
+SOURce<si>:EXTernal<gen>:FREQuency:SWEep[:STATe]......................................................................... 691
+SOURce<si>:EXTernal<gen>:FREQuency[:FACTor]:DENominator..............................................................689
+SOURce<si>:EXTernal<gen>:FREQuency[:FACTor]:NUMerator..................................................................690
+SOURce<si>:EXTernal<gen>:POWer[:LEVel]...............................................................................................691
+SOURce<si>:EXTernal<gen>:ROSCillator[:SOURce]...................................................................................692
+SOURce<si>:EXTernal<gen>[:STATe]...........................................................................................................692
+SOURce<si>:POWer[:LEVel][:IMMediate]:OFFSet....................................................................................... 692
+SYSTem:COMMunicate:GPIB:RDEVice:GENerator<gen>:ADDRess...........................................................693
+SYSTem:COMMunicate:RDEVice:GENerator<gen>:INTerface.....................................................................693
+SYSTem:COMMunicate:RDEVice:GENerator<gen>:LINK............................................................................693
+SYSTem:COMMunicate:RDEVice:GENerator<gen>:TYPE...........................................................................694
+SYSTem:COMMunicate:RDEVice:PMETer<p>:CONFigure:AUTO[:STATe]..................................................669
+SYSTem:COMMunicate:RDEVice:PMETer<p>:COUNt?...............................................................................669
+SYSTem:COMMunicate:RDEVice:PMETer<p>:DEFine................................................................................ 670
+SYSTem:COMMunicate:TCPip:RDEVice:GENerator<gen>:ADDRess......................................................... 694
+SYSTem:HPCoupling.....................................................................................................................................850
+SYSTem:IFGain:MODE................................................................................................................................. 850
+SYSTem:LANGuage...................................................................................................................................... 850
+SYSTem:PRESet........................................................................................................................................... 664
+SYSTem:PRESet:CHANnel[:EXEC].............................................................................................................. 664
+SYSTem:PSA:WIDeband...............................................................................................................................850
+SYSTem:SEQuencer..................................................................................................................................... 497
+TRACe<n>:COPY..........................................................................................................................................767
+TRACe<n>[:DATA].........................................................................................................................................756
+TRACe<n>[:DATA]:MEMory?........................................................................................................................ 757
+TRACe<n>[:DATA]:X?................................................................................................................................... 758
+TRIGger[:SEQuence]:DTIMe.........................................................................................................................736
+TRIGger[:SEQuence]:HOLDoff[:TIME].......................................................................................................... 736
+TRIGger[:SEQuence]:IFPower:HOLDoff....................................................................................................... 737
+TRIGger[:SEQuence]:IFPower:HYSTeresis...................................................................................................737
+TRIGger[:SEQuence]:LEVel:IFPower............................................................................................................738
+TRIGger[:SEQuence]:LEVel:IQPower........................................................................................................... 738
+TRIGger[:SEQuence]:LEVel:RFPower.......................................................................................................... 738
+TRIGger[:SEQuence]:LEVel:VIDeo............................................................................................................... 739
+TRIGger[:SEQuence]:LEVel[:EXTernal<port>].............................................................................................. 737
+TRIGger[:SEQuence]:SLOPe........................................................................................................................ 739
+TRIGger[:SEQuence]:SOURce......................................................................................................................739
+TRIGger[:SEQuence]:TIME:RINTerval.......................................................................................................... 740
+UNIT:POWer.................................................................................................................................................. 722
+UNIT<n>:PMETer<p>:POWer........................................................................................................................677
+UNIT<n>:PMETer<p>:POWer:RATio.............................................................................................................677

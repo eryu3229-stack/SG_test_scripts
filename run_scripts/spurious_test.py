@@ -21,7 +21,7 @@ from spurious_config import (
     get_carrier_frequency_list,
 )
 
-# 输出文件统一命名：杂散流程保留流式 CSV 作为输出，即 <OUTPUT_TAG>_stream_<时间戳>.csv
+# 输出文件统一命名（只出 CSV）：<OUTPUT_TAG>_<时间戳>.csv
 OUTPUT_TAG = "spurious"
 
 
@@ -69,7 +69,7 @@ def main():
     procedure = SpuriousProcedure(manager)
     output_dir = os.path.join(parent_dir, "output")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    csv_path = os.path.join(output_dir, f"{OUTPUT_TAG}_stream_{timestamp}.csv")
+    csv_path = os.path.join(output_dir, f"{OUTPUT_TAG}_{timestamp}.csv")
     procedure.start_csv_stream(csv_path)
 
     print(f"\n开始杂散测量")

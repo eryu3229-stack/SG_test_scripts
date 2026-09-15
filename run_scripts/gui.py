@@ -194,12 +194,18 @@ class SignalTestGUI(tk.Tk):
             mb.showinfo("提示", "无结果可保存")
             return
         try:
-            import pandas as pd
+            import csv
             out = os.path.join(parent_dir, "output")
             os.makedirs(out, exist_ok=True)
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-            fp = os.path.join(out, f"gui_{ts}.xlsx")
-            pd.DataFrame(self.current_results).to_excel(fp, index=False)
+            fp = os.path.join(out, f"gui_{ts}.csv")
+            # 列序 = 首行键序；缺失值留空
+            fieldnames = list(self.current_results[0].keys())
+            with open(fp, "w", newline="", encoding="utf-8-sig") as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                for row in self.current_results:
+                    writer.writerow({k: row.get(k, "") for k in fieldnames})
             self._log(f"保存: {fp}")
         except Exception as e:
             self._log(f"保存失败: {e}")
@@ -270,10 +276,20 @@ class SignalTestGUI(tk.Tk):
 
         threading.Thread(target=worker, daemon=True).start()
 
+    def _open_csv(self, proc, tag):
+        """为流程开启 CSV 流式输出（本工程只出 CSV）"""
+        out = os.path.join(parent_dir, "output")
+        os.makedirs(out, exist_ok=True)
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        path = os.path.join(out, f"{tag}_{ts}.csv")
+        proc.start_csv_stream(path)
+        self._log(f"输出: {path}")
+
     def _exec_harmonic(self):
         from harmonic_test_procedure import HarmonicTestProcedure
         import harmonic_test_config as cfg
         proc = HarmonicTestProcedure(self.manager)
+        self._open_csv(proc, "harmonic")
         points = cfg.generate_frequency_points()
         self._log(f"测试点数: {len(points)}")
         for i, pt in enumerate(points):
@@ -306,6 +322,7 @@ class SignalTestGUI(tk.Tk):
         from subharmonic_test_procedure import SubharmonicTestProcedure
         import subharmonic_test_config as cfg
         proc = SubharmonicTestProcedure(self.manager)
+        self._open_csv(proc, "subharmonic")
         points = cfg.generate_frequency_points()
         self._log(f"测试点数: {len(points)}")
         for i, pt in enumerate(points):
@@ -325,6 +342,7 @@ class SignalTestGUI(tk.Tk):
         from max_power_procedure import MaxPowerProcedure
         import max_power_config as cfg
         proc = MaxPowerProcedure(self.manager)
+        self._open_csv(proc, "max_power_detail")
         configs = cfg.test_configs
         self._log(f"测试点数: {len(configs)}")
         for i, tc in enumerate(configs):
@@ -342,6 +360,7 @@ class SignalTestGUI(tk.Tk):
         from low_freq_max_power_procedure import LowFreqMaxPowerProcedure
         import low_freq_max_power_config as cfg
         proc = LowFreqMaxPowerProcedure(self.manager)
+        self._open_csv(proc, "low_freq_max_power_detail")
         configs = cfg.test_configs
         self._log(f"测试点数: {len(configs)}")
         for i, tc in enumerate(configs):
@@ -359,6 +378,7 @@ class SignalTestGUI(tk.Tk):
         from power_sweep_procedure import TestProcedure
         import power_sweep_config as cfg
         proc = TestProcedure(self.manager)
+        self._open_csv(proc, "power_sweep")
         configs = cfg.test_configs
         proc.prepare_test(self.signal_gen, self.power_meter)
         self._log(f"测试点数: {len(configs)}")
@@ -375,9 +395,10 @@ class SignalTestGUI(tk.Tk):
         cols = [k for k in keys if k != "timestamp"]
         if self.result_tree["columns"] != cols:
             self.result_tree["columns"] = cols
-            HEAD = {"frequency_hz": "频率(Hz)", "frequency_mhz": "频率(MHz)",
-                    "set_power_dbm": "设定功率", "fundamental_power_dbm": "基波功率",
-                    "harmonic_power_dbm": "谐波功率", "harmonic_suppression_dbc": "抑制(dBc)"}
+            HEAD = {"carrier_hz": "载波(Hz)", "set_power_dbm": "设定功率",
+                    "measured_power_dbm": "实测功率", "delta_db": "偏差(dB)",
+                    "delta_ref": "偏差基准", "status": "状态", "note": "说明",
+                    "spurious_freq_hz": "杂散频点(Hz)"}
             for c in cols:
                 self.result_tree.heading(c, text=HEAD.get(c, c))
                 self.result_tree.column(c, width=100, anchor="center")

@@ -18,7 +18,6 @@ power_list_dbm = [
     -90,
     -100,
     -110,
-    -120
 ]
 
 # 稳定时间，单位秒
@@ -51,11 +50,13 @@ attenuation_auto = True
 attenuation_for_high_power = 10
 attenuation_for_low_power = 0
 
-# 内置预放（N9030B，手册: [:SENSe]:POWer[:RF]:GAIN[:STATe] / :GAIN:BAND）
+# 内置预放（按品牌自动映射）
+#   罗德 FSWP: INPut:GAIN:STATe + INPut:GAIN:VALue（增益值 15/30 dB）
+#   是德 X 系列: POWer:RF:GAIN:STATe + :GAIN:BAND（波段 LOW/FULL）
 # 低功率测量时打开预放压低底噪；高功率时关闭防止过载
 preamp_enabled = True            # 总开关：False 则全程不开预放
 preamp_threshold_dbm = -50       # 设定功率 <= 该值时开预放
-preamp_band = "FULL"             # LOW=仅低波段, FULL=全频段
+preamp_band = "FULL"             # 兼容写法：LOW→罗德15dB/是德低波段，FULL→罗德30dB/是德全波段
 
 # 频谱仪输入耦合
 # 低于 dc_coupling_below_hz 的频点用 DC（AC 耦合有低频截止，会压低低频读数）

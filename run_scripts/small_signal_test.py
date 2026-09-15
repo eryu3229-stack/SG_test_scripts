@@ -21,7 +21,7 @@ from small_signal_config import (
     get_config,
 )
 
-# 输出文件统一命名：结果 <OUTPUT_TAG>_results_<时间戳>.xlsx，中间流式 CSV <OUTPUT_TAG>_stream_<时间戳>.csv
+# 输出文件统一命名（只出 CSV）：<OUTPUT_TAG>_<时间戳>.csv
 OUTPUT_TAG = "small_signal"
 
 
@@ -62,7 +62,7 @@ def main():
     procedure = SmallSignalProcedure(manager)
     output_dir = os.path.join(parent_dir, "output")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    csv_path = os.path.join(output_dir, f"{OUTPUT_TAG}_stream_{timestamp}.csv")
+    csv_path = os.path.join(output_dir, f"{OUTPUT_TAG}_{timestamp}.csv")
     procedure.start_csv_stream(csv_path)
 
     print(f"\n开始小信号测量")
@@ -86,12 +86,8 @@ def main():
             keep_output=keep_output
         )
 
-    # 流式写 CSV -> 最后转 Excel 并删除中间 CSV；若缺少 pandas/openpyxl 则保留 CSV
-    xlsx_path = os.path.join(output_dir, f"{OUTPUT_TAG}_results_{timestamp}.xlsx")
-    if procedure.finish_xlsx(xlsx_path):
-        print(f"Excel 已保存: {xlsx_path}")
-    else:
-        print(f"已保留 CSV 结果: {csv_path}")
+    # CSV 流已在测试过程中逐点落盘，此处仅关闭文件
+    procedure.finish_csv()
 
     manager.disconnect_all()
 

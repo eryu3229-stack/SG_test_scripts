@@ -9,7 +9,6 @@ import time
 import csv
 import os
 from datetime import datetime
-import pandas as pd
 
 from utils.formatting import format_frequency
 
@@ -39,6 +38,19 @@ class BaseTestProcedure:
             str: 格式化后的频率字符串
         """
         return format_frequency(frequency)
+
+    @staticmethod
+    def bool_str(value):
+        """布尔值统一以小写 true/false 输出；None → 空串
+
+        Args:
+            value: 任意真值
+        Returns:
+            str: "true" / "false" / ""
+        """
+        if value is None:
+            return ""
+        return "true" if value else "false"
 
     def setup_signal_generator(self, signal_gen, frequency, power, enable_output=True, settling_time=1.0, frequency_settling_time=0.0):
         """设置信号源
@@ -202,53 +214,27 @@ class BaseTestProcedure:
             print(f"保存CSV文件失败: {e}")
             return False
 
-    def save_results_to_excel(self, filename, summary_data=None):
-        """保存测试结果到Excel文件
+    def derive_run_id(self, reference):
+        """派生本次运行的 run_id（同一次运行的所有行共用同一值）
 
         Args:
-            filename: 输出文件名
-            summary_data: 摘要数据字典，可选
+            reference: 输出文件路径或任意可命名字符串
+        Returns:
+            str: 形如 "spurious_20260913_194010"
         """
-        if not self.test_results:
-            print("没有测试结果可保存")
-            return False
+        stem = os.path.splitext(os.path.basename(str(reference)))[0] or "run"
+        return f"{stem}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
-        try:
-            os.makedirs(os.path.dirname(os.path.abspath(filename)), exist_ok=True)
-
-            df = pd.DataFrame(self.test_results)
-
-            with pd.ExcelWriter(filename, engine='openpyxl') as writer:
-                if summary_data is not None:
-                    summary_df = pd.DataFrame(summary_data)
-                    summary_df.to_excel(writer, sheet_name='测试摘要', index=False)
-
-                df.to_excel(writer, sheet_name='详细数据', index=False)
-
-            print(f"测试结果已保存到Excel文件: {filename}")
-            return True
-
-        except ImportError:
-            print("未安装pandas/openpyxl，无法保存为Excel格式")
-            return False
-        except Exception as e:
-            print(f"保存Excel文件失败: {e}")
-            return False
-
-    def save_results(self, filename, csv_fieldnames=None, excel_summary_data=None):
-        """根据文件扩展名保存测试结果
+    def save_results(self, filename, csv_fieldnames=None):
+        """保存测试结果到 CSV（本工程只输出 CSV）
 
         Args:
-            filename: 输出文件名
-            csv_fieldnames: CSV文件的列名列表（保存为CSV时使用）
-            excel_summary_data: Excel摘要数据（保存为Excel时使用）
+            filename: 输出文件名（非 .csv 时自动补后缀）
+            csv_fieldnames: CSV 列名列表（保存为 CSV 时使用）
         """
-        if filename.lower().endswith('.xlsx') or filename.lower().endswith('.xls'):
-            return self.save_results_to_excel(filename, excel_summary_data)
-        else:
-            if not filename.lower().endswith('.csv'):
-                filename += '.csv'
-            return self.save_results_to_csv(filename, csv_fieldnames)
+        if not filename.lower().endswith('.csv'):
+            filename += '.csv'
+        return self.save_results_to_csv(filename, csv_fieldnames)
 
     def start_csv_stream(self, csv_path, fieldnames):
         """开启 CSV 流式写入
@@ -260,17 +246,11 @@ class BaseTestProcedure:
         from utils.csv_streamer import CsvStreamer
         self.csv_streamer = CsvStreamer(csv_path, fieldnames)
 
-    def finish_xlsx(self, xlsx_path, summary_data=None, sheet_name="详细数据"):
-        """关闭 CSV 流并转为 XLSX
-
-        Args:
-            xlsx_path: 目标 XLSX 路径
-            summary_data: 可选的摘要数据字典
-            sheet_name: 数据工作表名称
-        """
-        if not self.csv_streamer:
-            return self.save_results(xlsx_path)
-        self.csv_streamer.to_xlsx(xlsx_path, sheet_name=sheet_name, summary_data=summary_data)
+    def finish_csv(self):
+        """关闭 CSV 流并 flush 落盘"""
+        if self.csv_streamer:
+            self.csv_streamer.close()
+            print(f"CSV 已保存: {self.csv_streamer.filepath}")
 
     def print_summary(self):
         """打印测试摘要"""
@@ -281,28 +261,27 @@ class BaseTestProcedure:
         print(f"\n{'=' * 60}")
         print("测试摘要")
         print(f"{'=' * 60}")
-
-        df = pd.DataFrame(self.test_results) if self.test_results else None
-
         print(f"总测试点数: {len(self.test_results)}")
 
-        if df is not None and not df.empty:
-            freq_col = None
-            for candidate in ['frequency_hz', 'frequency', 'frequency_mhz']:
-                if candidate in df.columns:
-                    freq_col = candidate
-                    break
+        rows = self.test_results
+        if not rows:
+            return
 
-            if freq_col:
-                freq_values = df[freq_col]
-                if freq_col == 'frequency_mhz':
-                    freq_values = freq_values * 1e6
-                print(f"频率范围: {format_frequency(freq_values.min())} - {format_frequency(freq_values.max())}")
+        # 频率范围：优先 carrier_hz，兼容旧键
+        freq_key = None
+        for candidate in ('carrier_hz', 'frequency_hz', 'frequency', 'frequency_mhz'):
+            if candidate in rows[0]:
+                freq_key = candidate
+                break
+        if freq_key:
+            freqs = [r[freq_key] for r in rows if r.get(freq_key) is not None]
+            if freqs:
+                if freq_key == 'frequency_mhz':
+                    freqs = [f * 1e6 for f in freqs]
+                print(f"频率范围: {format_frequency(min(freqs))} - {format_frequency(max(freqs))}")
 
-            power_col = None
-            for candidate in ['set_power_dbm', 'set_power', 'power']:
-                if candidate in df.columns:
-                    power_col = candidate
-                    break
-            if power_col:
-                print(f"设置功率: {df[power_col].iloc[0]} dBm")
+        # 设置功率
+        for candidate in ('set_power_dbm', 'set_power', 'power'):
+            if candidate in rows[0]:
+                print(f"设置功率: {rows[0][candidate]} dBm")
+                break

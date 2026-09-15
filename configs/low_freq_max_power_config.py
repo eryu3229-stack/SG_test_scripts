@@ -19,21 +19,21 @@ post_close_wait = 0.1         # 信号源关闭后等待时间，单位：秒
 measurement_times = 3         # 频谱仪测量次数
 
 # 功率扫描参数
-start_power = -5             # 起始功率，单位dBm
+start_power = 0             # 起始功率，单位dBm
 stop_power = 20              # 扫描终止功率，单位dBm（达到此值后正常停止扫描）
 power_step = 1.0              # 功率步进，单位dB
 max_set_power = 20            # 信号源最大设定功率硬限制，单位dBm（安全冗余，必须 >= stop_power）
-max_measured_power = 20       # 频谱仪最大输入功率（测量值，未补偿衰减），单位dBm（保护频谱仪）
+max_measured_power = 30       # 频谱仪最大输入功率（测量值，未补偿衰减），单位dBm（保护频谱仪）
 power_tolerance = 0.5         # 功率测量容差，单位dB（用于检测饱和）
 max_power_drop = 1.0          # 最大功率下降值，单位dB（如果功率下降超过此值，则认为过载）
 
 # 衰减器配置
 attenuator_value = 30.0        # 衰减器衰减值，单位dB（正数表示衰减）
-use_attenuator = True        # 是否使用衰减器
+use_attenuator = False        # 是否使用衰减器
 
 # 低频段频率步进配置
 frequency_ranges = [
-    {'start': 3e3, 'end': 100e3, 'step': 10e3},     # 3k-100kHz，步进10kHz
+     {'start': 3e3, 'end': 100e3, 'step': 1e3},     # 3k-100kHz，步进10kHz
      {'start': 100e3, 'end': 1e6, 'step': 100e3},    # 100kHz-1MHz，步进100kHz
      {'start': 1e6, 'end': 50e6, 'step': 1e6},       # 1MHz-50MHz，步进1MHz
 ]
@@ -44,8 +44,8 @@ spectrum_analyzer_config = {
     'span': 5e3,                # 频率跨度：100kHz
     'rbw': 50,                   # 分辨率带宽：1kHz
     'vbw': 100,                   # 视频带宽：100Hz
-    'reference_level': 10,         # 参考电平：20dBm
-    'attenuation': 10,             # 衰减：10dB
+    'reference_level': 30,         # 参考电平：20dBm
+    'attenuation': 40,             # 衰减：10dB
     }
 
 # 生成测试配置

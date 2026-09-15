@@ -30,8 +30,13 @@ SG_test_scripts/
 │   └── power_sweep_config.py             # 功率扫描测试配置
 ├── instruments/                     # 仪器控制模块（硬件抽象层）
 │   ├── instrument_manager.py             # 仪器资源管理器（VISA 连接管理）
-│   ├── signal_generator.py               # 信号源控制类
-│   ├── spectrum_analyzer.py              # 频谱分析仪控制类
+│   ├── signal_generator.py               # 信号源控制类（被测件 DUT，单品牌）
+│   ├── brand.py                          # 仪器品牌识别（解析 *IDN?）
+│   ├── spectrum_analyzer.py              # ★ 频谱分析仪门面类（按品牌转发）
+│   ├── backends/                         # 频谱仪品牌后端
+│   │   ├── sa_base.py                        # 公共基类 + 未知品牌通用回退
+│   │   ├── sa_rohde.py                       # 罗德 R&S（FSWP/FSW）
+│   │   └── sa_keysight.py                    # 是德 Keysight（X 系列 SA）
 │   └── power_meter.py                    # 功率计控制类
 ├── procedures/                      # 测试流程模块
 │   ├── base_test_procedure.py            # ★ 基础测试流程（通用功能基类）
@@ -53,6 +58,35 @@ SG_test_scripts/
 ├── wideband.py                      # 宽带噪声曲线生成工具
 └── README.md
 ```
+
+---
+
+## 频谱仪多品牌 SCPI 适配
+
+> **适配范围（已定案）**：仅**测量仪器**做多品牌适配。
+> 信号源（`signal_generator.py`）是**被测件（DUT）**，现场只会接自己的机型，
+> 保持单品牌实现，不做后端拆分；同理功率计也按"自备测量仪器"处理。
+
+频谱仪驱动采用「门面 + 品牌后端」结构，支持罗德 R&S 与是德 Keysight 混用：
+
+- **品牌识别**：门面 `SpectrumAnalyzer` 构造时读取 `*IDN?` 自动判定；
+  `Rohde&Schwarz` → 罗德，`Keysight` / `Agilent` → 是德。
+- **显式覆盖**：`SpectrumAnalyzer(inst, brand="keysight")`。
+- **未知品牌**：回退通用 SCPI 子集，品牌相关设置跳过并告警，不中断流程。
+- **接口不变**：`procedures/`、`run_scripts/` 无需改动，方法签名与单品牌版一致。
+
+| 动作 | 罗德（FSWP/FSW） | 是德（X 系列 SA） |
+|------|------------------|-------------------|
+| 参考电平 | `DISP:TRAC:Y:RLEV` | `DISP:WIND:TRAC:Y:RLEV` |
+| 衰减 / 自动 | `INP:ATT` / `INP:ATT:AUTO` | `POW:ATT` / `POW:ATT:AUTO` |
+| 预放 | `INP:GAIN:STAT` + `INP:GAIN:VAL`(15/30 dB) | `POW:GAIN:STAT` + `POW:GAIN:BAND`(LOW/FULL) |
+| 峰值搜索 | `CALC:MARK<n>:MAX:PEAK` | `CALC:MARK<n>:MAX` |
+| 迹线模式 | `DISP:TRAC<n>:MODE MAXHold` | `TRAC<n>:MODE MAXHold` |
+| 检波器 | `SENS:DET<n>:FUNC POSitive` | `DET:TRAC<n> POSitive` |
+| 中心频率/扫宽/RBW/VBW/标记点/trace 读取 | 通用短写，两者一致 | 通用短写，两者一致 |
+
+指令依据：罗德 `R&S FSWP-B1 User Manual 1177.5656.02 ─ 11`；
+是德 `X-Series SA Mode User's & Programmer's Reference N9060-90041`。
 
 ---
 

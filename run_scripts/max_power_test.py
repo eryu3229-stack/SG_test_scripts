@@ -18,7 +18,9 @@ from max_power_procedure import MaxPowerProcedure
 from datetime import datetime
 from max_power_config import project_name, test_configs
 
-# 输出文件统一命名：结果 <OUTPUT_TAG>_results_<时间戳>.xlsx，中间流式 CSV <OUTPUT_TAG>_stream_<时间戳>.csv
+# 输出文件统一命名（只出 CSV）：
+#   逐点详细数据 <OUTPUT_TAG>_detail_<时间戳>.csv
+#   总结结论     <OUTPUT_TAG>_summary_<时间戳>.csv
 OUTPUT_TAG = "max_power"
 
 
@@ -78,7 +80,7 @@ def main():
     test_procedure = MaxPowerProcedure(manager)
     output_dir = os.path.join(parent_dir, "output")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    csv_path = os.path.join(output_dir, f"{OUTPUT_TAG}_stream_{timestamp}.csv")
+    csv_path = os.path.join(output_dir, f"{OUTPUT_TAG}_detail_{timestamp}.csv")
     test_procedure.start_csv_stream(csv_path)
 
     print(f"\n开始测试项目: {selected_project_name}")
@@ -143,12 +145,11 @@ def main():
             pass
         raise  # 重新抛出异常
 
-    # 保存测试结果
+    # 保存测试结果（逐点详细数据流已关闭，另写一份总结结论 CSV）
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     output_dir = os.path.join(parent_dir, 'output')
-    filename = f"{OUTPUT_TAG}_results_{timestamp}.xlsx"
-    filepath = os.path.join(output_dir, filename)
-    test_procedure.finish_xlsx(filepath)
+    summary_path = os.path.join(output_dir, f"{OUTPUT_TAG}_summary_{timestamp}.csv")
+    test_procedure.finish_csv(summary_path)
 
     # 断开所有仪器连接
 
