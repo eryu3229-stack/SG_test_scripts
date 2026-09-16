@@ -53,6 +53,56 @@ class SmallSignalProcedure(BaseTestProcedure):
             return False
         return abs(peak_frequency - expected_frequency) <= tolerance
 
+    @staticmethod
+    def _effective_tolerance(span, rbw, config):
+        """有效频率容差：配置值被 ±1/4 SPAN 上限截断。
+
+        容差若 ≥ 半 SPAN，窗口内任意噪声峰/杂散都会被判成"找到真峰"，
+        于是 marker 被拖到非信号处，读数必然低于真实峰值。
+        """
+        tol_configured = config.get("freq_tolerance_hz", 10e3)
+        tol_cap = max(span * 0.25, rbw * 2.0)
+        return min(tol_configured, tol_cap)
+
+    def _refresh_sweep(self, spectrum_analyzer):
+        """按当前设置重新采集一次 trace，保证后续 marker 读的是有效数据。
+
+        仪器若停在单次态（上游流程用 `INIT:CONT OFF` 收尾），**改设置不会自动重扫**，
+        trace 仍是旧数据：此时搜峰取到的是过期峰值，marker 甚至可能落在屏外
+        → `CALC:MARK:Y?` 返回 9.91e+37 哨兵（被 `_sanitize_raw` 归为 None）。
+        """
+        synced = self._sweep_sync(spectrum_analyzer)
+        if hasattr(spectrum_analyzer, 'trigger_single'):
+            return spectrum_analyzer.trigger_single()
+        if not synced:
+            time.sleep(0.3)  # 既无扫描同步也无单次触发时退化为固定等待
+        return False
+
+    @staticmethod
+    def _estimate_noise_floor(trace):
+        """用轨迹采样的中位数近似本地噪声底（dBm）。
+
+        单音只占少量 bin，中位数几乎不受峰值影响。trace 为空返回 None。
+        """
+        if not trace:
+            return None
+        sorted_trace = sorted(trace)
+        return sorted_trace[len(sorted_trace) // 2]
+
+    def _read_noise_floor(self, spectrum_analyzer, trace_num=1):
+        """读取当前 trace 并估计本地噪声底；读不到返回 None。
+
+        调用前必须保证 trace 是**按当前设置刚采集的**（否则读到旧数据）。
+        """
+        if not hasattr(spectrum_analyzer, 'get_trace'):
+            return None
+        try:
+            trace = spectrum_analyzer.get_trace(trace_num)
+        except Exception as e:
+            print(f"    读取噪声底失败: {e}")
+            return None
+        return self._estimate_noise_floor(trace)
+
     def _suggest_preamp(self, set_power, config):
         """低功率档开预放压低底噪；高功率档关闭防止前端过载"""
         if not config.get("preamp_enabled", False):
@@ -73,22 +123,46 @@ class SmallSignalProcedure(BaseTestProcedure):
         )
         time.sleep(config.get("sa_settling_time", 0.5))
 
-        spectrum_analyzer.peak_search()
-        peak_frequency = spectrum_analyzer.get_marker_frequency(1)
+        # 改完中心/SPAN/RBW/参考电平/衰减/预放后必须重新采集一次：
+        # 否则搜峰在过期 trace 上取最大值，峰位与电平都不是当前设置下的真实值。
+        self._refresh_sweep(spectrum_analyzer)
 
-        found = self._within_tolerance(
-            peak_frequency,
-            expected_frequency,
-            config.get("freq_tolerance_hz", 10e3)
-        )
+        # 清空历史错误，便于判断本次搜峰是否真的成功
+        if hasattr(spectrum_analyzer, 'get_error_queue'):
+            spectrum_analyzer.get_error_queue()
+
+        spectrum_analyzer.peak_search()
+        time.sleep(0.05)
+
+        if hasattr(spectrum_analyzer, 'get_error_queue'):
+            errs = spectrum_analyzer.get_error_queue()
+            peak_errs = [e for e in errs if "peak" in str(e).lower()]
+            if peak_errs:
+                print(f"    峰值搜索报错: {peak_errs}")
+
+        peak_frequency = None
+        if hasattr(spectrum_analyzer, 'get_marker_frequency'):
+            peak_frequency = spectrum_analyzer.get_marker_frequency(1)
+
+        tolerance = self._effective_tolerance(span, rbw, config)
+        found = self._within_tolerance(peak_frequency, expected_frequency, tolerance)
+
+        if peak_frequency is None:
+            print("    峰值搜索后 marker 频率无效（trace 无效/峰在屏外），回退到名义频率")
+        elif not found:
+            print(f"    峰位 {format_frequency(peak_frequency)} 偏离名义频率超过 "
+                  f"{format_frequency(tolerance)}，按名义频率读数")
 
         # 始终把 marker 放到测量点：找到真峰用峰位，否则用名义频率
         # （外参锁定下以信号源名义频率为准，避免把杂散/噪声峰当成信号）
         measure_frequency = peak_frequency if found else expected_frequency
         spectrum_analyzer.set_marker_frequency(1, measure_frequency)
+        time.sleep(0.05)
 
         measurements = []
         for _ in range(max(1, average_count)):
+            # 每次读数前重新采集：单次态下 trace 是冻结的，不重扫等于 5 次读同一条
+            self._refresh_sweep(spectrum_analyzer)
             power = spectrum_analyzer.measure_marker_power(1)
             if power is not None:
                 measurements.append(power)
@@ -96,8 +170,12 @@ class SmallSignalProcedure(BaseTestProcedure):
 
         if measurements:
             measured_power = sum(measurements) / len(measurements)
-            return measured_power, measure_frequency, found
-        return None, measure_frequency, found
+        else:
+            measured_power = None
+
+        # 本地噪声底（trace 中位数）：trace 刚采集完，此处有效
+        noise_floor = self._read_noise_floor(spectrum_analyzer)
+        return measured_power, measure_frequency, found, noise_floor
 
     def _suggest_span(self, set_power, config):
         tolerance = config.get("freq_tolerance_hz", 10e3)
@@ -177,7 +255,7 @@ class SmallSignalProcedure(BaseTestProcedure):
             attenuation = self._suggest_attenuation(power, config)
             preamp_on = self._suggest_preamp(power, config)
 
-            measured_power, peak_frequency, found = self._measure_peak(
+            measured_power, peak_frequency, found, noise_floor = self._measure_peak(
                 spectrum_analyzer,
                 center_frequency,
                 span,
@@ -219,7 +297,7 @@ class SmallSignalProcedure(BaseTestProcedure):
                 "sa_span_hz": span,
                 "sa_rbw_hz": rbw,
                 "sa_vbw_hz": vbw,
-                "sa_noise_floor_dbm": None,
+                "sa_noise_floor_dbm": noise_floor,
                 # C 区：源专有
                 "peak_frequency_hz": peak_frequency,
                 "sa_preamp_on": self.bool_str(preamp_on),

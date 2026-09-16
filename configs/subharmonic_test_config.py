@@ -25,8 +25,8 @@ TEST_DESCRIPTION = "测试信号源的分谐波性能，记录基波和分谐波
 # 频率扫描配置
 FREQUENCY_SWEEP_CONFIG = {
     'start_frequency': 100e6,      # 起始频率: 200MHz (确保分谐波在可测量范围内)
-    'end_frequency': 40e9,          # 结束频率: 1GHz
-    'step_frequency': 10e6,       # 频率步进: 200MHz
+    'end_frequency': 1e9,          # 结束频率: 1GHz
+    'step_frequency': 100e6,       # 频率步进: 200MHz
     'fixed_power': 10,              # 固定输出功率: 10 dBm
     'settling_time': 1.0,          # 仪器稳定时间: 1秒
 }

@@ -20,7 +20,7 @@ measurement_times = 3         # 功率计测量次数
 
 # 功率扫描参数
 start_power = 10             # 起始功率，单位dBm
-stop_power = 30              # 扫描终止功率，单位dBm（达到此值后正常停止扫描）
+stop_power = 21              # 扫描终止功率，单位dBm（达到此值后正常停止扫描）
 power_step = 1.0              # 功率步进，单位dB
 max_set_power = 30            # 信号源最大设定功率硬限制，单位dBm（安全冗余，必须 >= stop_power）
 max_measured_power = 20       # 功率计最大输入功率（测量值，未补偿衰减），单位dBm（保护功率计探头）
@@ -33,8 +33,8 @@ use_attenuator = False        # 是否使用衰减器
 
 # 分段频率步进配置
 frequency_ranges = [
-    {'start': 50e6, 'end': 100e6, 'step': 10e6},     # 50-100MHz，步进1MHz
-    # {'start': 110e6, 'end': 1e9, 'step': 10e6},    # 110MHz-1GHz，步进10MHz
+    #{'start': 50e6, 'end': 100e6, 'step': 10e6},     # 50-100MHz，步进1MHz
+     {'start': 110e6, 'end': 1e9, 'step': 100e6},    # 110MHz-1GHz，步进10MHz
     # {'start': 1e9, 'end': 40e9, 'step': 50e6},  # 1.1GHz-40GHz，步进100MHz
 ]
 

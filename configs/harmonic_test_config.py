@@ -24,9 +24,9 @@ TEST_DESCRIPTION = "测试信号源的二次谐波性能，记录基波和二次
 
 # 频率扫描配置
 FREQUENCY_SWEEP_CONFIG = {
-    'start_frequency': 1e9,       # 起始频率: 3 kHz
+    'start_frequency': 3.6e9,       # 起始频率: 3 kHz
     'end_frequency': 10e9,          # 结束频率: 100 kHz
-    'step_frequency': 10e6,         # 频率步进: 1 kHz
+    'step_frequency': 100e6,         # 频率步进: 1 kHz
     'fixed_power': 10,              # 固定输出功率: 10 dBm
     'frequency_settling_time': 0.8, # 频率切换稳定时间，单位：秒
     'settling_time': 0.5,           # 仪器稳定时间: 0.5秒
