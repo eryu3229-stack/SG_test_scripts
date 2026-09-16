@@ -232,6 +232,25 @@ class SpectrumAnalyzer:
                                                 factor=factor, margin=margin,
                                                 extra_margin=extra_margin)
 
+    def trigger_single(self):
+        """显式触发一次单次扫描并等待完成（`INIT:CONT OFF`+`INIT:IMM`+`*OPC?`）。
+
+        用于读取 marker 之前，确保 trace 已刷新为有效数据。
+        """
+        handler = getattr(self.backend, "trigger_single", None)
+        if handler:
+            return handler()
+        print("警告: 当前后端不支持单次触发，已跳过")
+        return False
+
+    def get_error_queue(self, limit=30):
+        """读取 SCPI 错误队列，返回错误字符串列表（无错误为空列表）。"""
+        handler = getattr(self.backend, "get_error_queue", None)
+        if handler:
+            return handler(limit)
+        print("警告: 当前后端不支持错误队列读取，已跳过")
+        return []
+
     # ------------------------------------------------------------------
     # 品牌扩展能力（可选，后端未实现时告警并返回 None）
     # ------------------------------------------------------------------

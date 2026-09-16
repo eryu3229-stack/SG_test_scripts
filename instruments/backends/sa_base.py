@@ -107,21 +107,82 @@ class SpectrumAnalyzerBackend:
         except Exception as e:
             print(f"设置标记器频率失败: {e}")
 
-    def measure_marker_power(self, marker_num):
-        """读取标记器功率 (`CALC:MARK<m>:Y?`)。"""
+    @staticmethod
+    def _sanitize_raw(raw):
+        """仪器原始返回值 -> float；哨兵值(>=1e30)与非法值一律返回 None。
+
+        是德在"无有效数据"时（marker 未开启 / marker 屏外 / trace 未就绪）
+        返回 9.91e+37。不拦截就会被当成真实功率写入结果。
+        """
+        if raw is None:
+            return None
         try:
-            return float(self.instrument.query(self.CMD_MARKER_YQ.format(m=marker_num)))
+            f = float(str(raw).strip())
+        except (TypeError, ValueError):
+            return None
+        if abs(f) >= 1e30:
+            print(f"    仪器返回哨兵值 {f:.4e}（无有效数据），按 None 处理")
+            return None
+        return f
+
+    def measure_marker_power(self, marker_num):
+        """读取标记器功率 (`CALC:MARK<m>:Y?`)。哨兵/非法值返回 None。"""
+        try:
+            return self._sanitize_raw(self.instrument.query(self.CMD_MARKER_YQ.format(m=marker_num)))
         except Exception as e:
             print(f"测量标记器功率失败: {e}")
             return None
 
     def get_marker_frequency(self, marker_num):
-        """读取标记器频率 (`CALC:MARK<m>:X?`)。"""
+        """读取标记器频率 (`CALC:MARK<m>:X?`)。哨兵/非法值返回 None。"""
         try:
-            return float(self.instrument.query(self.CMD_MARKER_XQ.format(m=marker_num)))
+            return self._sanitize_raw(self.instrument.query(self.CMD_MARKER_XQ.format(m=marker_num)))
         except Exception as e:
             print(f"获取标记器频率失败: {e}")
             return None
+
+    def get_error_queue(self, limit=30):
+        """读取 SCPI 错误队列直到 'no error'，返回错误字符串列表。
+
+        用于替代"猜"：仪器是否真的接受了命令、峰值搜索是否报告 No peak found，
+        都只能通过错误队列确认。
+        """
+        errors = []
+        try:
+            for _ in range(limit):
+                err = str(self.instrument.query("SYST:ERR?")).strip()
+                if "no error" in err.lower():
+                    break
+                errors.append(err)
+        except Exception as e:
+            print(f"读取错误队列失败: {e}")
+        return errors
+
+    def trigger_single(self):
+        """显式触发一次单次扫描并阻塞等待完成（`INIT:CONT OFF` + `INIT:IMM` + `*OPC?`）。
+
+        与 `wait_for_sweep_fast` 的固定等待互补：后者保证"扫够时间"，本方法保证
+        "确实完成了一次采集、trace 可读"，避免同步结束后仪器停在待触发态、
+        marker 落在无有效数据上而返回哨兵。
+        """
+        original_timeout = None
+        try:
+            original_timeout = self.instrument.timeout
+            self.instrument.timeout = max(original_timeout or 0, 30000)
+            self.instrument.write(f"{self.CMD_CONT} OFF")
+            self.instrument.write("INIT:IMM")
+            self.instrument.query("*OPC?")
+            return True
+        except Exception as e:
+            print(f"单次触发失败: {e}")
+            self._cleanup_after_timeout()
+            return False
+        finally:
+            if original_timeout is not None:
+                try:
+                    self.instrument.timeout = original_timeout
+                except Exception:
+                    pass
 
     # ------------------------------------------------------------------
     # 通用：带宽

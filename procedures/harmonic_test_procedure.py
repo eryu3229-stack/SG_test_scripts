@@ -67,8 +67,27 @@ class HarmonicTestProcedure(BaseTestProcedure):
         self._sweep_sync(spectrum_analyzer, **sync_kwargs)
 
         if hasattr(spectrum_analyzer, 'peak_search'):
+            # 再显式触发一次单次扫描并等它完成：固定等待只保证"扫够时间"，
+            # 不保证同步结束时 trace 已就绪（否则 marker 会落在无效数据上 → X? 返回哨兵）
+            if hasattr(spectrum_analyzer, 'trigger_single'):
+                spectrum_analyzer.trigger_single()
+            # 清空历史错误，便于下面判断本次搜峰是否成功
+            if hasattr(spectrum_analyzer, 'get_error_queue'):
+                spectrum_analyzer.get_error_queue()
             spectrum_analyzer.peak_search()
             time.sleep(0.05)
+            if hasattr(spectrum_analyzer, 'get_error_queue'):
+                errs = spectrum_analyzer.get_error_queue()
+                peak_errs = [e for e in errs if "peak" in str(e).lower()]
+                if peak_errs:
+                    print(f"    峰值搜索报错: {peak_errs}")
+            # 搜峰后校验 marker 是否真的定位成功；无效则回退钉到理论谐波频率
+            if hasattr(spectrum_analyzer, 'get_marker_frequency'):
+                _pf = spectrum_analyzer.get_marker_frequency(marker_num)
+                if _pf is None:
+                    print("    峰值搜索后 marker 频率无效，回退到理论谐波频率")
+                    spectrum_analyzer.set_marker_frequency(marker_num, harmonic_freq)
+                    time.sleep(0.05)
         else:
             if hasattr(spectrum_analyzer, 'set_marker_frequency'):
                 spectrum_analyzer.set_marker_frequency(marker_num, harmonic_freq)

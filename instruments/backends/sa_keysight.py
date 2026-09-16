@@ -86,8 +86,11 @@ class KeysightSpectrumAnalyzer(SpectrumAnalyzerBackend):
         """峰值搜索：`CALCulate:MARKer[1]|2|…|24:MAXimum`。
 
         例：`:CALC:MARK2:MAX`（手册 p.330）
+        前置 `CALC:MARK<n>:STAT ON`：X 系列 marker 默认 OFF，`CALC:MARK:MAX`
+        虽会开启 marker，但在无有效 trace 时可能定位不到，令 X? 返回哨兵。
         """
         try:
+            self.instrument.write(f"CALC:MARK{marker_num}:STAT ON")
             self.instrument.write(f"CALC:MARK{marker_num}:MAX")
             print("执行峰值搜索")
         except Exception as e:
