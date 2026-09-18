@@ -9,8 +9,8 @@ carrier_frequency_mode = "step"
 carrier_frequency_list = []
 
 # 步进式载波频率参数，单位 Hz
-carrier_start_frequency_hz = 3e9
-carrier_end_frequency_hz = 4e9
+carrier_start_frequency_hz = 4e9
+carrier_end_frequency_hz = 5e9
 carrier_step_frequency_hz = 200e6
 
 # 载波功率，单位 dBm

@@ -42,14 +42,15 @@ class SpuriousProcedure(BaseTestProcedure):
     """
 
     TEST_TYPE = "spurious"
-    # 列顺序原则：**结论优先**——杂散位置(spurious_freq_hz)与抑制度(delta_db, dBc)
-    # 紧跟运行标识，打开 CSV 无需横向滚动即可读到结论；
+    # 列顺序原则：**结论优先**——杂散位置(spurious_freq_hz)、抑制度(delta_db, dBc)
+    # 与判定(status)紧跟运行标识，打开 CSV 无需横向滚动即可读到结论；
     # 采集条件与验证量属追溯信息，统一后置。
     FIELDNAMES = [
-        # A 区：运行标识 + 杂散结论
+        # A 区：运行标识 + 杂散结论（位置 → 抑制度 → 判定）
         "run_id", "test_type",
         "spurious_freq_hz",          # 杂散位置（绝对频率）
         "delta_db", "delta_ref",     # 抑制度 dBc（相对载波实测功率）
+        "status",                    # 判定（OK/SUSPECT/SKIP）
         "measured_power_dbm",        # 杂散绝对电平
         "segment_name",              # 所属扫描段
         # B 区：激励条件（该杂散对应的载波）
@@ -60,8 +61,8 @@ class SpuriousProcedure(BaseTestProcedure):
         "sa_noise_floor_dbm", "sa_noise_floor_avg_dbm", "sa_noise_floor_dbm_per_hz",
         # D 区：验证量（结论可信度）
         "att_dbc_range_db", "rbw_scaling_range_db", "stability_std_db",
-        # 判定与时间
-        "status", "note", "timestamp",
+        # 说明与时间
+        "note", "timestamp",
     ]
 
     def __init__(self, instrument_manager):
@@ -1155,13 +1156,14 @@ class SpuriousProcedure(BaseTestProcedure):
                 continue
 
             result = {
-                # A 区：运行标识 + 杂散结论
+                # A 区：运行标识 + 杂散结论（位置 → 抑制度 → 判定）
                 "run_id": getattr(self, "run_id", ""),
                 "test_type": self.TEST_TYPE,
                 "spurious_freq_hz": candidate["frequency_hz"],
                 # 杂散的偏差以载波实测功率为基准（dBc）
                 "delta_db": round(candidate["amplitude_dbm"] - carrier_reference, 3),
                 "delta_ref": "carrier",
+                "status": status,
                 "measured_power_dbm": candidate["amplitude_dbm"],
                 "segment_name": candidate.get("segment_name", "unknown"),
                 # B 区：激励条件
@@ -1184,8 +1186,7 @@ class SpuriousProcedure(BaseTestProcedure):
                 "att_dbc_range_db": flat.get("att_dbc_range_db"),
                 "rbw_scaling_range_db": flat.get("rbw_scaling_range_db"),
                 "stability_std_db": flat.get("stability_std_db"),
-                # 判定与时间
-                "status": status,
+                # 说明与时间
                 "note": note,
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             }

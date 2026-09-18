@@ -1,21 +1,32 @@
 # -*- coding: utf-8 -*-
-"""频谱仪门面类（多品牌 SCPI 适配入口）。
+"""频谱仪门面类：品牌识别 + 到品牌后端的**透明转发**。
 
-职责：
-1. 读取 `*IDN?` 判定仪器品牌（可用 `brand=` 参数显式覆盖）；
-2. 按品牌装配 `instruments/backends/` 下的后端实现；
-3. 对外暴露与原单品牌实现**完全一致的方法签名**，因此
-   `procedures/`、`run_scripts/` 无需任何改动。
+职责只有两件：
+1. 读 `*IDN?` 判定仪器品牌（可用 `brand=` 参数显式覆盖）；
+2. 按品牌装配 `instruments/backends/` 下的后端，并把所有驱动方法**原样转发**给它。
+
+设计要点：**门面不重复声明后端的方法面。**
+早期版本把每个驱动方法都在这里手写一遍（37 个 `return self.backend.xxx(...)`），
+结果是"同一种仪器两套驱动代码"——方法名、签名、docstring 都要在门面和后端各维护
+一份，两边迟早漂移；给后端加一个方法还得改三个文件。现在改为 `__getattr__` 动态
+转发，门面只保留品牌识别这段真实逻辑，**方法面只有后端一份**。
+
+代价（已知、有意接受）：静态分析工具与 IDE 自动补全看不到门面上的驱动方法
+（`dir()` 已做弥补，见 `__dir__`）；查某个方法的实现与参数，直接看
+`backends/sa_<品牌>.py`，或基类 `backends/sa_base.py`。
 
 品牌策略：
 - 自动识别：`Rohde&Schwarz` → rohde；`Keysight` / `Agilent` → keysight
-- 识别失败或未支持的品牌 → 回退通用后端（只下发通用 SCPI 子集，逐项告警，不中断）
+- 识别失败或未支持的品牌 → 回退 `SpectrumAnalyzerBackend`（通用 SCPI 子集照发，
+  品牌专有设置告警并跳过，不中断流程）
 - 未知品牌也可在调用处显式指定，例如
       SpectrumAnalyzer(instrument, brand="keysight")
 
-用法（与改造前一致）：
+用法（与改造前完全一致，调用方无需改动）：
     sa = SpectrumAnalyzer(visa_instrument)
     sa.set_center_frequency(1e9)
+    sa.select_demod_measurement("AM")     # 解调：先切 ADEMOD 模式
+    sa.set_demod_span(1e6)
 """
 import os
 import sys
@@ -26,15 +37,17 @@ if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
 
 import brand as _brand  # noqa: E402
-from backends.sa_base import GenericSpectrumAnalyzer  # noqa: E402
+from backends.sa_base import SpectrumAnalyzerBackend  # noqa: E402
 from backends.sa_rohde import RohdeSpectrumAnalyzer  # noqa: E402
 from backends.sa_keysight import KeysightSpectrumAnalyzer  # noqa: E402
 
-# 品牌 → 后端实现
+# 品牌 → 后端实现。未识别品牌回退到基类 —— 它本身就是通用回退驱动，
+# 不再单独设一个 GenericSpectrumAnalyzer（同一角色不要两个类）。
 _BACKENDS = {
     _brand.ROHDE: RohdeSpectrumAnalyzer,
     _brand.KEYSIGHT: KeysightSpectrumAnalyzer,
 }
+_DEFAULT_BACKEND = SpectrumAnalyzerBackend
 
 _BRAND_ALIASES = {
     "rs": _brand.ROHDE,
@@ -45,9 +58,19 @@ _BRAND_ALIASES = {
     "agilent": _brand.KEYSIGHT,
 }
 
+#: 门面方法名 → 后端方法名。仅**名字不同**的才登记，其余同名直通。
+#: `query_raw` 是历史命名，后端侧叫 `query`；改门面名字会波及调用方，故留别名。
+_METHOD_ALIASES = {
+    "query_raw": "query",
+}
+
 
 class SpectrumAnalyzer:
-    """频谱仪控制门面：按品牌转发到对应后端。"""
+    """频谱仪控制门面：品牌识别 + 透明转发到品牌后端。
+
+    除构造与品牌识别外，本类**不额外定义任何驱动方法**：对未定义属性的访问
+    一律转发给 `self.backend`（见 `__getattr__`）。方法面以 `backends/` 为准。
+    """
 
     def __init__(self, instrument, brand=None):
         """初始化频谱仪。
@@ -63,14 +86,14 @@ class SpectrumAnalyzer:
         backend_cls = _BACKENDS.get(self.brand)
         if backend_cls is None:
             print(f"警告: 未识别频谱仪品牌(IDN={self.idn!r})，"
-                  f"回退通用后端（品牌相关设置将被跳过）")
-            backend_cls = GenericSpectrumAnalyzer
+                  f"回退通用后端（品牌专有设置将告警并跳过）")
+            backend_cls = _DEFAULT_BACKEND
 
         self.backend = backend_cls(instrument)
         print(f"频谱仪品牌: {self.brand}（后端 {backend_cls.__name__}）")
 
     # ------------------------------------------------------------------
-    # 内部
+    # 品牌识别（门面唯一的真实逻辑）
     # ------------------------------------------------------------------
     def _read_idn(self, retries=2):
         """读取 `*IDN?`；失败重试，仍失败返回 None。"""
@@ -84,227 +107,44 @@ class SpectrumAnalyzer:
         return None
 
     def _resolve_brand(self, brand):
-        """确定使用的品牌：显式参数优先于 *IDN? 自动识别。"""
+        """确定使用的品牌：显式参数优先于 `*IDN?` 自动识别。"""
         if brand:
             key = str(brand).strip().lower()
             return _BRAND_ALIASES.get(key, key)
         return _brand.detect_brand(self.idn)
 
     # ------------------------------------------------------------------
-    # 身份
+    # 透明转发
     # ------------------------------------------------------------------
-    def get_idn(self):
-        """获取仪器 ID 信息。"""
-        return self.backend.get_idn()
+    def __getattr__(self, name):
+        """把未定义的属性访问转发给后端。
 
-    def query_raw(self, command):
-        """只读查询任意 SCPI 命令（用于读回校验，不做任何写入）。"""
-        return self.backend.query(command)
-
-    def read_key_settings(self):
-        """读回影响测量结论的关键设置（RBW/VBW/点数/参考电平/输入衰减）。
-
-        Returns:
-            dict；读不到的项为 None（调用方按"无法校验"处理）。
+        这样驱动方法面只存在于后端一处，给后端新增方法无需同步改门面。
         """
-        return self.backend.read_key_settings()
+        # 下划线开头（含 dunder）一律不转发：
+        # ① 避免 `__deepcopy__` / `__getstate__` / `__copy__` 一类探测被当成驱动方法；
+        # ② 避免 __init__ 里 `self.backend` 尚未赋值时被递归拉进来。
+        if name.startswith("_"):
+            raise AttributeError(name)
+        backend = self.__dict__.get("backend")
+        if backend is None:
+            raise AttributeError(name)
 
-    # ------------------------------------------------------------------
-    # 频率与扫宽
-    # ------------------------------------------------------------------
-    def set_center_frequency(self, frequency):
-        """设置中心频率。"""
-        return self.backend.set_center_frequency(frequency)
+        target = _METHOD_ALIASES.get(name, name)
+        try:
+            return getattr(backend, target)
+        except AttributeError:
+            raise AttributeError(
+                f"{type(self).__name__} 无 {name!r}，后端 "
+                f"{type(backend).__name__} 也未提供 {target!r}") from None
 
-    def set_span(self, span):
-        """设置频率跨度。"""
-        return self.backend.set_span(span)
+    def __dir__(self):
+        """让 `dir()` 与自动补全能看到后端的方法。
 
-    # ------------------------------------------------------------------
-    # 幅度
-    # ------------------------------------------------------------------
-    def set_reference_level(self, level):
-        """设置参考电平。"""
-        return self.backend.set_reference_level(level)
-
-    def set_attenuation(self, attenuation):
-        """设置输入衰减。"""
-        return self.backend.set_attenuation(attenuation)
-
-    def set_attenuation_auto(self, state=True):
-        """设置衰减自动/手动耦合。"""
-        return self.backend.set_attenuation_auto(state)
-
-    def set_preamp(self, state=True, band=None):
-        """设置内置预放。
-
-        Args:
-            state: True 开，False 关
-            band: 罗德 = 增益值(15/30 dB) 或 "LOW"/"FULL"；
-                  是德 = "LOW"/"FULL" 波段（兼容传 15/30）
+        动态转发牺牲了"看得到"的能力，这里补回来一部分。
         """
-        return self.backend.set_preamp(state, band)
-
-    # ------------------------------------------------------------------
-    # 标记点
-    # ------------------------------------------------------------------
-    def peak_search(self, marker_num=1):
-        """执行峰值搜索。"""
-        return self.backend.peak_search(marker_num)
-
-    def set_marker_frequency(self, marker_num, frequency):
-        """设置标记器频率。"""
-        return self.backend.set_marker_frequency(marker_num, frequency)
-
-    def ensure_marker_on(self, marker_num=1):
-        """幂等开启标记器（读数前调用，避免 marker 未开导致 Y? 返回哨兵值）。"""
-        handler = getattr(self.backend, "ensure_marker_on", None)
-        if handler:
-            return handler(marker_num)
-        print("警告: 当前后端不支持标记器开启，已跳过")
-        return None
-
-    def measure_marker_power(self, marker_num):
-        """测量标记器功率。"""
-        return self.backend.measure_marker_power(marker_num)
-
-    def get_marker_frequency(self, marker_num):
-        """获取标记器频率。"""
-        return self.backend.get_marker_frequency(marker_num)
-
-    def measure_power(self, marker_num=1):
-        """峰值搜索后测量功率。"""
-        return self.backend.measure_power(marker_num)
-
-    # ------------------------------------------------------------------
-    # 带宽
-    # ------------------------------------------------------------------
-    def set_rbw(self, rbw):
-        """设置分辨率带宽。"""
-        return self.backend.set_rbw(rbw)
-
-    def set_vbw(self, vbw):
-        """设置视频带宽。"""
-        return self.backend.set_vbw(vbw)
-
-    def set_rbw_auto(self, state=True):
-        """设置 RBW 自动/手动耦合。"""
-        return self.backend.set_rbw_auto(state)
-
-    def set_vbw_auto(self, state=True):
-        """设置 VBW 自动/手动耦合。"""
-        return self.backend.set_vbw_auto(state)
-
-    # ------------------------------------------------------------------
-    # 输入
-    # ------------------------------------------------------------------
-    def set_input_coupling(self, coupling):
-        """设置输入耦合（AC / DC）。"""
-        return self.backend.set_input_coupling(coupling)
-
-    # ------------------------------------------------------------------
-    # 迹线与检波器
-    # ------------------------------------------------------------------
-    def set_trace_mode(self, mode="MAXHold", trace=1):
-        """设置 trace 模式。"""
-        return self.backend.set_trace_mode(mode, trace)
-
-    def set_detector(self, detector="POSitive", trace=1):
-        """设置检波器。"""
-        return self.backend.set_detector(detector, trace)
-
-    def set_detector_auto(self, state=True, trace=1):
-        """设置检波器自动耦合（后端不支持时为无操作）。"""
-        handler = getattr(self.backend, "set_detector_auto", None)
-        if handler:
-            return handler(state, trace)
-        print("警告: 当前后端不支持检波器自动耦合设置，已跳过")
-        return None
-
-    def get_trace(self, trace=1):
-        """读取频谱 trace 数据。"""
-        return self.backend.get_trace(trace)
-
-    # ------------------------------------------------------------------
-    # 采集（确定性：要取数值只走这里）
-    # ------------------------------------------------------------------
-    def acquire_once(self, report_errors=True):
-        """确定性完成一次完整扫描（`INIT:CONT OFF`+`INIT:IMM`+`*OPC?`）。
-
-        `*OPC?` 返回时 trace 必为本次采集的完整结果，故所有「读一个准确数值」
-        的流程都应先调用本方法，再读 marker / trace。
-
-        Args:
-            report_errors: 是否把仪器错误队列打印出来作为诊断（**只报告，不判失败**）
-
-        Returns:
-            bool: 是否触发并等到采集完成
-        """
-        handler = getattr(self.backend, "acquire_once", None)
-        if handler:
-            return handler(report_errors)
-        trigger = getattr(self.backend, "trigger_single", None)
-        if trigger:
-            return trigger()
-        print("警告: 当前后端不支持单次采集，已跳过")
-        return False
-
-    def report_error_queue(self, tag=""):
-        """打印并清空 SCPI 错误队列（纯诊断），返回错误列表。"""
-        handler = getattr(self.backend, "report_error_queue", None)
-        if handler:
-            return handler(tag)
-        return []
-
-    def trigger_single(self):
-        """兼容旧名：等价于 `acquire_once()`。"""
-        handler = getattr(self.backend, "trigger_single", None)
-        if handler:
-            return handler()
-        print("警告: 当前后端不支持单次触发，已跳过")
-        return False
-
-    # ------------------------------------------------------------------
-    # 扫描累积（时间法：仅 MAXHold 累积用，不是取数原语）
-    # ------------------------------------------------------------------
-    def accumulate_sweeps(self, sweep_count=1, span_hz=None, factor=None, margin=None):
-        """连续扫描累积 N 次（时间法）——杂散段扫专用。"""
-        handler = getattr(self.backend, "accumulate_sweeps", None)
-        if handler is None:
-            print("警告: 当前后端不支持扫描累积，已跳过")
-            return False
-        return handler(sweep_count, span_hz=span_hz, factor=factor, margin=margin)
-
-    def wait_for_sweep(self, sweep_count=1, span_hz=None, factor=None, margin=None):
-        """兼容旧名：等价于 `accumulate_sweeps()`。"""
-        return self.accumulate_sweeps(sweep_count, span_hz=span_hz,
-                                      factor=factor, margin=margin)
-
-    def wait_for_sweep_fast(self, sweep_count=1, span_hz=None, factor=1.5,
-                            margin=0.15, extra_margin=0.0):
-        """已弃用：保留只为兼容旧调用（原 `_sweep_sync` 的快速档）。"""
-        handler = getattr(self.backend, "wait_for_sweep_fast", None)
-        if handler is None:
-            return self.accumulate_sweeps(sweep_count, span_hz=span_hz,
-                                          factor=factor, margin=margin)
-        return handler(sweep_count, span_hz=span_hz, factor=factor,
-                       margin=margin, extra_margin=extra_margin)
-
-    def get_error_queue(self, limit=30):
-        """读取 SCPI 错误队列，返回错误字符串列表（无错误为空列表）。"""
-        handler = getattr(self.backend, "get_error_queue", None)
-        if handler:
-            return handler(limit)
-        print("警告: 当前后端不支持错误队列读取，已跳过")
-        return []
-
-    # ------------------------------------------------------------------
-    # 品牌扩展能力（可选，后端未实现时告警并返回 None）
-    # ------------------------------------------------------------------
-    def set_sweep_points(self, points):
-        """设置扫描点数（后端不支持时跳过）。"""
-        handler = getattr(self.backend, "set_sweep_points", None)
-        if handler:
-            return handler(points)
-        print("警告: 当前后端不支持扫描点数设置，已跳过")
-        return None
+        names = set(super().__dir__())
+        backend = self.__dict__.get("backend")
+        if backend is not None:
+            names |= {n for n in dir(backend) if not n.startswith("_")}
+        return sorted(names)

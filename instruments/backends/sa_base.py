@@ -1,24 +1,36 @@
 # -*- coding: utf-8 -*-
-"""频谱仪品牌后端公共基类。
+"""频谱仪品牌后端基类 —— 同时充当「未知品牌」的通用回退驱动。
 
-本基类承载与品牌无关的实现：
-- `*IDN?` 读取
-- 扫描同步（连续扫描 + 固定等待，宽/窄 SPAN 两档）
-- trace 数据读取
-- 超时清理
+本类承担两件事，**只有这一个类**：
 
-各品牌后端只需实现品牌相关的指令路径；未实现的方法在基类抛
-`NotImplementedError`，便于新增品牌时快速发现漏实现。
+1. **基类**：承载与品牌无关的实现
+   - `*IDN?` 读取、只读查询与数值解析
+   - 扫描同步（`acquire_once` 确定性采集 / `accumulate_sweeps` 时间法累积）
+   - trace 数据读取、错误队列读取、超时清理
+   - 两大品牌共用的通用 SCPI 子集（`FREQ:CENT` / `BAND:RES` / `CALC:MARK<n>:X` 等）
+2. **回退驱动**：`*IDN?` 识别不出品牌时，门面直接实例化本类。此时品牌专有设置
+   （参考电平、衰减、预放、RBW/VBW 自动耦合、trace 模式、检波器、模拟解调…）
+   一律**告警并跳过**，绝不抛异常 —— 跨品牌脚本要能继续跑完后面的步骤。
+
+因此品牌后端只需覆盖「本品牌与基类不同」的指令路径；未覆盖的方法继承基类的
+通用实现或告警桩。**刻意不抛 `NotImplementedError`**：那会让"这台没装该功能"
+与"代码漏了实现"变成同一个异常，现场无法区分；告警桩则能明确指出缺哪一项。
 
 指令来源：
 - 罗德 R&S：R&S FSWP-B1 User Manual, 1177.5656.02 ─ 11
 - 是德 Keysight：X-Series SA Mode User's & Programmer's Reference, N9060-90041
+- 模拟解调：X-Series Analog Demod Mode User's & Programmer's Reference（选件 N9063EM0E）
 """
 import time
 
 
 class SpectrumAnalyzerBackend:
-    """品牌后端基类（同时作为未知品牌的通用回退实现）。"""
+    """频谱仪后端基类，同时充当「未知品牌」的通用回退驱动。
+
+    两点分工见模块 docstring：通用实现 + 品牌专有设置的告警桩。
+    品牌后端（`KeysightSpectrumAnalyzer` / `RohdeSpectrumAnalyzer`）只覆盖
+    「与本类不同」的指令路径，其余全部继承。
+    """
 
     BRAND = "unknown"
 
@@ -41,6 +53,24 @@ class SpectrumAnalyzerBackend:
 
     def __init__(self, instrument):
         self.instrument = instrument
+        # 模拟解调（ADEMOD）当前测量类型 AM/FM/PM。由 select_demod_measurement()
+        # 记录，供后续 set_demod_* 解析"按测量分树"的节点（:SENSe:AM:* 等）。
+        self._demod_kind = None
+
+    # ------------------------------------------------------------------
+    # 通用：不支持项的告警桩
+    # ------------------------------------------------------------------
+    def _unsupported(self, feature):
+        """本后端不支持该设置：打印告警并跳过（**不抛异常**，调用方继续跑）。
+
+        两处会走到这里，带 `BRAND` 就是让现场一眼看清是哪台仪器缺哪一项：
+        1. 未知品牌走本类做回退驱动（`BRAND="unknown"`）；
+        2. 品牌后端确实没覆盖、或该机型无此功能。
+
+        与「静默返回 None」的区别：静默会让"设置成功"的假象写进记录，
+        而这正是本项目反复踩过的坑（仪器不报错但结果错）。
+        """
+        print(f"警告: 后端 {self.BRAND} 不支持 {feature}，已跳过")
 
     # ------------------------------------------------------------------
     # 通用：身份
@@ -451,7 +481,7 @@ class SpectrumAnalyzerBackend:
                     pass
 
     # ------------------------------------------------------------------
-    # 品牌相关：基类给出通用子集实现或抛 NotImplementedError
+    # 通用子集实现（两大品牌短写一致，基类直接实现，品牌后端按需覆盖）
     # ------------------------------------------------------------------
     def set_center_frequency(self, frequency):
         try:
@@ -484,35 +514,129 @@ class SpectrumAnalyzerBackend:
             print(f"测量功率失败: {e}")
             return None
 
-
-class GenericSpectrumAnalyzer(SpectrumAnalyzerBackend):
-    """未知品牌的回退后端：仅下发通用 SCPI 子集，品牌独有设置跳过并告警。"""
-
-    BRAND = "generic"
-
-    def _warn(self, feature):
-        print(f"警告: 未识别频谱仪品牌，跳过 {feature}（需品牌后端支持）")
-
+    # ------------------------------------------------------------------
+    # 品牌专有设置 —— 基类只告警并跳过（由品牌后端覆盖后才有实际动作）
+    # ------------------------------------------------------------------
     def set_reference_level(self, level):
-        self._warn("参考电平设置")
+        """参考电平：品牌专有，基类仅告警。"""
+        self._unsupported("参考电平设置")
 
     def set_attenuation(self, attenuation):
-        self._warn("衰减设置")
+        """输入衰减：品牌专有，基类仅告警。"""
+        self._unsupported("衰减设置")
 
     def set_attenuation_auto(self, state=True):
-        self._warn("自动衰减")
+        """衰减自动耦合：品牌专有，基类仅告警。"""
+        self._unsupported("自动衰减")
 
     def set_preamp(self, state=True, band=None):
-        self._warn("预放设置")
+        """内置预放：品牌专有（罗德传增益值，是德传波段），基类仅告警。"""
+        self._unsupported("预放设置")
 
     def set_rbw_auto(self, state=True):
-        self._warn("RBW 自动")
+        """RBW 自动耦合：品牌专有（节点名不同），基类仅告警。"""
+        self._unsupported("RBW 自动")
 
     def set_vbw_auto(self, state=True):
-        self._warn("VBW 自动")
+        """VBW 自动耦合：品牌专有（节点名不同），基类仅告警。"""
+        self._unsupported("VBW 自动")
 
     def set_trace_mode(self, mode="MAXHold", trace=1):
-        self._warn("trace 模式")
+        """trace 模式：品牌专有（取值表不同），基类仅告警。"""
+        self._unsupported("trace 模式")
 
     def set_detector(self, detector="POSitive", trace=1):
-        self._warn("检波器")
+        """检波器：品牌专有（取值表不同），基类仅告警。"""
+        self._unsupported("检波器")
+
+    def set_detector_auto(self, state=True, trace=1):
+        """检波器自动耦合：仅是德实现，其余后端告警跳过。"""
+        self._unsupported("检波器自动耦合设置")
+
+    def set_sweep_points(self, points):
+        """扫描点数：仅是德实现（`SENS:SWE:POIN`），其余后端告警跳过。"""
+        self._unsupported("扫描点数设置")
+
+    # ------------------------------------------------------------------
+    # 模拟解调（ADEMOD）—— 基类给出显式的"不支持"默认
+    #
+    # 目前只有"是德 X 系列 + N9063EM0E 模拟解调测量选件"有这套命令树
+    # （模式名 ADEMOD）；罗德的解调走 VSA/FSWP 的另一套测量树，本驱动不覆盖。
+    #
+    # 为什么在基类留桩而不是让子类缺方法：跨品牌脚本跑到解调步骤时会撞
+    # AttributeError，现场无法区分"这台没装选件"和"代码漏了"。有桩就能
+    # 打印出是哪台仪器、缺哪一项，然后继续跑后面的步骤。
+    # ------------------------------------------------------------------
+    DEMOD_KINDS = ("AM", "FM", "PM")
+
+    def select_demod_measurement(self, kind="AM", preset=False):
+        """选择 AM/FM/PM 解调测量（仅 ADEMOD 支持）。"""
+        self._unsupported("解调测量选择")
+
+    def set_demod_span(self, span_hz):
+        self._unsupported("解调跨度")
+
+    def set_demod_center_frequency(self, frequency_hz):
+        self._unsupported("解调载波频率")
+
+    def set_demod_rbw(self, bandwidth=None, auto=None):
+        self._unsupported("解调分辨率带宽")
+
+    def set_demod_channel_bandwidth(self, bandwidth_hz):
+        self._unsupported("解调通道带宽")
+
+    def set_af_span(self, start_hz=None, stop_hz=None):
+        self._unsupported("AF 频谱范围")
+
+    def set_af_bandwidth(self, bandwidth=None, auto=None):
+        self._unsupported("AF 分辨率带宽")
+
+    def set_post_demod_filter(self, which, value, manual_hz=None):
+        self._unsupported("后解调滤波器")
+
+    def set_demod_time(self, seconds=None, auto=None):
+        self._unsupported("解调时间")
+
+    def set_demod_periodic(self, state):
+        self._unsupported("调制周期性")
+
+    def set_demod_average(self, state=None, count=None):
+        self._unsupported("解调平均")
+
+    def set_am_genre(self, genre):
+        self._unsupported("AM 解调类型")
+
+    def set_fm_deemphasis(self, value):
+        self._unsupported("FM 去加重")
+
+    def set_speaker(self, state):
+        self._unsupported("扬声器")
+
+    def set_demod_unit(self, unit, kind=None, window="AFSPectrum"):
+        self._unsupported("解调单位")
+
+    def read_demod_settings(self, kind=None):
+        """读回解调设置；本后端无解调测量，返回空字典（不是全 None）。"""
+        self._unsupported("解调设置读回")
+        return {}
+
+    def read_demod_center_frequency(self):
+        """读回解调载波频率；本后端无解调测量，返回 None。"""
+        self._unsupported("解调载波频率读回")
+        return None
+
+    def read_demod_metric_display(self, kind=None):
+        """读回「调制量度显示」设置；本后端无解调测量，返回 None。"""
+        self._unsupported("调制量度显示读回")
+        return None
+
+    def read_demod_metrics(self, kind=None, acquire=True):
+        """读取解调测量结果（调制深度 / 频偏 / 相偏 / 调制速率）。
+
+        与 `read_demod_settings()` 一样只是告警桩：本后端没有解调测量树
+        （只有是德 X 系列 + ADEMOD 选件有）。返回带 `error` 的字典而不是
+        空字典，好让调用方能一眼看出"这台不支持"，而不是把空结果当成
+        "测了但没测到"。
+        """
+        self._unsupported("解调结果读取")
+        return {"error": f"后端 {self.BRAND} 无解调测量树，无法读取解调结果"}
