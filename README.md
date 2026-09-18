@@ -14,7 +14,7 @@
 - **统一继承架构**：所有 Procedure 类继承自 `BaseTestProcedure`，消除 ~700 行冗余代码
 - **双格式输出**：支持 CSV / Excel，含摘要 + 详细数据双工作表
 - **进一步消除重复**：抽取 PowerSweepBaseProcedure 公共基类，减少 ~250 行重复代码
-- **频谱仪扫描同步**：谐波/分谐波测量用 `wait_for_sweep` 按仪器实际扫描时间同步，移除固定的 `sa_settling_time` 盲等
+- **确定性采集**：谐波/分谐波/小信号的每次取数都用 `acquire_once`（`INIT:IMM` + `*OPC?`）完成一次完整扫描，三次平均 = 三次独立采样，不依赖任何"等够时间"的盲等；时间法的 `accumulate_sweeps` 只留给杂散的 MAXHold 累积
 
 ---
 

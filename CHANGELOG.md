@@ -13,6 +13,194 @@
 | v2.0 | 2026-06-23 | `c354595` | 抽取 `PowerSweepBaseProcedure`，消除约 250 行重复；多项指令/键名修复 |
 | streaming | 2026-09-08 ~ 09-14 | `c6c2b64` … `21a3779` | 流式 CSV 落地；杂散流程缺陷修复；低频段最大功率 |
 | **v2.1** | **2026-09-15** | `c8e36e0` + 未提交工作区 | **多品牌频谱仪 / 只出 CSV + 统一字段 / 杂散修复 / 灵敏度改造** |
+| **v2.2** | **2026-09-17** | 未提交工作区 | **移除 tkinter GUI，测试入口统一为 CLI** |
+| **v2.3** | **2026-09-17** | 未提交工作区 | **采集原语拆分 / 三次独立单次采集 / 失败重试与显式中止** |
+
+---
+
+## v2.3（2026-09-17）
+
+### 一、采集原语拆分：时间法不再影响谐波
+
+**问题**：`_sweep_sync` 把「取数」和「等够时间」粘在一起。谐波/分谐波的每次读数都走
+`CONT ON` → `sleep(1.5×Ts+0.15)` → `CONT OFF` 的时间法，每个频点有 26 条 `INIT:CONT`
+切换、8 次定时等待，而且**最终写进 CSV 的 7 个数值全部来自这条非确定性路径**——
+只有搜峰用了确定性单次触发。定时的 trace 未必已就绪，此时 `CALC:MARK< n >:Y?` 返回哨兵值
+9.91e+37，被 `_sanitize_raw` 归为 None，进而触发后面的崩溃。
+
+**方案**：按「要数值」与「要累积」拆分职责。
+
+- 新增 `sa_base.acquire_once()`：`INIT:CONT OFF` → `INIT:IMM` → `*OPC?` → `SYST:ERR?`，
+  确定性完成一次完整扫描（`*OPC?` 返回即代表 trace 已就绪）。`trigger_single()` 保留为兼容别名。
+- `wait_for_sweep` 改名 `accumulate_sweeps()`（时间法），文档明确「仅用于 MAXHold 累积，
+  不是取数原语」；`wait_for_sweep_fast` 标记弃用。杂散流程 7 处调用点改用 `accumulate_sweeps`。
+- **删除** `BaseTestProcedure._sweep_sync`（胶水层，谐波误用时间法的直接原因）。
+- 读数前幂等补 `CALC:MARK< n >:STAT ON`（新增 `ensure_marker_on`），不再依赖「搜峰那次顺手开了 marker」。
+
+**实测（单频点，假仪器录制真实 SCPI 序列）**
+
+| 指标 | 改造前 | 改造后 |
+|------|--------|--------|
+| `INIT:CONT ON` | 8 | **0** |
+| `INIT:CONT OFF` | 18 | 8（幂等） |
+| `INIT:IMM` + `*OPC?`（确定性采集） | 各 2（仅搜峰） | **各 8（每次取数都有握手）** |
+| 每点采集耗时（Ts=30 ms） | ≈1.85 s 定时等待 | **≈0.24 s** |
+
+### 二、失败重试与显式中止
+
+- 基波 / 分谐波读数失败 → 自动重试：默认 3 次尝试、间隔 0.3 s
+  （`measurement_attempts` / `retry_delay_s` 可配）。重试成功则继续，`note` 记录
+  「基波重试 N 次后成功」，便于识别「勉强测到」的点。
+- 重试耗尽 → 该点写 `status=FAIL` 行（留证据：失败在哪个频点、尝试了几次）→ 关信号源输出
+  → 抛 `MeasurementFailed` → 入口脚本在 `finally` 中执行 `finish_csv()` + `disconnect_all()`
+  并以退出码 1 结束。此前是 `TypeError` 崩在最后一行日志上，CSV 不关、VISA 不释放。
+- 修掉 `print(f"基波功率: {fundamental_power:.2f}")` 对 None 抛 `TypeError` 的崩溃
+  （master 版本此处本有判空，v2.1 改写时丢失，属回退）。
+- 配置：`harmonic_test_config` / `subharmonic_test_config` 新增 `measurement_attempts`、
+  `retry_delay_s`；删除已被架空的时间法参数 `sweep_sync_kwargs`。
+
+### 三、真机回归修复：错误队列不得当作采集失败门限
+
+**问题（v2.3 初版自身引入）**：`acquire_once()` 采集后查 `SYST:ERR?`，非 0 即判"本次采集失败"。
+真机 N9030B 的错误队列里几乎总有历史错误（疑为某条设置命令被固件拒绝），于是每次采集都被判失败
+→ 直接 `return` → **连 `CALC:MARK1:STAT ON` 都没发出**。产物只有一行
+`status=FAIL / note=基波功率测量失败（尝试 3 次）`，现象看起来像"marker 从来没被打开过"。
+重试也救不了：失败是系统性的，不是偶发。
+
+**修复**
+
+- `acquire_once()` 改为**只报告、不判失败**：`*OPC?` 返回即视为采集完成；错误队列内容
+  作为诊断打印（`report_error_queue`，顺带清空队列，避免历史错误累积干扰后续判断）。
+- 是德衰减 / 预放改用显式路径：`SENS:POW:RF:ATT` / `:ATT:AUTO` / `:GAIN:STAT` / `:GAIN:BAND`
+  （README 记录 `POW:ATT` 在 N9030B 报 `undefined header`）。此前若该命令被拒，
+  衰减可能**从未真正生效**，而 CSV 里 `sa_input_att_db` 记的却是请求值。
+- 新增"设置后"错误队列核对（`setup_spectrum_analyzer` 末尾），并把搜峰后的错误打印从
+  "只打印含 peak 的条目"改为**打印全部**——被固件拒绝的命令只能从这里看出来。
+- **输入耦合能力开关**：本机 N9030B 只支持 DC 耦合，`INP:COUP AC` 每次都被拒（-113，
+  不影响读数，仪器本来就保持 DC，但会污染错误队列）。新增 `input_coupling_ac_supported`
+  （`harmonic` / `subharmonic` / `small_signal` 三个配置，本机置 `False`），
+  由 `_resolve_input_coupling()` 把 AC 折算成 DC：实际下发 `INP:COUP DC`，
+  控制台注明"配置要 AC，但仪器只支持 DC，已用 DC"，错误队列保持干净。
+
+### 四、分谐波：底噪读数标注（不改 schema、不改 status）
+
+**背景（用户定案）**：分谐波常出现在多种分数上（1/3、3/5…）且幅度低，**测不到是常态**，
+读数为底噪可以接受；因此**不引入判定门限**（status 保持 OK、不加 `detected` 列）。
+但"这一行是底噪"必须标注，否则汇总会把它当成真实抑制能力。
+
+- `sa_noise_floor_dbm` 列由**恒为空**改为落值（trace 中位数，与谐波同源），底噪读数可追溯。
+- `note` 增加标注：检出 → `检出1/n分谐波`；未检出 → `读数为分谐波频率处底噪
+  （未检出1/n分谐波，约 X dBm；dBc 按上限理解）`。
+- `print_summary()` 末尾按计数提示：`注: N/M 点为底噪读数（未检出分谐波），
+  其 dBc 应按上限理解（优于该值），非真实抑制量`。
+- 判据（**只用于标注，不影响 status**）：`subharmonic_detection_margin_db`（默认 10 dB）
+  + `subharmonic_freq_tolerance_ratio`（默认 0.25，另受 rbw×5 / 500 Hz 下限约束）。
+- **非 1/n 分数（如 3/5）暂不支持**，配置注释已写明；本次不改 schema。
+
+### 五、小信号：频率改为起止步进（step / list 双模式）
+
+**需求**：小信号原来是 `frequency_list` 显式列表（仅 6 个点），数据量太少，
+改为起始终止步进配置。
+
+- `configs/small_signal_config.py`：
+  - 新增 `frequency_mode`（`"step"` 默认 / `"list"` 保留旧用法，点位可非均匀）；
+  - 新增 `frequency_config = {start_frequency, end_frequency, step_frequency, include_end}`；
+  - 保留 `frequency_list`（仅 list 模式使用）；
+  - 新增 `generate_frequency_list()`：step 模式用 `start + i×step` 生成，
+    **不做逐次累加**（避免浮点漂移）；末点不在步进网格上时按 `include_end` 补终止点；
+    `step_frequency <= 0` 抛 `ValueError`，`end < start` 返回空列表。
+- `run_scripts/small_signal_test.py`：改用 `generate_frequency_list()`，打印频率范围与
+  首段间隔，点数 > 1000 时告警；逐点日志改用 `format_frequency`。
+- 默认值：1 GHz ~ 20 GHz、步进 1 GHz（20 点），与原列表覆盖范围一致。
+
+**验证**：默认 20 点；非整除步进（3 GHz）→ 1/4/…/19 再补 20（8 点）；
+`include_end=False` → 7 点；0.1 MHz 细步进 190001 点且首末精确（无漂移）；
+list 模式返回旧的 6 点；`step=0` 抛 `ValueError`；端到端 2 频点 × 2 功率 = 4 行，
+19 列与 `FIELDNAMES` 完全一致。
+
+### 六、杂散：P0 修复（假验证 + 门限抗污染）
+
+**用户定案**：衰减阶跃步幅改为 +5 dB；验证期可用小集合；先修最严重的问题。
+
+**1. 衰减器阶跃验证（假验证 → 真验证）**
+
+- 现状：改衰减后只 `sleep` 就读 marker，而精测结束时仪器停在单次态（`CONT OFF`），
+  改设置不会自动重扫 → 读数取自同一条冻结迹线 → `att_dbc_range_db` 恒为 0，
+  **这项验证从未告警过**。
+- 修复：每个阶跃点 `set_attenuation` → `acquire_once()`（强制完整采集）→ 读 marker；
+  有效读数不足 2 个则不判定。基准 **30 dB**、步幅 `[0, 2]` → **[0, 6]**（即 30 dB ↔ 36 dB；
+  外接杂散 ≈0 dB 变化、内部杂散 ≈6 dB 变化），新增 `attenuator_settle_s`。
+- **衰减网格约束**：本机 N9030B 输入衰减只能按 **2 dB 步进**设置，网格外的值（25/35 等）
+  会被固件拒绝或自行取整 → 记录值 ≠ 生效值。配置统一取偶数（全局 30 / near_10MHz 36 /
+  far_1GHz 20，与各段 RBW 100 Hz / 1 kHz / 10 kHz 匹配），并新增
+  `attenuation_step_db=2` + `_snap_attenuation()` 兜底（**向上取整**到网格并打印告警）。
+- 同一根因的连带修复：`_refine_candidate`（3 次）与 `_measure_carrier`（5 次）的
+  重复读数改为**每次读数前 `acquire_once`** —— 原来 `std_db` 恒为 0、重复性判据失效。
+- 正反两面实测（同一建模假仪器；旧 = `HEAD`，新 = 当前）：
+
+| 场景 | 旧 | 新 |
+|---|---|---|
+| 内部杂散（dBc 随衰减 1:1 移动） | `OK`、range=0.0（**假通过**） | `SUSPECT`、range=5.0、note=衰减器响应异常 |
+| 外接杂散 | OK、0.0 | OK、0.0（不误报） |
+| `_refine_candidate` 的 `std_db` | 0.0（重采 0 次） | 0.2993（重采 5 次） |
+
+**2. 门限基准抗污染（低分位 + 掩膜迭代）**
+
+- 现状：门限基准 = 迹线**中位数**；宽带分量 / 大量杂散峰占多数 bin 时中位数被整体抬高，
+  门限随之上移 → **强峰把弱峰藏起来**（自遮蔽）。
+- 修复：门限基准改为**低分位**（`peak_detection.noise_floor_percentile`，默认 20 分位），
+  再叠加**掩膜迭代**（把已选中的峰 ±`threshold_mask_bins` 掩掉后重算，迭代到稳定）；
+  段级打印"中位数 → 修正值"的差值，污染可见。
+
+| 实测（宽带分量占 60% bin @−80 dBm + 弱杂散 −88 dBm，真实底噪 −95 dBm） | 门限基准 | 门限 | 弱杂散检出 |
+|---|---|---|---|
+| 旧（中位数） | −80.4 dBm（抬高 14.6 dB） | −74.4 dBm | **否** |
+| 新（20 分位 + 掩膜） | −95.0 dBm（误差 0.0 dB） | −89.0 dBm | **是** |
+
+**3. 近段点数 1001 → 20001（压 POS 偏置）**
+
+POS 检波取点内最大值：1001 点 / 10 MHz = 100 个分辨率单元/点，噪声被抬 ≈+7.8 dB；
+20001 点 = 5 单元/点 ≈ +4.9 dB。频率量化从 10 kHz 收到 500 Hz。
+**蒙特卡洛校正**（5 单元/bin + MAXH 3 次）：POS 门限基准的检波器偏置由 **7.83 dB → 4.91 dB**，
+即门限实际下移 **≈2.9 dB**（早前写的"约 7 dB"是估算偏差，已更正）。
+与 far 段已有的 20001 点做法一致；扫频模式下扫时由 span/RBW 决定、与点数基本无关。
+
+**5. 污染告警门限修正（误报）**
+
+纯噪声下"中位数 − 20 分位"本来就有天然差值：蒙特卡洛给出 **1.3 dB**（5 单元/bin + MAXH 3）。
+原门限 0.5 dB 低于该天然值 → **每个段都会误报"疑似被污染"**（真机日志里 far_1GHz 报的
+0.9 dB 就属此列）。已把告警门限提高到 **3 dB**（天然值 + 余量），并在消息里注明天然参考值。
+
+**6. 读回信息补全（判定"实际生效状态"的证据）**
+
+`read_key_settings` 增加两项，随 spurious 的"读回 [...]"一起打印：
+- `preamp_on`（`SENS:POW:RF:GAIN:STAT?` / `INP:GAIN:STAT?`）：预放是否真的关闭；
+- `scale_div_db`（`DISP:WIND:TRAC:Y:PDIV?` / `DISP:TRAC:Y:PDIV?`）：Y 轴刻度，
+  与参考电平一起决定显示下限，用于判断底噪读数是否被显示范围截断。
+起因：同一天两个流程反推的 DANL 相差约 14 dB（谐波 ≈−147 dBm/Hz、杂散 AVER ≈−161 dBm/Hz），
+超出检波器/RBW 差异能解释的量级，需要这两项现场证据才能定论。
+
+**4. 验证用小集合（配置，用户自定）**：`carrier_end_frequency_hz` 40e9 → **2e9**
+（step 模式 1→2 GHz / 100 MHz = 11 个载波点）；`max_peak_count_per_segment`（30）与
+`max_candidates_per_segment`（15）保持不变。验证通过后把 `carrier_end_frequency_hz`
+改回 40e9 即恢复全频段（391 点）。
+
+---
+
+## v2.2（2026-09-17）
+
+### 移除 tkinter GUI
+
+**背景**：`run_scripts/gui.py` 与 CLI 入口重复维护同一套流程调用，且自身带 5 处缺陷：
+功率计归零处 `mb` 只在"未连接功率计"分支导入即被使用（最大功率 / 功率扫描必崩）、
+5 个 `_exec_*` 从不调用 `finish_csv`（无汇总 CSV、文件句柄不关）、
+分谐波返回 list 使结果表与保存失效、worker 线程直接操作 Tk 控件、
+`LogRedirector`/`log_queue` 与重复定义的 `_start_test` 为死代码。
+
+**决定**：整体删除 GUI，测试入口统一为 `run_scripts/*.py` 命令行脚本。
+
+- 删除 `run_scripts/gui.py`（唯一 GUI 文件，且无任何模块 import 它）。
+- 测试能力与输出契约不变：7 个 CLI 入口、只出 CSV、字段规范均未改动。
 
 ---
 
@@ -110,7 +298,6 @@ CSV 可逐行 append + flush，断电安全。数据库（SQLite）留待后续�
   `_finite()` 过滤 `None / -inf / nan`；删 openpyxl / pandas 全部路径。
 - 7 个入口 `run_scripts/*.py`：输出路径改 `.csv`，结尾统一 `finish_csv()`；
   `power_sweep.py` 补上此前**从未调用**的 `start_csv_stream`。
-- `run_scripts/gui.py`：`_save_results` 改 CSV（去 pandas），新增 `_open_csv` 并接入 5 处 `_exec_*`。
 
 ### 三、杂散流程缺陷修复
 

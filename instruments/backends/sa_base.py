@@ -78,6 +78,19 @@ class SpectrumAnalyzerBackend:
         except (TypeError, ValueError):
             return None
 
+    def _query_float_first(self, *commands):
+        """依次尝试多个等价查询命令，返回第一个成功解析的数值。
+
+        用途：同一设置在不同固件上可能只接受其中一种写法（例如预放状态的
+        `...:GAIN:STAT?` 与 `...:GAIN?`）。若写死一种、恰好被拒，就要白跑一轮
+        真机测试才能拿到证据，故这里做一次容错尝试。
+        """
+        for command in commands:
+            value = self._query_float(command)
+            if value is not None:
+                return value
+        return None
+
     def read_key_settings(self):
         """读回影响测量结论的关键设置。
 
@@ -106,6 +119,19 @@ class SpectrumAnalyzerBackend:
             self.instrument.write(self.CMD_MARKER_X.format(m=marker_num) + f" {frequency}")
         except Exception as e:
             print(f"设置标记器频率失败: {e}")
+
+    def ensure_marker_on(self, marker_num=1):
+        """幂等开启标记器 (`CALC:MARK<m>:STAT ON`)。
+
+        读数前必须确保 marker 处于开启态：是德 X 系列 marker 默认 OFF，
+        此时 `CALC:MARK<m>:Y?` 返回哨兵值 9.91e+37（被 `_sanitize_raw` 归为
+        None）。此前只有搜峰路径顺手开过一次 marker，读数路径完全依赖"它没被
+        关掉"这个假设。
+        """
+        try:
+            self.instrument.write(f"CALC:MARK{marker_num}:STAT ON")
+        except Exception as e:
+            print(f"开启标记器失败: {e}")
 
     @staticmethod
     def _sanitize_raw(raw):
@@ -158,12 +184,27 @@ class SpectrumAnalyzerBackend:
             print(f"读取错误队列失败: {e}")
         return errors
 
-    def trigger_single(self):
-        """显式触发一次单次扫描并阻塞等待完成（`INIT:CONT OFF` + `INIT:IMM` + `*OPC?`）。
+    def acquire_once(self, report_errors=True):
+        """采集原语：确定性完成「一次完整扫描」。**要取数值就只走这里。**
 
-        与 `wait_for_sweep_fast` 的固定等待互补：后者保证"扫够时间"，本方法保证
-        "确实完成了一次采集、trace 可读"，避免同步结束后仪器停在待触发态、
-        marker 落在无有效数据上而返回哨兵。
+        序列：`INIT:CONT OFF` → `INIT:IMM` → `*OPC?`（阻塞到采集真正完成）
+              → 可选 `SYST:ERR?` 诊断（**只打印，绝不作为失败判据**）。
+
+        `*OPC?` 返回时 trace 必然是本次扫描的完整结果，因此不依赖任何「等够时间」
+        的假设。与 `accumulate_sweeps`（时间法、仅用于 MAXHold 累积）分工明确：
+
+            要一个准确数值        → acquire_once()
+            要把连续扫描跑够时长  → accumulate_sweeps()
+
+        Args:
+            report_errors: 采集后是否把仪器错误队列打印出来**作为诊断**。
+                **只报告、不判失败** —— 错误队列里的历史错误或与本次采集无关的
+                错误（例如某条品牌专有设置命令被固件拒绝）绝不能让一次已经
+                `*OPC?` 确认完成的采集被判为失败。早期版本把这个查询当成失败
+                门限，结果在真机上每次采集都被判失败、连 marker 都没打开就退出。
+
+        Returns:
+            bool: True=触发并等到采集完成；False=触发失败或等待超时
         """
         original_timeout = None
         try:
@@ -172,9 +213,11 @@ class SpectrumAnalyzerBackend:
             self.instrument.write(f"{self.CMD_CONT} OFF")
             self.instrument.write("INIT:IMM")
             self.instrument.query("*OPC?")
+            if report_errors:
+                self.report_error_queue(tag="采集后")
             return True
         except Exception as e:
-            print(f"单次触发失败: {e}")
+            print(f"单次采集失败: {e}")
             self._cleanup_after_timeout()
             return False
         finally:
@@ -183,6 +226,22 @@ class SpectrumAnalyzerBackend:
                     self.instrument.timeout = original_timeout
                 except Exception:
                     pass
+
+    def trigger_single(self):
+        """兼容旧名：等价于 `acquire_once()`。"""
+        return self.acquire_once()
+
+    def report_error_queue(self, tag="", limit=10):
+        """把 SCPI 错误队列内容打印出来（纯诊断，顺带清空队列）。
+
+        队列为空时不打印任何东西。返回错误字符串列表。
+        这是排查"哪条命令被固件拒绝"的唯一手段 —— 控制台打印的一直是请求值。
+        """
+        errors = self.get_error_queue(limit)
+        if errors:
+            prefix = f"（{tag}）" if tag else ""
+            print(f"    仪器错误队列{prefix}: " + "；".join(errors))
+        return errors
 
     # ------------------------------------------------------------------
     # 通用：带宽
@@ -212,7 +271,7 @@ class SpectrumAnalyzerBackend:
             print(f"设置输入耦合失败: {e}")
 
     # ------------------------------------------------------------------
-    # 通用：扫描同步
+    # 通用：扫描累积（时间法，仅杂散的 MAXHold 累积使用）
     # ------------------------------------------------------------------
     def _query_sweep_time(self):
         """查询单次扫描时间，查询失败返回 0.0。"""
@@ -221,12 +280,18 @@ class SpectrumAnalyzerBackend:
         except Exception:
             return 0.0
 
-    def wait_for_sweep(self, sweep_count=1, span_hz=None, factor=None, margin=None):
-        """宽 SPAN 扫描同步（连续扫描 + 固定等待，余量偏保守）。
+    def accumulate_sweeps(self, sweep_count=1, span_hz=None, factor=None, margin=None):
+        """连续扫描累积 N 次（时间法）——**只用于 MAXHold 累积，不是取数原语**。
+
+        使用者只有杂散流程：它需要在 MAXHold 迹线上累积多次扫描，而此时不需要
+        等待任何单次采集完成。谐波/分谐波/小信号这类「要一个准确数值」的流程
+        一律用 `acquire_once()`，不得调用本方法（历史上混用正是 trace 不新鲜、
+        marker 读回哨兵值的根源）。
 
         两大品牌均支持 `INIT:CONT` 与 `SENS:SWE:TIME?`，故实现放在基类。
-        不用 `SWE:COUN`/`*OPC?`：是德 X 系列 SA 无 `SWEep:COUNt`，
-        且窄 RBW/宽 SPAN 下 `*OPC?` 的可靠性不如固定等待。
+        这里不用 `SWE:COUN`：是德 X 系列 SA 无 `SWEep:COUNt`；而本方法的目的
+        只是「让连续扫描跑够时长」，不需要等某一次采集完成，所以用 `SWE:TIME?`
+        加系数估算即可。**要等某一次采集真正完成请用 `acquire_once()`。**
 
         Args:
             sweep_count: 需要完成的扫描次数，默认 1
@@ -282,11 +347,17 @@ class SpectrumAnalyzerBackend:
                 except Exception:
                     pass
 
-    def wait_for_sweep_fast(self, sweep_count=1, span_hz=None, factor=1.5, margin=0.15, extra_margin=0.0):
-        """小 SPAN 快速扫描同步（余量比 wait_for_sweep 小）。
+    def wait_for_sweep(self, sweep_count=1, span_hz=None, factor=None, margin=None):
+        """兼容旧名：等价于 `accumulate_sweeps()`（仅供本地旧脚本调用）。"""
+        return self.accumulate_sweeps(sweep_count, span_hz=span_hz,
+                                      factor=factor, margin=margin)
 
-        适配谐波/分谐波这类小 SPAN（FFT 扫描，sweep_time 仅几十毫秒）场景。
-        宽 SPAN 扫描请用 wait_for_sweep。
+    def wait_for_sweep_fast(self, sweep_count=1, span_hz=None, factor=1.5, margin=0.15, extra_margin=0.0):
+        """已弃用：保留只为兼容旧调用（原 `_sweep_sync` 的快速档）。
+
+        它本质仍是时间法（`CONT ON` → 等一段固定时间 → `CONT OFF`），**不保证
+        单次采集已完成**。需要准确数值请改用 `acquire_once()`；需要 MAXHold
+        累积请用 `accumulate_sweeps()`。
 
         Args:
             sweep_count: 需要完成的扫描次数，默认 1
@@ -397,6 +468,8 @@ class SpectrumAnalyzerBackend:
     def peak_search(self, marker_num=1):
         """峰值搜索：通用子集用标记点最大搜索。"""
         try:
+            # 必须先开 marker：marker 处于关闭态时，MAX / X? / Y? 都可能返回哨兵值
+            self.ensure_marker_on(marker_num)
             self.instrument.write(f"CALC:MARK{marker_num}:MAX")
             print("执行峰值搜索")
         except Exception as e:

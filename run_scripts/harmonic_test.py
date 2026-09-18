@@ -23,7 +23,7 @@ from instrument_manager import InstrumentManager
 from signal_generator import SignalGenerator
 from spectrum_analyzer import SpectrumAnalyzer
 from harmonic_test_procedure import HarmonicTestProcedure
-from base_test_procedure import format_frequency
+from base_test_procedure import format_frequency, MeasurementFailed
 from harmonic_test_config import (
     FREQUENCY_SWEEP_CONFIG,
     SPECTRUM_ANALYZER_CONFIG,
@@ -217,46 +217,59 @@ def run_harmonic_test():
     print(f"频谱仪输入耦合: 低于 {format_frequency(sa_cfg.get('dc_coupling_below_hz', 10e6))} 自动切 DC，以上用 {sa_cfg.get('input_coupling', 'AC')}")
     print("\n开始测试...")
 
-    for i, test_point in enumerate(test_points):
-        is_last_point = (i == len(test_points) - 1)
+    aborted = False
+    try:
+        for i, test_point in enumerate(test_points):
+            is_last_point = (i == len(test_points) - 1)
 
-        # 最后一个点测量后关闭输出，其他点保持输出
-        keep_output = not is_last_point
+            # 最后一个点测量后关闭输出，其他点保持输出
+            keep_output = not is_last_point
 
-        print(f"\n--- 测试点 {i+1}/{len(test_points)} ---")
+            print(f"\n--- 测试点 {i+1}/{len(test_points)} ---")
 
-        # 显示当前点的频率和功率
-        print(f"频率: {format_frequency(test_point['frequency'])}, 功率: {test_point['set_power']}dBm")
+            # 显示当前点的频率和功率
+            print(f"频率: {format_frequency(test_point['frequency'])}, 功率: {test_point['set_power']}dBm")
 
-        # 运行测试
-        test_procedure.run_harmonic_test(
-            signal_gen,
-            spectrum_analyzer,
-            test_point,
-            test_config['spectrum_analyzer_config'],
-            test_config['harmonic_measurement_config'],
-            keep_output
-        )
+            # 运行测试（内部含读数重试；重试耗尽会抛 MeasurementFailed）
+            test_procedure.run_harmonic_test(
+                signal_gen,
+                spectrum_analyzer,
+                test_point,
+                test_config['spectrum_analyzer_config'],
+                test_config['harmonic_measurement_config'],
+                keep_output
+            )
 
-        # 如果不是最后一个点，输出保持开启，准备切换到下一个频点
-        if not is_last_point:
-            print(f"保持输出状态，准备切换到下一个频点...")
-            # 这里可以添加一个短暂的延时，确保仪器准备好
-            time.sleep(0.1)
+            # 如果不是最后一个点，输出保持开启，准备切换到下一个频点
+            if not is_last_point:
+                print(f"保持输出状态，准备切换到下一个频点...")
+                time.sleep(0.1)
 
-    print("\n所有测试点完成，关闭信号源输出...")
-    signal_gen.enable_output(False)
+        print("\n所有测试点完成，关闭信号源输出...")
+    except MeasurementFailed as e:
+        aborted = True
+        print("\n" + "=" * 60)
+        print(f"测试中止: {e}")
+        print("失败点已以 status=FAIL 写入 CSV，可据此定位。")
+        print("=" * 60)
+    finally:
+        # 正常结束与中止都要收尾：关 RF → 关 CSV → 断开仪器
+        try:
+            signal_gen.enable_output(False)
+        except Exception as e:
+            print(f"关闭信号源输出失败: {e}")
+        # 6. 保存测试结果（CSV 流已在测试过程中逐点落盘）
+        test_procedure.finish_csv()
+        # 7. 打印测试摘要
+        test_procedure.print_summary()
+        print("\n" + "=" * 60)
+        print("断开仪器连接")
+        print("=" * 60)
+        manager.disconnect_all()
 
-    # 6. 保存测试结果（CSV 流已在测试过程中逐点落盘）
-    test_procedure.finish_csv()
-    # 7. 打印测试摘要
-    test_procedure.print_summary()
-
-    print("断开仪器连接")
-    print("\n" + "=" * 60)
-    print("断开仪器连接")
-    print("=" * 60)
-    manager.disconnect_all()
+    if aborted:
+        print("\n测试中止（未完成全部频点）")
+        sys.exit(1)
 
     print("\n测试完成！")
 

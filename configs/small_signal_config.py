@@ -2,22 +2,37 @@
 
 project_name = "小信号测量"
 
-# 被测频率列表，单位 Hz
+# ==================== 频率设置 ====================
+# 频率生成方式：
+#   "step" = 用下面的起止步进自动生成（默认）
+#   "list" = 用 frequency_list 显式列表（旧用法，保留兼容；点位可非均匀）
+frequency_mode = "step"
+
+# 步进式频率参数，单位 Hz
+frequency_config = {
+    'start_frequency': 1e9,      # 起始频率（含）
+    'end_frequency': 40e9,       # 终止频率（含）
+    'step_frequency': 1e9,       # 频率步进
+    'include_end': True,         # 末点不落在步进网格上时，是否补一个终止点
+}
+
+# 显式频率列表，仅 frequency_mode = "list" 时使用
 frequency_list = [
-    1e7,
-    10e7,
     1e9,
+    2e9,
+    5e9,
     6e9,
-    10e9
+    10e9,
+    20e9,
 ]
 
 # 从高到低排列的功率扫描列表，单位 dBm
 power_list_dbm = [
-    -70,
     -80,
     -90,
     -100,
     -110,
+    -120
 ]
 
 # 稳定时间，单位秒
@@ -63,6 +78,45 @@ preamp_band = "FULL"             # 兼容写法：LOW→罗德15dB/是德低波�
 # 其余频点用 input_coupling 指定的值；每个频点只下发一次，不随功率点重复
 input_coupling = "AC"
 dc_coupling_below_hz = 10e6
+# 输入耦合能力：本机 N9030B 只支持 DC 耦合，下发 AC 会被固件拒绝（错误队列 -113）。
+# 置 False 后程序直接把 AC 折算成 DC（不影响读数），不再产生该错误。
+# 换用支持 AC 耦合的机器时改回 True。
+input_coupling_ac_supported = False
+
+
+def generate_frequency_list():
+    """按 `frequency_mode` 生成被测频率列表（单位 Hz，升序）
+
+    - "step"：用 `start + i×step` 生成，**不做逐次累加**，避免浮点漂移；
+      末点若不在步进网格上，按 `include_end` 决定是否补一个终止点。
+    - "list"：直接用 `frequency_list`（排序后返回）。
+
+    Returns:
+        list[float]: 频率列表（Hz）；范围非法（end < start）时返回空列表
+
+    Raises:
+        ValueError: step_frequency <= 0（否则会生成无限/异常点数）
+    """
+    if frequency_mode == "list":
+        return sorted(float(f) for f in frequency_list)
+
+    start = float(frequency_config['start_frequency'])
+    end = float(frequency_config['end_frequency'])
+    step = float(frequency_config['step_frequency'])
+    if step <= 0:
+        raise ValueError(f"frequency_config['step_frequency'] 必须 > 0，当前为 {step}")
+    if end < start:
+        return []
+
+    tol = max(1e-9, abs(step) * 1e-9)
+    count = int((end - start) // step) + 1
+    frequencies = [start + i * step for i in range(count)]
+    # 浮点误差可能让最后一个点越过终止频率，丢掉它
+    while len(frequencies) > 1 and frequencies[-1] > end + tol:
+        frequencies.pop()
+    if frequency_config.get('include_end', True) and abs(frequencies[-1] - end) > tol:
+        frequencies.append(end)
+    return frequencies
 
 
 def get_config():
@@ -90,4 +144,5 @@ def get_config():
         "preamp_band": preamp_band,
         "input_coupling": input_coupling,
         "dc_coupling_below_hz": dc_coupling_below_hz,
+        "input_coupling_ac_supported": input_coupling_ac_supported,
     }

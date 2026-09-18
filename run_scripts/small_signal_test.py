@@ -15,8 +15,9 @@ from instrument_manager import InstrumentManager
 from signal_generator import SignalGenerator
 from spectrum_analyzer import SpectrumAnalyzer
 from small_signal_procedure import SmallSignalProcedure
+from utils.formatting import format_frequency
 from small_signal_config import (
-    frequency_list,
+    generate_frequency_list,
     power_list_dbm,
     get_config,
 )
@@ -65,18 +66,28 @@ def main():
     csv_path = os.path.join(output_dir, f"{OUTPUT_TAG}_{timestamp}.csv")
     procedure.start_csv_stream(csv_path)
 
+    frequencies = generate_frequency_list()
+
     print(f"\n开始小信号测量")
-    print(f"频率点数: {len(frequency_list)}")
+    print(f"频率点数: {len(frequencies)}")
     print(f"功率点数: {len(power_list_dbm)}")
 
-    if not frequency_list or not power_list_dbm:
-        print("频率列表或功率列表为空，请检查 small_signal_config.py")
+    if not frequencies or not power_list_dbm:
+        print("频率列表或功率列表为空，请检查 small_signal_config.py "
+              "（频率为 step 模式时看 frequency_config，list 模式看 frequency_list）")
         manager.disconnect_all()
         return
 
-    for i, frequency in enumerate(frequency_list):
-        keep_output = i < len(frequency_list) - 1
-        print(f"\n--- 频率 {frequency / 1e6:.3f} MHz ---")
+    plan = f"{format_frequency(frequencies[0])} ~ {format_frequency(frequencies[-1])}"
+    if len(frequencies) > 1:
+        plan += f"，首段间隔 {format_frequency(frequencies[1] - frequencies[0])}"
+    print(f"频率范围: {plan}")
+    if len(frequencies) > 1000:
+        print(f"警告: 频率点数 {len(frequencies)} 过多，请确认步进设置是否过小")
+
+    for i, frequency in enumerate(frequencies):
+        keep_output = i < len(frequencies) - 1
+        print(f"\n--- 频率 {format_frequency(frequency)} ---")
         procedure.run_small_signal_test(
             signal_gen,
             spectrum_analyzer,

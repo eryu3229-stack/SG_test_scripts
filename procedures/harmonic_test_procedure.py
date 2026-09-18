@@ -7,7 +7,7 @@
 
 import time
 from datetime import datetime
-from base_test_procedure import BaseTestProcedure
+from base_test_procedure import BaseTestProcedure, MeasurementFailed
 
 
 class HarmonicTestProcedure(BaseTestProcedure):
@@ -38,24 +38,45 @@ class HarmonicTestProcedure(BaseTestProcedure):
         self._output_enabled = False
         self.run_id = ""
 
-    def measure_harmonic_power(self, spectrum_analyzer, fundamental_freq, harmonic_order, sa_config, average_count=3, harmonic_config=None, sync_kwargs=None):
-        """测量谐波功率
+    def measure_harmonic_power(self, spectrum_analyzer, fundamental_freq, harmonic_order, sa_config,
+                               average_count=3, harmonic_config=None, attempts=3, retry_delay=0.3):
+        """测量谐波功率（读数失败自动重试）
 
         Args:
             spectrum_analyzer: 频谱仪对象
             fundamental_freq: 基波频率 (Hz)
             harmonic_order: 谐波阶数
             sa_config: 频谱仪配置
-            average_count: 测量平均次数
+            average_count: 平均次数（= 独立单次采集次数）
             harmonic_config: 谐波测量配置（含检出门限等）
-            sync_kwargs: 透传给 _sweep_sync / wait_for_sweep 的参数
+            attempts: 最多尝试次数（1 次原始 + attempts-1 次重试）
+            retry_delay: 两次尝试之间的等待秒数
 
         Returns:
-            dict: {"power": 谐波功率/底噪(dBm), "detected": 是否检出谐波,
-                   "noise_floor": 本地噪声底(dBm)或None}
+            dict: {"power": 谐波功率/底噪(dBm) 或 None, "detected": 是否检出谐波,
+                   "noise_floor": 本地噪声底(dBm)或None, "attempts": 实际尝试次数}
         """
         harmonic_config = harmonic_config or {}
-        sync_kwargs = sync_kwargs or {}
+        attempts = max(1, attempts)
+        for attempt in range(1, attempts + 1):
+            result = self._measure_harmonic_power_once(
+                spectrum_analyzer, fundamental_freq, harmonic_order, sa_config,
+                average_count, harmonic_config)
+            result["attempts"] = attempt
+            if result["power"] is not None:
+                if attempt > 1:
+                    print(f"    {harmonic_order}次谐波测量第 {attempt} 次尝试成功")
+                return result
+            if attempt < attempts:
+                print(f"    {harmonic_order}次谐波测量第 {attempt} 次尝试失败，{retry_delay}s 后重试...")
+                time.sleep(retry_delay)
+        print(f"{harmonic_order}次谐波功率测量失败（已尝试 {attempts} 次）")
+        return result
+
+    def _measure_harmonic_power_once(self, spectrum_analyzer, fundamental_freq, harmonic_order,
+                                     sa_config, average_count=3, harmonic_config=None):
+        """谐波功率的单次尝试：配置 → 确定性采集（搜峰）→ N 次独立采集取平均。"""
+        harmonic_config = harmonic_config or {}
         harmonic_freq = fundamental_freq * harmonic_order
         print(f"测量{harmonic_order}次谐波功率 @ {self.format_frequency(harmonic_freq)}")
 
@@ -63,14 +84,11 @@ class HarmonicTestProcedure(BaseTestProcedure):
 
         marker_num = 1
 
-        # 先等待一次完整扫描，避免读到过期 trace
-        self._sweep_sync(spectrum_analyzer, **sync_kwargs)
+        # 确定性采集一次完整扫描（*OPC? 握手）；搜峰必须在这条 trace 上进行
+        if not self._acquire(spectrum_analyzer):
+            return {'power': None, 'detected': False, 'noise_floor': None}
 
         if hasattr(spectrum_analyzer, 'peak_search'):
-            # 再显式触发一次单次扫描并等它完成：固定等待只保证"扫够时间"，
-            # 不保证同步结束时 trace 已就绪（否则 marker 会落在无效数据上 → X? 返回哨兵）
-            if hasattr(spectrum_analyzer, 'trigger_single'):
-                spectrum_analyzer.trigger_single()
             # 清空历史错误，便于下面判断本次搜峰是否成功
             if hasattr(spectrum_analyzer, 'get_error_queue'):
                 spectrum_analyzer.get_error_queue()
@@ -78,9 +96,9 @@ class HarmonicTestProcedure(BaseTestProcedure):
             time.sleep(0.05)
             if hasattr(spectrum_analyzer, 'get_error_queue'):
                 errs = spectrum_analyzer.get_error_queue()
-                peak_errs = [e for e in errs if "peak" in str(e).lower()]
-                if peak_errs:
-                    print(f"    峰值搜索报错: {peak_errs}")
+                if errs:
+                    # 全部打印：被固件拒绝的命令（undefined header 等）只能从这里看出来
+                    print(f"    搜峰后仪器错误队列: {'；'.join(str(e) for e in errs)}")
             # 搜峰后校验 marker 是否真的定位成功；无效则回退钉到理论谐波频率
             if hasattr(spectrum_analyzer, 'get_marker_frequency'):
                 _pf = spectrum_analyzer.get_marker_frequency(marker_num)
@@ -97,10 +115,7 @@ class HarmonicTestProcedure(BaseTestProcedure):
         peak_frequency = None
         if hasattr(spectrum_analyzer, 'get_marker_frequency'):
             peak_frequency = spectrum_analyzer.get_marker_frequency(marker_num)
-        if hasattr(spectrum_analyzer, 'measure_marker_power'):
-            peak_level = spectrum_analyzer.measure_marker_power(marker_num)
-        else:
-            peak_level = spectrum_analyzer.measure_power()
+        peak_level = self._read_marker(spectrum_analyzer, marker_num)
 
         # 用扫描轨迹采样的中位数近似本地噪声底（谐波线宽只占少量 bin，不受峰值影响）
         noise_floor = None
@@ -134,17 +149,14 @@ class HarmonicTestProcedure(BaseTestProcedure):
                 time.sleep(0.05)
                 print(f"设置标记器到理论{harmonic_order}次谐波频率: {self.format_frequency(harmonic_freq)}")
 
-        # 多次测量取平均：每次读数前都触发并等待一次完整扫描，确保数值准确
+        # N 次独立单次采集：每次采集完成后读一次 marker
+        #（marker 位置固定，不重复搜峰——否则样本会混入峰位抖动）
         measurements = []
 
-        for i in range(average_count):
-            if not self._sweep_sync(spectrum_analyzer, **sync_kwargs):
-                time.sleep(0.3)  # 无扫描同步支持时退化为固定等待
-            if hasattr(spectrum_analyzer, 'measure_marker_power'):
-                measurement = spectrum_analyzer.measure_marker_power(marker_num)
-            else:
-                measurement = spectrum_analyzer.measure_power()
-
+        for i in range(max(1, average_count)):
+            if not self._acquire(spectrum_analyzer):
+                continue
+            measurement = self._read_marker(spectrum_analyzer, marker_num)
             if measurement is not None:
                 measurements.append(measurement)
 
@@ -191,9 +203,10 @@ class HarmonicTestProcedure(BaseTestProcedure):
         set_power = test_point['set_power']
         settling_time = test_point.get('settling_time', 1.0)
         frequency_settling_time = test_point.get('frequency_settling_time', 1.0)
-
-        # 谐波测试使用小 SPAN，无需杂散测试那么大的安全余量
-        sync_kwargs = sa_config.get('sweep_sync_kwargs', {'factor': 1.0, 'margin': 0.2})
+        harmonic_order = harmonic_config.get('harmonic_order', 2)
+        average_count = harmonic_config.get('measurement_average', 3)
+        max_attempts = harmonic_config.get('measurement_attempts', 3)
+        retry_delay = harmonic_config.get('retry_delay_s', 0.3)
 
         print(f"\n{'=' * 60}")
         print(f"开始测试: {self.format_frequency(frequency)}")
@@ -223,30 +236,40 @@ class HarmonicTestProcedure(BaseTestProcedure):
 
         # 输入耦合判断：低于阈值用 DC（AC 耦合有低频截止，会严重压低低频读数）。
         # 按基波频率判断、每个测试点只设一次，使基波与谐波测量使用同一耦合，避免 dBc 被耦合切换影响。
-        dc_below = sa_config.get('dc_coupling_below_hz', 10e6)
-        coupling = 'DC' if frequency < dc_below else sa_config.get('input_coupling', 'AC')
+        # 仪器只支持 DC 时按能力折算（见 _resolve_input_coupling），不再下发注定被拒的 AC。
+        coupling, folded_from_ac = self._resolve_input_coupling(sa_config, frequency)
         if hasattr(spectrum_analyzer, 'set_input_coupling'):
             spectrum_analyzer.set_input_coupling(coupling)
-            print(f"频谱仪输入耦合: {coupling} (基波 {self.format_frequency(frequency)})")
+            extra = "（配置要 AC，但仪器只支持 DC，已用 DC）" if folded_from_ac else ""
+            print(f"频谱仪输入耦合: {coupling} (基波 {self.format_frequency(frequency)}){extra}")
 
-        # 2. 测量基波功率（使用基类方法）
+        # 2. 测量基波功率（内部含重试）
         fundamental_power = self.measure_fundamental_power(
             spectrum_analyzer, frequency, sa_config,
-            average_count=harmonic_config.get('measurement_average', 3),
-            sync_kwargs=sync_kwargs
+            average_count=average_count, attempts=max_attempts, retry_delay=retry_delay
         )
+        fundamental_attempts = self.last_measure_attempts
 
-        # 3. 测量谐波功率（返回 dict，含检出状态与噪声底）
-        harmonic_order = harmonic_config.get('harmonic_order', 2)
-        harmonic_result = self.measure_harmonic_power(
-            spectrum_analyzer, frequency, harmonic_order, sa_config,
-            average_count=harmonic_config.get('measurement_average', 3),
-            harmonic_config=harmonic_config,
-            sync_kwargs=sync_kwargs
-        )
-        harmonic_power = harmonic_result['power']
-        harmonic_detected = harmonic_result['detected']
-        harmonic_floor = harmonic_result['noise_floor']
+        # 3. 测量谐波功率（内部含重试）
+        harmonic_power = None
+        harmonic_detected = False
+        harmonic_floor = None
+        harmonic_attempts = 0
+        failure_note = ""
+        if fundamental_power is None:
+            failure_note = f"基波功率测量失败（尝试 {fundamental_attempts} 次）"
+        else:
+            harmonic_result = self.measure_harmonic_power(
+                spectrum_analyzer, frequency, harmonic_order, sa_config,
+                average_count=average_count, harmonic_config=harmonic_config,
+                attempts=max_attempts, retry_delay=retry_delay
+            )
+            harmonic_power = harmonic_result['power']
+            harmonic_detected = harmonic_result['detected']
+            harmonic_floor = harmonic_result['noise_floor']
+            harmonic_attempts = harmonic_result.get('attempts', 0)
+            if harmonic_power is None:
+                failure_note = f"{harmonic_order}次谐波功率测量失败（尝试 {harmonic_attempts} 次）"
 
         # 4. 计算谐波抑制比 (dBc)
         if fundamental_power is not None and harmonic_power is not None:
@@ -262,15 +285,29 @@ class HarmonicTestProcedure(BaseTestProcedure):
             self._output_enabled = False
 
         # 无谐波时的信息标注：区分"检出谐波"与"读数为底噪/噪声"
-        if harmonic_detected:
+        if failure_note:
+            harmonic_note = failure_note
+        elif harmonic_detected:
             harmonic_note = f"检出{harmonic_order}次谐波"
-        elif harmonic_power is not None:
-            if harmonic_floor is not None:
-                harmonic_note = f"未检出{harmonic_order}次谐波（读数为谐波频率处底噪，约{harmonic_floor:.1f}dBm）"
-            else:
-                harmonic_note = f"未检出{harmonic_order}次谐波（读数为谐波频率处底噪）"
+        elif harmonic_floor is not None:
+            harmonic_note = f"未检出{harmonic_order}次谐波（读数为谐波频率处底噪，约{harmonic_floor:.1f}dBm）"
         else:
-            harmonic_note = f"{harmonic_order}次谐波测量失败"
+            harmonic_note = f"未检出{harmonic_order}次谐波（读数为谐波频率处底噪）"
+
+        # 重试信息：仅在测量成功时追加（失败行由 failure_note 说明原因，
+        # 不能出现"测量失败…重试2次后成功"这种自相矛盾的备注）
+        if not failure_note:
+            if fundamental_attempts > 1:
+                harmonic_note += f"；基波重试{fundamental_attempts - 1}次后成功"
+            if harmonic_attempts > 1:
+                harmonic_note += f"；谐波重试{harmonic_attempts - 1}次后成功"
+
+        if failure_note:
+            status = "FAIL"
+        elif harmonic_detected:
+            status = "OK"
+        else:
+            status = "SUSPECT"
 
         # 创建测试结果（长表：每 (基波频率, 阶数) 一行）
         result = {
@@ -296,7 +333,7 @@ class HarmonicTestProcedure(BaseTestProcedure):
             "fundamental_power_dbm": fundamental_power,
             "detected": self.bool_str(harmonic_detected),
             # 判定与时间
-            "status": "OK" if harmonic_detected else ("SKIP" if harmonic_power is None else "SUSPECT"),
+            "status": status,
             "note": harmonic_note,
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         }
@@ -306,11 +343,18 @@ class HarmonicTestProcedure(BaseTestProcedure):
             self.csv_streamer.append(result)
 
         print(f"测试完成: {self.format_frequency(frequency)}")
-        print(f"基波功率: {fundamental_power:.2f} dBm")
+        print(f"基波功率: {fundamental_power:.2f} dBm" if fundamental_power is not None else "基波功率: 测量失败")
         print(f"二次谐波功率: {harmonic_power:.2f} dBm" if harmonic_power is not None else "二次谐波功率: 测量失败")
         print(f"谐波检出: {'是' if harmonic_detected else '否'}")
         if harmonic_suppression is not None:
             print(f"谐波抑制: {harmonic_suppression:.2f} dBc")
+
+        # 失败 → 该行已判 FAIL 并写入 CSV（留证据），此处显式中止整轮测试
+        if failure_note:
+            signal_gen.enable_output(False)
+            self._output_enabled = False
+            raise MeasurementFailed(
+                f"{self.format_frequency(frequency)}: {failure_note}，测试中止")
 
         return result
 

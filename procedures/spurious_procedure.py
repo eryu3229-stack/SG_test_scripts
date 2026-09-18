@@ -1,7 +1,28 @@
 import time
+import math
 import numpy as np
 from datetime import datetime
 from base_test_procedure import BaseTestProcedure
+
+
+def _snap_attenuation(value, step_db):
+    """把衰减值对齐到仪器的衰减网格（**向上取整**）。
+
+    仪器的输入衰减只能按固定步进设置（本机 N9030B 为 2 dB/步），网格外的值
+    （如 25、35）会被固件拒绝或自行取整 → 记录值 ≠ 生效值。
+    向上取整是安全方向：多衰减只会抬高底噪，不会减少对混频器的保护。
+
+    Args:
+        value: 期望衰减 (dB)
+        step_db: 网格步进 (dB)；0/None 表示不约束
+
+    Returns:
+        (对齐后的衰减, 是否被调整)
+    """
+    if not step_db or value is None:
+        return value, False
+    snapped = math.ceil(float(value) / float(step_db) - 1e-9) * float(step_db)
+    return snapped, abs(snapped - float(value)) > 1e-9
 
 
 class SpuriousProcedure(BaseTestProcedure):
@@ -21,16 +42,23 @@ class SpuriousProcedure(BaseTestProcedure):
     """
 
     TEST_TYPE = "spurious"
+    # 列顺序原则：**结论优先**——杂散位置(spurious_freq_hz)与抑制度(delta_db, dBc)
+    # 紧跟运行标识，打开 CSV 无需横向滚动即可读到结论；
+    # 采集条件与验证量属追溯信息，统一后置。
     FIELDNAMES = [
-        # A 区：标识与数值（所有源一致）
-        "run_id", "test_type", "carrier_hz", "set_power_dbm",
-        "measured_power_dbm", "delta_db", "delta_ref",
-        # B 区：频谱仪采集条件
+        # A 区：运行标识 + 杂散结论
+        "run_id", "test_type",
+        "spurious_freq_hz",          # 杂散位置（绝对频率）
+        "delta_db", "delta_ref",     # 抑制度 dBc（相对载波实测功率）
+        "measured_power_dbm",        # 杂散绝对电平
+        "segment_name",              # 所属扫描段
+        # B 区：激励条件（该杂散对应的载波）
+        "carrier_hz", "set_power_dbm",
+        # C 区：频谱仪采集条件（精测条件）
         "sa_ref_level_dbm", "sa_input_att_db", "sa_att_mode",
-        "sa_span_hz", "sa_rbw_hz", "sa_vbw_hz", "sa_noise_floor_dbm",
-        "sa_noise_floor_avg_dbm", "sa_noise_floor_dbm_per_hz",
-        # C 区：源专有
-        "spurious_freq_hz", "segment_name",
+        "sa_span_hz", "sa_rbw_hz", "sa_vbw_hz",
+        "sa_noise_floor_dbm", "sa_noise_floor_avg_dbm", "sa_noise_floor_dbm_per_hz",
+        # D 区：验证量（结论可信度）
         "att_dbc_range_db", "rbw_scaling_range_db", "stability_std_db",
         # 判定与时间
         "status", "note", "timestamp",
@@ -117,9 +145,14 @@ class SpuriousProcedure(BaseTestProcedure):
             value = segment_config.get(key)
             return default if value is None else value
 
+        att_raw = _pick("input_att_db", config.get("attenuation_db", 30))
+        att, adjusted = _snap_attenuation(att_raw, config.get("attenuation_step_db"))
+        if adjusted:
+            print(f"    衰减 {att_raw:g} dB 不在 {config.get('attenuation_step_db'):g} dB 网格上"
+                  f" → 取 {att:g} dB")
         return {
             "ref_level_dbm": _pick("ref_level_dbm", config.get("reference_level_dbm", 10)),
-            "input_att_db": _pick("input_att_db", config.get("attenuation_db", 25)),
+            "input_att_db": att,
             "preamp": bool(_pick("preamp", config.get("preamp", False))),
             "preamp_band": _pick("preamp_band", config.get("preamp_band")),
             "sweep_points": segment_config.get("sweep_points"),
@@ -153,20 +186,36 @@ class SpuriousProcedure(BaseTestProcedure):
                     problems.append(f"{key} 读回 {got:g} ≠ 下发 {want:g}")
             elif abs(got - want) > max(1e-9, abs(want) * 1e-3):
                 problems.append(f"{key} 读回 {got:g} ≠ 下发 {want:g}")
-        print(f"  {segment_name}: 读回 [{', '.join(details)}]")
+        # 额外读回项（预放状态 / Y 轴刻度等）不参与判定，但**必须打印**：
+        # 它们是解释"实测底噪比模型好 10 dB""读数是否贴显示下限"的唯一证据。
+        # 注意：下面以前是按 expected 的键遍历，这些额外项会被静默丢掉。
+        extras = {k: v for k, v in actual.items()
+                  if k not in expected and isinstance(v, (int, float))}
+        extra_text = (" | 状态项 [" + ", ".join(f"{k}={v:g}" for k, v in extras.items()) + "]"
+                      if extras else "")
+        print(f"  {segment_name}: 读回 [{', '.join(details)}]{extra_text}")
         if problems:
             print(f"  {segment_name}: ⚠ 设置校验不一致 -> " + "；".join(problems))
         return actual
 
-    def _estimate_noise_floor(self, trace):
-        """POS/MAXH 迹线的中位数 —— **门限基准**，不是可引用的灵敏度结论。
+    NOISE_FLOOR_PERCENTILE = 20
 
-        它与 POS 选峰自洽（都基于峰值噪声包络），故专用于 `_find_candidates`
-        的入围高度；真实平均底噪见 `_measure_average_noise_floor`。
+    @classmethod
+    def _estimate_noise_floor(cls, trace, percentile=None):
+        """门限基准：迹线的**低分位**（默认 20 分位）—— 不是可引用的灵敏度结论。
+
+        为什么不用中位数：中位数会被**占比大的宽带分量 / 大量杂散峰**整体抬高，
+        门限随之上移 → 弱杂散被自遮蔽（强峰把弱峰藏起来）。
+        20 分位在纯噪声下只比中位数低约 1~2 dB（被 6 dB 门限余量覆盖），
+        但在被污染时可以穿过污染层、落在真实噪声上。
+
+        它与 POS 选峰自洽（都基于峰值噪声包络），专用于 `_find_candidates`
+        的入围高度；可对外引用的真实平均底噪见 `_measure_average_noise_floor`。
         """
         if not trace:
             return None
-        return float(np.median(trace))
+        pct = cls.NOISE_FLOOR_PERCENTILE if percentile is None else float(percentile)
+        return float(np.percentile(np.asarray(trace, dtype=float), pct))
 
     @staticmethod
     def _detect_floor_clipping(trace, fraction_limit=0.10, band_db=0.5):
@@ -219,7 +268,7 @@ class SpuriousProcedure(BaseTestProcedure):
             # 带内只有噪声，不会 IF/ADC 过载；衰减已显式置为手动，不会被改回。
             if low_ref is not None:
                 spectrum_analyzer.set_reference_level(low_ref)
-            completed = spectrum_analyzer.wait_for_sweep(
+            completed = spectrum_analyzer.accumulate_sweeps(
                 report.get("sweep_count", 1), span_hz=span
             )
             if not completed:
@@ -326,6 +375,59 @@ class SpuriousProcedure(BaseTestProcedure):
         candidates.sort(key=lambda item: item["amplitude_dbm"], reverse=True)
         return candidates[:max_count]
 
+    def _find_candidates_robust(self, frequencies, powers, peak_config, iterations=3):
+        """选峰 + 迭代掩膜，抵抗"强峰污染门限基准"。
+
+        门限基准取迹线中位数，而中位数会被**占比大的信号/宽带分量**整体抬高：
+        强峰、相噪裙边、调制裙边一旦占了足够多的 bin，门限随之上移，弱杂散就被
+        自遮蔽掉（强峰把弱峰藏起来）。这里在选峰后把已选中的峰（±mask_bins）
+        掩掉再重算底噪，迭代到稳定为止 —— 纯软件处理，不额外占用仪器时间。
+
+        Args:
+            frequencies / powers / peak_config: 同 `_find_candidates`
+            iterations: 迭代上限（2~3 轮即收敛）
+
+        Returns:
+            (最终门限基准 dBm, 候选列表)
+        """
+        if not powers or len(frequencies) < 2:
+            return None, []
+
+        freq_step = abs(frequencies[1] - frequencies[0]) or 1.0
+        mask_bins = peak_config.get("threshold_mask_bins")
+        if mask_bins is None:
+            # 未显式配置时：按"候选最小间隔"换算成 bin 数
+            mask_bins = max(1, int(round(peak_config.get("min_peak_distance_hz", 1e3) / freq_step)))
+        mask_bins = max(1, int(mask_bins))
+
+        percentile = peak_config.get("noise_floor_percentile")
+        floor = self._estimate_noise_floor(powers, percentile)
+        candidates = []
+        for _ in range(max(1, iterations)):
+            candidates = self._find_candidates(frequencies, powers, floor, peak_config)
+            if not candidates:
+                break
+            masked = self._masked_noise_floor(
+                powers, [c["index"] for c in candidates], mask_bins, percentile)
+            if masked is None or abs(masked - floor) < 0.05:
+                break
+            floor = masked
+        return floor, candidates
+
+    @staticmethod
+    def _masked_noise_floor(powers, peak_indices, mask_bins, percentile=None):
+        """掩掉峰位（±mask_bins）后取剩余点的低分位；剩余点太少则返回 None。"""
+        values = np.asarray(powers, dtype=float)
+        keep = np.ones(values.size, dtype=bool)
+        for index in peak_indices:
+            low = max(0, int(index) - mask_bins)
+            high = min(values.size, int(index) + mask_bins + 1)
+            keep[low:high] = False
+        if keep.sum() < max(10, values.size * 0.1):
+            return None
+        pct = SpuriousProcedure.NOISE_FLOOR_PERCENTILE if percentile is None else float(percentile)
+        return float(np.percentile(values[keep], pct))
+
     def _deduplicate_candidates(self, candidates, tolerance_hz):
         unique = []
 
@@ -364,7 +466,7 @@ class SpuriousProcedure(BaseTestProcedure):
             config.get("input_coupling", "DC"),
         )
         time.sleep(config.get("sa_settling_time_s", 0.5))
-        if not spectrum_analyzer.wait_for_sweep(1, span_hz=span):
+        if not spectrum_analyzer.accumulate_sweeps(1, span_hz=span):
             print("载波扫描同步失败，跳过该载波")
             return None, carrier_frequency
         spectrum_analyzer.peak_search()
@@ -377,10 +479,12 @@ class SpuriousProcedure(BaseTestProcedure):
         min_frequency_hz = config.get("min_frequency_hz", 0.0)
         measurements = []
         for _ in range(5):
-            power = spectrum_analyzer.measure_marker_power(1)
+            # 每次读数前重新采集，保证 5 个样本来自 5 次独立扫描
+            if not self._acquire(spectrum_analyzer):
+                continue
+            power = self._read_marker(spectrum_analyzer, 1)
             if self._is_valid_measurement(peak_frequency, power, min_frequency_hz):
                 measurements.append(power)
-            time.sleep(0.1)
 
         if measurements:
             return float(np.mean(measurements)), peak_frequency
@@ -418,7 +522,7 @@ class SpuriousProcedure(BaseTestProcedure):
             config.get("input_coupling", "DC"),
         )
         time.sleep(config.get("sa_settling_time_s", 0.5))
-        if not spectrum_analyzer.wait_for_sweep(sweep_count, span_hz=span):
+        if not spectrum_analyzer.accumulate_sweeps(sweep_count, span_hz=span):
             print(f"候选 {candidate['frequency_hz']/1e6:.3f} MHz 精测扫描同步失败")
             return None
         spectrum_analyzer.peak_search()
@@ -429,10 +533,13 @@ class SpuriousProcedure(BaseTestProcedure):
 
         measurements = []
         for _ in range(max(1, average_count)):
-            power = spectrum_analyzer.measure_marker_power(1)
+            # 每次读数前重新采集：仪器停在单次态时 trace 是冻结的，
+            # 不重扫等于 N 次读同一个数（std 恒为 0，重复性判据失效）
+            if not self._acquire(spectrum_analyzer):
+                continue
+            power = self._read_marker(spectrum_analyzer, 1)
             if power is not None:
                 measurements.append(power)
-            time.sleep(0.05)
 
         if not measurements:
             return None
@@ -449,7 +556,8 @@ class SpuriousProcedure(BaseTestProcedure):
         # 门限基准口径（POS/WRITE 迹线中位数）—— 与 POS 选峰自洽，用于判断该候选
         # 是否仍高于本地噪声；不代表灵敏度。
         trace = spectrum_analyzer.get_trace(1)
-        noise_floor = self._estimate_noise_floor(trace)
+        noise_floor = self._estimate_noise_floor(
+            trace, config.get("peak_detection", {}).get("noise_floor_percentile"))
         if noise_floor is None:
             noise_floor = candidate.get("noise_floor_dbm")
 
@@ -523,22 +631,36 @@ class SpuriousProcedure(BaseTestProcedure):
 
         # 2. 衰减器阶跃测试：dBc 应基本不变
         if validation.get("attenuator_step_check", True):
-            att_base = refined.get("input_att_db", config.get("attenuation_db", 25))
-            att_steps = validation.get("attenuator_steps", [-2, 0, 2])
+            att_base = refined.get("input_att_db", config.get("attenuation_db", 30))
+            att_base, _ = _snap_attenuation(att_base, config.get("attenuation_step_db"))
+            att_step_db = config.get("attenuation_step_db")
+            att_steps = validation.get("attenuator_steps", [0, 6])
             dbc_tolerance = validation.get("attenuator_dbc_tolerance_db", 2.0)
+            att_settle_s = validation.get("attenuator_settle_s", 0.2)
             dbc_values = []
             for step in att_steps:
-                spectrum_analyzer.set_attenuation(att_base + step)
-                time.sleep(0.2)
-                power = spectrum_analyzer.measure_marker_power(1)
+                att_target, adjusted = _snap_attenuation(att_base + step, att_step_db)
+                if adjusted:
+                    print(f"    衰减阶跃 {att_base + step:g} dB 不在网格上 → 取 {att_target:g} dB")
+                spectrum_analyzer.set_attenuation(att_target)
+                time.sleep(att_settle_s)
+                # 必须重新采集：仪器停在单次态（精测结束时 CONT OFF）时，
+                # 改衰减**不会**自动重扫，直接读 marker 得到的是上一条冻结迹线的值
+                # → dBc 变化恒为 0，这项验证会永远通过（假验证）。
+                if not self._acquire(spectrum_analyzer):
+                    print(f"    衰减阶跃 {att_target:g} dB: 采集失败，该点不参与判定")
+                    continue
+                power = self._read_marker(spectrum_analyzer, 1)
                 if power is not None and carrier_power is not None:
                     dbc_values.append(power - carrier_power)
             spectrum_analyzer.set_attenuation(att_base)
-            if dbc_values:
+            if len(dbc_values) >= 2:
                 dbc_range = max(dbc_values) - min(dbc_values)
                 flat["att_dbc_range_db"] = round(dbc_range, 2)
                 if dbc_range > dbc_tolerance:
                     flags.append("衰减器响应异常")
+            elif dbc_values:
+                print("    衰减阶跃有效读数不足 2 个，本项不判定")
 
         # 3. RBW 缩放测试：真 CW 杂散幅度基本不变
         if validation.get("rbw_scaling_check", True):
@@ -550,7 +672,7 @@ class SpuriousProcedure(BaseTestProcedure):
                 spectrum_analyzer.set_rbw(base_rbw * ratio)
                 spectrum_analyzer.set_vbw(base_rbw * ratio * 3)
                 time.sleep(0.2)
-                if not spectrum_analyzer.wait_for_sweep(1, span_hz=refined.get("span_hz", 1e6)):
+                if not spectrum_analyzer.accumulate_sweeps(1, span_hz=refined.get("span_hz", 1e6)):
                     print(f"RBW缩放测试扫描同步失败，ratio={ratio}")
                     continue
                 power = spectrum_analyzer.measure_marker_power(1)
@@ -613,7 +735,7 @@ class SpuriousProcedure(BaseTestProcedure):
                 config.get("input_coupling", "DC"),
             )
             time.sleep(config.get("sa_settling_time_s", 0.5))
-            if not spectrum_analyzer.wait_for_sweep(segment.get("sweep_count", 5), span_hz=span):
+            if not spectrum_analyzer.accumulate_sweeps(segment.get("sweep_count", 5), span_hz=span):
                 print(f"环境扫描 segment {segment.get('name', 'ambient')} 同步失败，跳过")
                 continue
 
@@ -697,11 +819,11 @@ class SpuriousProcedure(BaseTestProcedure):
         # 一次再切回 MAXHold，把"本段底噪是否受上一段污染"这个不确定性彻底消掉。
         if config.get("trace_init", {}).get("prime_with_write", True):
             spectrum_analyzer.set_trace_mode("WRITE")
-            if not spectrum_analyzer.wait_for_sweep(1, span_hz=span):
+            if not spectrum_analyzer.accumulate_sweeps(1, span_hz=span):
                 print(f"  {segment_name}: 迹线初始化扫描失败（继续，但可能含旧迹线残留）")
             spectrum_analyzer.set_trace_mode(trace_mode)
 
-        if not spectrum_analyzer.wait_for_sweep(sweep_count, span_hz=span):
+        if not spectrum_analyzer.accumulate_sweeps(sweep_count, span_hz=span):
             print(f"  {segment_name}: 扫描同步失败，跳过该段")
             return []
 
@@ -711,18 +833,27 @@ class SpuriousProcedure(BaseTestProcedure):
             return []
 
         frequencies = self._trace_frequencies(center_frequency, span, len(trace))
-        noise_floor = self._estimate_noise_floor(trace)
-        candidates = self._find_candidates(
+        floor_median = float(np.median(np.asarray(trace, dtype=float)))
+        noise_percentile = config.get("peak_detection", {}).get(
+            "noise_floor_percentile", self.NOISE_FLOOR_PERCENTILE)
+        noise_floor, candidates = self._find_candidates_robust(
             frequencies,
             trace,
-            noise_floor,
             config.get("peak_detection", {}),
         )
+        # 污染告警门限：纯噪声下"中位数 − 低分位"本来就有天然差值，不能一有差就报污染。
+        # 蒙特卡洛（5 分辨率单元/bin + MAXH 3 次）= 1.3 dB；老配置 100 单元/bin = 0.65 dB。
+        # 取 3 dB（天然值 + 余量）才说明中位数确实被强峰/宽带分量抬起。
+        if (noise_floor is not None
+                and (floor_median - noise_floor) >= 3.0):
+            print(f"  {segment_name}: 门限基准 {floor_median:.1f}(中位数) → {noise_floor:.1f} dBm"
+                  f"（{noise_percentile:g}分位/掩膜后，差 {floor_median - noise_floor:.1f} dB，"
+                  f"天然差值约 1.3 dB）：中位数疑似被强峰/宽带分量污染")
         # 这一行是**门限基准**（POS/MAXH 迹线中位数 = 峰值噪声包络），不是灵敏度结论。
         # 可对外引用的真实平均底噪来自精测阶段的 AVER 迹线
         # （每行 sa_noise_floor_avg_dbm / sa_noise_floor_dbm_per_hz）。
         print(
-            f"  {segment_name}: 门限基准(POS/MAXH 中位数) {noise_floor:.1f} dBm, "
+            f"  {segment_name}: 门限基准(POS/MAXH 低分位/掩膜后) {noise_floor:.1f} dBm, "
             f"候选 {len(candidates)} 个"
         )
         if self._detect_floor_clipping(trace):
@@ -1024,16 +1155,19 @@ class SpuriousProcedure(BaseTestProcedure):
                 continue
 
             result = {
-                # A 区：标识与数值
+                # A 区：运行标识 + 杂散结论
                 "run_id": getattr(self, "run_id", ""),
                 "test_type": self.TEST_TYPE,
-                "carrier_hz": carrier_freq_reference,
-                "set_power_dbm": carrier_power,
-                "measured_power_dbm": candidate["amplitude_dbm"],
+                "spurious_freq_hz": candidate["frequency_hz"],
                 # 杂散的偏差以载波实测功率为基准（dBc）
                 "delta_db": round(candidate["amplitude_dbm"] - carrier_reference, 3),
                 "delta_ref": "carrier",
-                # B 区：频谱仪采集条件（精测条件）
+                "measured_power_dbm": candidate["amplitude_dbm"],
+                "segment_name": candidate.get("segment_name", "unknown"),
+                # B 区：激励条件
+                "carrier_hz": carrier_freq_reference,
+                "set_power_dbm": carrier_power,
+                # C 区：频谱仪采集条件（精测条件）
                 "sa_ref_level_dbm": candidate.get("ref_level_dbm", sa_ref_level_default),
                 "sa_input_att_db": candidate.get("input_att_db", sa_att_default),
                 "sa_att_mode": "manual",
@@ -1046,9 +1180,7 @@ class SpuriousProcedure(BaseTestProcedure):
                 # 跨段、跨 RBW 可比 —— 这两个值才是可对外引用的灵敏度证据
                 "sa_noise_floor_avg_dbm": candidate.get("avg_noise_floor_dbm"),
                 "sa_noise_floor_dbm_per_hz": candidate.get("avg_noise_floor_dbm_per_hz"),
-                # C 区：源专有
-                "spurious_freq_hz": candidate["frequency_hz"],
-                "segment_name": candidate.get("segment_name", "unknown"),
+                # D 区：验证量
                 "att_dbc_range_db": flat.get("att_dbc_range_db"),
                 "rbw_scaling_range_db": flat.get("rbw_scaling_range_db"),
                 "stability_std_db": flat.get("stability_std_db"),

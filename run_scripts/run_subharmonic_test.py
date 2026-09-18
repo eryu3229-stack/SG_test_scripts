@@ -22,6 +22,7 @@ from instrument_manager import InstrumentManager
 from signal_generator import SignalGenerator
 from spectrum_analyzer import SpectrumAnalyzer
 from subharmonic_test_procedure import SubharmonicTestProcedure
+from base_test_procedure import MeasurementFailed
 from subharmonic_test_config import (
     FREQUENCY_SWEEP_CONFIG,
     SPECTRUM_ANALYZER_CONFIG,
@@ -129,30 +130,45 @@ def run_subharmonic_test():
     print("开始测试")
     print("=" * 60)
 
-    # 运行测试，最后一个测试点之前保持输出开启
-    for i, test_point in enumerate(test_points):
-        # 最后一个测试点不保持输出，其他测试点保持输出
-        keep_output = (i < len(test_points) - 1)
-        test_procedure.run_subharmonic_test(
-            signal_gen,
-            spectrum_analyzer,
-            test_point,
-            test_config['spectrum_analyzer_config'],
-            test_config['subharmonic_measurement_config'],
-            keep_output=keep_output
-        )
+    aborted = False
+    try:
+        # 运行测试，最后一个测试点之前保持输出开启
+        for i, test_point in enumerate(test_points):
+            # 最后一个测试点不保持输出，其他测试点保持输出
+            keep_output = (i < len(test_points) - 1)
+            test_procedure.run_subharmonic_test(
+                signal_gen,
+                spectrum_analyzer,
+                test_point,
+                test_config['spectrum_analyzer_config'],
+                test_config['subharmonic_measurement_config'],
+                keep_output=keep_output
+            )
+    except MeasurementFailed as e:
+        aborted = True
+        print("\n" + "=" * 60)
+        print(f"测试中止: {e}")
+        print("失败点已以 status=FAIL 写入 CSV，可据此定位。")
+        print("=" * 60)
+    finally:
+        # 正常结束与中止都要收尾：关 RF → 关 CSV → 断开仪器
+        try:
+            signal_gen.enable_output(False)
+        except Exception as e:
+            print(f"关闭信号源输出失败: {e}")
+        # 6. 保存测试结果（CSV 流已在测试过程中逐点落盘）
+        test_procedure.finish_csv()
+        # 7. 打印测试摘要
+        test_procedure.print_summary()
+        # 8. 断开仪器连接
+        print("\n" + "=" * 60)
+        print("断开仪器连接")
+        print("=" * 60)
+        manager.disconnect_all()
 
-    # 6. 保存测试结果（CSV 流已在测试过程中逐点落盘）
-    test_procedure.finish_csv()
-
-    # 7. 打印测试摘要
-    test_procedure.print_summary()
-
-    # 8. 断开仪器连接
-    print("\n" + "=" * 60)
-    print("断开仪器连接")
-    print("=" * 60)
-    manager.disconnect_all()
+    if aborted:
+        print("\n测试中止（未完成全部频点）")
+        sys.exit(1)
 
     print("测试完成!")
 

@@ -25,7 +25,7 @@ TEST_DESCRIPTION = "测试信号源的分谐波性能，记录基波和分谐波
 # 频率扫描配置
 FREQUENCY_SWEEP_CONFIG = {
     'start_frequency': 100e6,      # 起始频率: 200MHz (确保分谐波在可测量范围内)
-    'end_frequency': 1e9,          # 结束频率: 1GHz
+    'end_frequency': 40e9,          # 结束频率: 1GHz
     'step_frequency': 100e6,       # 频率步进: 200MHz
     'fixed_power': 10,              # 固定输出功率: 10 dBm
     'settling_time': 1.0,          # 仪器稳定时间: 1秒
@@ -42,14 +42,30 @@ SPECTRUM_ANALYZER_CONFIG = {
     'attenuation': 40,             # 衰减: 40dB
     'input_coupling': 'AC',        # 频率 >= dc_coupling_below_hz 时使用的耦合方式
     'dc_coupling_below_hz': 10e6,  # 低于该频率自动用 DC 耦合（AC 耦合有低频截止，会压低低频读数）
+    # 输入耦合能力：本机 N9030B 只支持 DC 耦合，下发 AC 会被固件拒绝（错误队列 -113）。
+    # 置 False 后程序直接把 AC 折算成 DC（不影响读数），不再产生该错误。
+    # 换用支持 AC 耦合的机器时改回 True。
+    'input_coupling_ac_supported': False,
 }
 
 # ==================== 分谐波测量配置 ====================
 
 # 分谐波测量配置
 SUBHARMONIC_MEASUREMENT_CONFIG = {
-    'subharmonic_orders': [2],     # 分谐波阶数: 2 (1/2)
-    'measurement_average': 3,      # 测量平均次数
+    # 分谐波阶数（分母）：2 → 测 f/2，[2,3,5] → 分别测 f/2、f/3、f/5。
+    # 注意：当前实现只支持 **1/n** 形式。实际分谐波常见多种分数（1/3、3/5 等），
+    # 分母为 n 的用整数即可；像 3/5 这种分子不为 1 的分数当前无法表达
+    #（写 order=5/3 会让列值与 note 出现 "1/1.666…" 这种字样），如需支持另议。
+    # 另外：分谐波幅度通常很低，大概率落在底噪里 —— **测不到是常态**，
+    # 此时读数为分谐波频率处的底噪，dBc 应按"抑制上限"理解。
+    'subharmonic_orders': [2],
+    'measurement_average': 3,      # 平均次数 = 独立单次采集次数（固定值，不做自适应）
+    'measurement_attempts': 3,     # 最多尝试次数（1 次原始 + 2 次重试）；用尽即判 FAIL 并中止
+    'retry_delay_s': 0.3,          # 两次尝试之间的等待秒数
+    # 检出判据（只用于"是否标注为底噪读数"，**不影响 status**）：
+    # 读数为底噪时 note 写明"未检出"，并在 sa_noise_floor_dbm 列记录本地底噪
+    'subharmonic_detection_margin_db': 10,    # 读数高于本地底噪多少 dB 才算检出
+    'subharmonic_freq_tolerance_ratio': 0.25, # 峰位容差相对 span 的比例（另受 rbw×5、500 Hz 下限约束）
     'subharmonic_search_offset': 2e3, # 分谐波搜索偏移: 1MHz
 }
 

@@ -47,6 +47,9 @@ class SmallSignalProcedure(BaseTestProcedure):
             spectrum_analyzer.set_attenuation(attenuation)
         if hasattr(spectrum_analyzer, "set_preamp"):
             spectrum_analyzer.set_preamp(preamp_on, preamp_band)
+        # 设置后立刻核对错误队列（被固件拒绝的命令只能从这里看出来）
+        if hasattr(spectrum_analyzer, "report_error_queue"):
+            spectrum_analyzer.report_error_queue(tag="设置后")
 
     def _within_tolerance(self, peak_frequency, expected_frequency, tolerance):
         if peak_frequency is None:
@@ -65,18 +68,14 @@ class SmallSignalProcedure(BaseTestProcedure):
         return min(tol_configured, tol_cap)
 
     def _refresh_sweep(self, spectrum_analyzer):
-        """按当前设置重新采集一次 trace，保证后续 marker 读的是有效数据。
+        """按当前设置确定性采集一次 trace，保证后续 marker 读的是本次数据。
 
         仪器若停在单次态（上游流程用 `INIT:CONT OFF` 收尾），**改设置不会自动重扫**，
         trace 仍是旧数据：此时搜峰取到的是过期峰值，marker 甚至可能落在屏外
         → `CALC:MARK:Y?` 返回 9.91e+37 哨兵（被 `_sanitize_raw` 归为 None）。
+        `acquire_once()`（`INIT:IMM` + `*OPC?`）保证这次采集确实已完成。
         """
-        synced = self._sweep_sync(spectrum_analyzer)
-        if hasattr(spectrum_analyzer, 'trigger_single'):
-            return spectrum_analyzer.trigger_single()
-        if not synced:
-            time.sleep(0.3)  # 既无扫描同步也无单次触发时退化为固定等待
-        return False
+        return self._acquire(spectrum_analyzer)
 
     @staticmethod
     def _estimate_noise_floor(trace):
@@ -136,9 +135,9 @@ class SmallSignalProcedure(BaseTestProcedure):
 
         if hasattr(spectrum_analyzer, 'get_error_queue'):
             errs = spectrum_analyzer.get_error_queue()
-            peak_errs = [e for e in errs if "peak" in str(e).lower()]
-            if peak_errs:
-                print(f"    峰值搜索报错: {peak_errs}")
+            if errs:
+                # 全部打印：被固件拒绝的命令（undefined header 等）只能从这里看出来
+                print(f"    搜峰后仪器错误队列: {'；'.join(str(e) for e in errs)}")
 
         peak_frequency = None
         if hasattr(spectrum_analyzer, 'get_marker_frequency'):
@@ -163,7 +162,7 @@ class SmallSignalProcedure(BaseTestProcedure):
         for _ in range(max(1, average_count)):
             # 每次读数前重新采集：单次态下 trace 是冻结的，不重扫等于 5 次读同一条
             self._refresh_sweep(spectrum_analyzer)
-            power = spectrum_analyzer.measure_marker_power(1)
+            power = self._read_marker(spectrum_analyzer, 1)
             if power is not None:
                 measurements.append(power)
             time.sleep(0.1)
@@ -235,12 +234,13 @@ class SmallSignalProcedure(BaseTestProcedure):
             signal_generator.set_power(sorted_power_list[0])
 
         # 输入耦合只随频率变化，每个频点设一次，不在功率循环内重复下发
-        # 低于阈值的频点用 DC（AC 耦合低频截止会压低读数），其余用配置值
-        dc_below = config.get("dc_coupling_below_hz", 10e6)
-        coupling = "DC" if frequency < dc_below else config.get("input_coupling", "AC")
+        # 低于阈值的频点用 DC（AC 耦合低频截止会压低读数），其余用配置值；
+        # 仪器只支持 DC 时按能力折算（见 _resolve_input_coupling）
+        coupling, folded_from_ac = self._resolve_input_coupling(config, frequency)
         if hasattr(spectrum_analyzer, "set_input_coupling"):
             spectrum_analyzer.set_input_coupling(coupling)
-            print(f"输入耦合: {coupling} (频率 {format_frequency(frequency)})")
+            extra = "（配置要 AC，但仪器只支持 DC，已用 DC）" if folded_from_ac else ""
+            print(f"输入耦合: {coupling} (频率 {format_frequency(frequency)}){extra}")
 
         for power in sorted_power_list:
             signal_generator.set_power(power)

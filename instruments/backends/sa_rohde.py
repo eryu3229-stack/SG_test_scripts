@@ -84,8 +84,12 @@ class RohdeSpectrumAnalyzer(SpectrumAnalyzerBackend):
         """峰值搜索：`CALCulate<n>:MARKer<m>:MAXimum[:PEAK]`（手册 p.797）。
 
         例：`CALC:MARK1:MAX:PEAK`
+
+        前置 `CALC:MARK<n>:STAT ON`：marker 处于关闭态时，X? / Y? 可能返回哨兵值；
+        统一由 `ensure_marker_on()` 负责，与是德后端保持同一语义。
         """
         try:
+            self.ensure_marker_on(marker_num)
             self.instrument.write(f"CALC:MARK{marker_num}:MAX:PEAK")
             print("执行峰值搜索")
         except Exception as e:
@@ -170,4 +174,9 @@ class RohdeSpectrumAnalyzer(SpectrumAnalyzerBackend):
         return {
             "ref_level_dbm": self._query_float("DISP:TRAC:Y:RLEV?"),
             "input_att_db": self._query_float("INP:ATT?"),
+            # 预放状态（1=开 0=关）与 Y 轴刻度（决定显示下限）——
+            # 解释"底噪比模型好 10 dB"或"读数贴底"时必须看这两个。
+            "preamp_on": self._query_float_first("INP:GAIN:STAT?", "INP:GAIN?"),
+            "scale_div_db": self._query_float_first(
+                "DISP:TRAC:Y:PDIV?", "DISP:TRAC:Y:SCAL:PDIV?"),
         }

@@ -29,21 +29,25 @@ class KeysightSpectrumAnalyzer(SpectrumAnalyzerBackend):
     def set_attenuation(self, attenuation):
         """输入衰减：`[:SENSe]:POWer[:RF]:ATTenuation <rel_ampl>`。
 
-        例：`:POW:ATT 20`（手册 p.226）
+        例：`:SENS:POW:RF:ATT 20`（手册 p.226）
         注意：手动下发会自动把衰减从参考电平解耦。
+
+        下发用**显式路径**：项目 README 记录过 `POW:ATT` 在 N9030B 上报
+        `undefined header`（N9030B 实测）。命令被拒不只是衰减没设上，
+        还会往错误队列里灌错，干扰后续诊断。
         """
         try:
-            self.instrument.write(f"POW:ATT {attenuation}")
+            self.instrument.write(f"SENS:POW:RF:ATT {attenuation}")
         except Exception as e:
             print(f"设置衰减失败: {e}")
 
     def set_attenuation_auto(self, state=True):
         """衰减自动耦合：`[:SENSe]:POWer[:RF]:ATTenuation:AUTO OFF|ON|0|1`。
 
-        例：`:POW:ATT:AUTO ON`（手册 p.227）
+        例：`:SENS:POW:RF:ATT:AUTO ON`（手册 p.227）
         """
         try:
-            self.instrument.write(f"POW:ATT:AUTO {'ON' if state else 'OFF'}")
+            self.instrument.write(f"SENS:POW:RF:ATT:AUTO {'ON' if state else 'OFF'}")
         except Exception as e:
             print(f"设置自动衰减失败: {e}")
 
@@ -61,10 +65,10 @@ class KeysightSpectrumAnalyzer(SpectrumAnalyzerBackend):
             if state:
                 resolved_band = self._resolve_preamp_band(band)
                 if resolved_band:
-                    self.instrument.write(f"POW:GAIN:BAND {resolved_band}")
-                self.instrument.write("POW:GAIN:STAT ON")
+                    self.instrument.write(f"SENS:POW:RF:GAIN:BAND {resolved_band}")
+                self.instrument.write("SENS:POW:RF:GAIN:STAT ON")
             else:
-                self.instrument.write("POW:GAIN:STAT OFF")
+                self.instrument.write("SENS:POW:RF:GAIN:STAT OFF")
         except Exception as e:
             print(f"设置预放失败: {e}")
 
@@ -192,5 +196,14 @@ class KeysightSpectrumAnalyzer(SpectrumAnalyzerBackend):
         """读回参考电平与输入衰减（与上面的下发路径一一对应）。"""
         return {
             "ref_level_dbm": self._query_float("DISP:WIND:TRAC:Y:RLEV?"),
-            "input_att_db": self._query_float("POW:ATT?"),
+            "input_att_db": self._query_float("SENS:POW:RF:ATT?"),
+            # 预放状态：1=开 0=关。开预放会把底噪压低 10~30 dB，
+            # 不读回就无法解释"实测底噪比模型好 10 dB"这类偏差。
+            # 两种等价写法都试（不同固件可能只认一种）
+            "preamp_on": self._query_float_first(
+                "SENS:POW:RF:GAIN:STAT?", "SENS:POW:RF:GAIN?"),
+            # Y 轴刻度 dB/div：与参考电平一起决定显示下限（ref − 刻度×10 格），
+            # 是判断"底噪读数是否被显示范围截断"的依据。
+            "scale_div_db": self._query_float_first(
+                "DISP:WIND:TRAC:Y:PDIV?", "DISP:WIND:TRAC:Y:SCAL:PDIV?"),
         }

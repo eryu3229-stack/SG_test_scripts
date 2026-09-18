@@ -156,6 +156,14 @@ class SpectrumAnalyzer:
         """设置标记器频率。"""
         return self.backend.set_marker_frequency(marker_num, frequency)
 
+    def ensure_marker_on(self, marker_num=1):
+        """幂等开启标记器（读数前调用，避免 marker 未开导致 Y? 返回哨兵值）。"""
+        handler = getattr(self.backend, "ensure_marker_on", None)
+        if handler:
+            return handler(marker_num)
+        print("警告: 当前后端不支持标记器开启，已跳过")
+        return None
+
     def measure_marker_power(self, marker_num):
         """测量标记器功率。"""
         return self.backend.measure_marker_power(marker_num)
@@ -218,30 +226,69 @@ class SpectrumAnalyzer:
         return self.backend.get_trace(trace)
 
     # ------------------------------------------------------------------
-    # 扫描同步
+    # 采集（确定性：要取数值只走这里）
     # ------------------------------------------------------------------
-    def wait_for_sweep(self, sweep_count=1, span_hz=None, factor=None, margin=None):
-        """宽 SPAN 扫描同步（保守等待）。"""
-        return self.backend.wait_for_sweep(sweep_count, span_hz=span_hz,
-                                           factor=factor, margin=margin)
+    def acquire_once(self, report_errors=True):
+        """确定性完成一次完整扫描（`INIT:CONT OFF`+`INIT:IMM`+`*OPC?`）。
 
-    def wait_for_sweep_fast(self, sweep_count=1, span_hz=None, factor=1.5,
-                            margin=0.15, extra_margin=0.0):
-        """小 SPAN 快速扫描同步。"""
-        return self.backend.wait_for_sweep_fast(sweep_count, span_hz=span_hz,
-                                                factor=factor, margin=margin,
-                                                extra_margin=extra_margin)
+        `*OPC?` 返回时 trace 必为本次采集的完整结果，故所有「读一个准确数值」
+        的流程都应先调用本方法，再读 marker / trace。
+
+        Args:
+            report_errors: 是否把仪器错误队列打印出来作为诊断（**只报告，不判失败**）
+
+        Returns:
+            bool: 是否触发并等到采集完成
+        """
+        handler = getattr(self.backend, "acquire_once", None)
+        if handler:
+            return handler(report_errors)
+        trigger = getattr(self.backend, "trigger_single", None)
+        if trigger:
+            return trigger()
+        print("警告: 当前后端不支持单次采集，已跳过")
+        return False
+
+    def report_error_queue(self, tag=""):
+        """打印并清空 SCPI 错误队列（纯诊断），返回错误列表。"""
+        handler = getattr(self.backend, "report_error_queue", None)
+        if handler:
+            return handler(tag)
+        return []
 
     def trigger_single(self):
-        """显式触发一次单次扫描并等待完成（`INIT:CONT OFF`+`INIT:IMM`+`*OPC?`）。
-
-        用于读取 marker 之前，确保 trace 已刷新为有效数据。
-        """
+        """兼容旧名：等价于 `acquire_once()`。"""
         handler = getattr(self.backend, "trigger_single", None)
         if handler:
             return handler()
         print("警告: 当前后端不支持单次触发，已跳过")
         return False
+
+    # ------------------------------------------------------------------
+    # 扫描累积（时间法：仅 MAXHold 累积用，不是取数原语）
+    # ------------------------------------------------------------------
+    def accumulate_sweeps(self, sweep_count=1, span_hz=None, factor=None, margin=None):
+        """连续扫描累积 N 次（时间法）——杂散段扫专用。"""
+        handler = getattr(self.backend, "accumulate_sweeps", None)
+        if handler is None:
+            print("警告: 当前后端不支持扫描累积，已跳过")
+            return False
+        return handler(sweep_count, span_hz=span_hz, factor=factor, margin=margin)
+
+    def wait_for_sweep(self, sweep_count=1, span_hz=None, factor=None, margin=None):
+        """兼容旧名：等价于 `accumulate_sweeps()`。"""
+        return self.accumulate_sweeps(sweep_count, span_hz=span_hz,
+                                      factor=factor, margin=margin)
+
+    def wait_for_sweep_fast(self, sweep_count=1, span_hz=None, factor=1.5,
+                            margin=0.15, extra_margin=0.0):
+        """已弃用：保留只为兼容旧调用（原 `_sweep_sync` 的快速档）。"""
+        handler = getattr(self.backend, "wait_for_sweep_fast", None)
+        if handler is None:
+            return self.accumulate_sweeps(sweep_count, span_hz=span_hz,
+                                          factor=factor, margin=margin)
+        return handler(sweep_count, span_hz=span_hz, factor=factor,
+                       margin=margin, extra_margin=extra_margin)
 
     def get_error_queue(self, limit=30):
         """读取 SCPI 错误队列，返回错误字符串列表（无错误为空列表）。"""

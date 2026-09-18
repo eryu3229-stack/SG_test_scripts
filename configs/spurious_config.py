@@ -1,9 +1,5 @@
 # -*- coding: utf-8 -*-
 # 杂散测量配置
-# 说明：仅保留"代码真正会读取"的参数。已删除死参数（project_name /
-#       attenuator_step_db / stability_count）与未实现功能参数（cf_step_check、
-#       cf_step_hz）；被架空的 min_spur_offset_hz 已重新定义并纳入 get_config()。
-
 # 载波频率生成方式:
 # "step" = 使用起始/结束/步进自动生成
 # "list" = 使用 carrier_frequency_list 显式列表
@@ -13,9 +9,9 @@ carrier_frequency_mode = "step"
 carrier_frequency_list = []
 
 # 步进式载波频率参数，单位 Hz
-carrier_start_frequency_hz = 1e9
-carrier_end_frequency_hz = 40e9
-carrier_step_frequency_hz = 100e6
+carrier_start_frequency_hz = 3e9
+carrier_end_frequency_hz = 4e9
+carrier_step_frequency_hz = 200e6
 
 # 载波功率，单位 dBm
 carrier_power_dbm = 10
@@ -29,30 +25,35 @@ reference_level_dbm = 10
 # 物理关系：**显示底噪随输入衰减逐 dB 抬高**。衰减器在混频器之前，其损耗
 #   直接加进系统噪声系数，所以 DANL(参考到输入) = DANL_mixer + 衰减 − 预放增益。
 #   每多加 1 dB 衰减，显示底噪就高 1 dB。
+# **仪器约束（本机 N9030B）**：输入衰减只能按 **2 dB 步进**设置，网格外的值
+#   （如 25、35）会被固件拒绝或自行取整 → 记录值 ≠ 生效值。故本文件所有衰减值
+#   一律取偶数；代码另有 `_snap_attenuation()` 兜底（向上取整到网格并打印告警）。
 # 约束关系：**混频器电平 = 输入信号电平 − 衰减**（预放另计）。载波 10 dBm 时：
-#     衰减 40 dB -> 混频器 −30 dBm -> 底噪中位数约 −60 dBm -> 选峰门限 −54 dBm（旧值）
-#     衰减 30 dB -> 混频器 −20 dBm -> 底噪中位数约 −70 dBm -> 选峰门限 −64 dBm
-#     衰减 25 dB -> 混频器 −15 dBm -> 底噪中位数约 −75 dBm -> 选峰门限 −69 dBm（当前）
-#     衰减 20 dB -> 混频器 −10 dBm -> 底噪中位数约 −80 dBm -> 选峰门限 −74 dBm
-# 这里的 25 dB 是**全局缺省**；各段可用 input_att_db 覆盖（见下方近/远段注释）。
+#     衰减 36 dB -> 混频器 −26 dBm -> 底噪中位数约 −64 dBm（near_10MHz 用）
+#     衰减 30 dB -> 混频器 −20 dBm -> 底噪中位数约 −70 dBm（全局缺省，当前）
+#     衰减 20 dB -> 混频器 −10 dBm -> 底噪中位数约 −80 dBm（far_1GHz 用）
 # 逐段取值的两条边界：
 #   ① 混频器电平 = 载波 − 衰减，不宜高于 −10 dBm（过载 / 压缩风险）
 #   ② 底噪要留在显示下限之上：参考电平 10 dBm + 10 dB/div × 10 div = −90 dBm，
 #      底噪触及该值时迹线会触底，门限就退化成"屏幕下限"而非真实噪声
-# 最终取值：near_10MHz 35 dB / near_100MHz 25 dB / far_1GHz 20 dB，
-#   分段底噪都落在 −80 ~ −85 dBm 附近（旧值 40 dB 时是 −60 ~ −80 dBm）。
+# 最终取值：near_10MHz 36 dB / near_100MHz 30 dB / far_1GHz 20 dB。
+#   与各段 RBW 匹配：RBW 每降 10 倍底噪降 10 dB，衰减相应加 10 dB 才能让各段的
+#   "显示底噪"落在同一水平（100 Hz/36 dB、1 kHz/30 dB、10 kHz/20 dB）。
 # 注意：预放本次不启用 —— 开预放会把混频器电平抬高预放增益，载波在段内时
 #   必须把衰减相应加回，净收益（约 13 dB）不如直接降衰减。
 # 注意：参考电平 10 dBm + 10 dB/div × 10 div -> 屏幕下限 −90 dBm。若继续下调
 #   衰减使底噪逼近或越过 −90 dBm，会被显示范围截断（代码会打印"疑似触底"告警）。
-attenuation_db = 25
+attenuation_db = 30
+
+# 仪器衰减网格步进（dB）：用于把配置值对齐到仪器可设置的档位（0/None = 不约束）
+attenuation_step_db = 2
 
 input_coupling = "DC"
 sa_settling_time_s = 0.5
 
 # 内置预放（本次不启用）。
 # 开启会把混频器电平抬高预放增益，载波在段内时必须同步提高输入衰减，
-# 故净灵敏度收益有限（约 13 dB），不如直接把衰减降到 25 dB（+15 dB）。
+# 故净灵敏度收益有限（约 13 dB），不如直接把衰减降到 30 dB（+15 dB）。
 # 段级可用 "preamp" 键覆盖。
 preamp = False
 preamp_band = None   # "LOW" / "FULL"；None 表示沿用仪器当前波段
@@ -88,15 +89,20 @@ near_carrier_segments = [
         "sweep_count": 3,
         "trace_mode": "MAXH",
         "detector": "POS",
-        "sweep_points": None,   # 1001 点 / 10 MHz => 10 kHz 频率量化，待需要时收紧
+        # 20001 点 / 10 MHz => 每点 500 Hz = 5 个分辨率单元（RBW 100 Hz）。
+        # 目的：① 频率量化从 10 kHz 收到 500 Hz；② POS 检波取点内最大值，每点聚合的
+        # 分辨率单元越多噪声被抬得越高（1001 点 = 100 单元/点 ≈ +7.8 dB；20001 点 =
+        # 5 单元/点 ≈ +4.9 dB）→ 选峰门限因此下移约 2.9 dB。扫频模式下扫时由 span/RBW
+        # 决定、与点数基本无关，几乎不增加耗时。
+        "sweep_points": 20001,
         # 门限基准（POS/MAXH 迹线中位数）∝ RBW：RBW 100 Hz 比 1 GHz 段的 10 kHz 低 20 dB。
-        # 若沿用 25 dB 衰减，迹线中位数会落到约 −95 dBm —— 越过参考电平 10 dBm +
+        # 若沿用全局 30 dB 衰减，迹线中位数会落到约 −95 dBm —— 越过参考电平 10 dBm +
         # 10 dB/div × 10 div 给出的显示下限 −90 dBm，迹线触底，门限退化成"屏幕下限"
-        # 而不是真实噪声。故本段取 35 dB：迹线中位数 ≈ −85 dBm（距显示下限 5 dB），
-        # 混频器电平 = 10 − 35 = −25 dBm，余量充裕。
+        # 而不是真实噪声。故本段取 36 dB（2 dB 网格上最接近 35 的档位）：
+        # 迹线中位数 ≈ −84 dBm（距显示下限 6 dB），混频器电平 = 10 − 36 = −26 dBm。
         # （真实平均底噪比它再低约 10 dB，即 −95 dBm —— 已低于常规显示下限，
         #   由 noise_floor_report 单独压低参考电平后用 AVER 迹线测。）
-        "input_att_db": 35,
+        "input_att_db": 36,
     },
     # 100 MHz SPAN：覆盖 ±50 MHz，RBW 1 kHz
     {
@@ -107,8 +113,9 @@ near_carrier_segments = [
         "sweep_count": 3,
         "trace_mode": "MAXH",
         "detector": "POS",
-        "sweep_points": None,
-        "input_att_db": None,   # 用全局 25 dB；迹线中位数 ≈ −85 dBm（距显示下限 5 dB）
+        # 20001 点 / 100 MHz => 每点 5 kHz = 5 个分辨率单元（RBW 1 kHz），理由同上
+        "sweep_points": 20001,
+        "input_att_db": None,   # 用全局 30 dB；迹线中位数 ≈ −84 dBm（距显示下限 6 dB）
     },
 ]
 
@@ -174,6 +181,14 @@ peak_detection = {
     "peak_prominence_db": 3.0,       # 局部峰值相对于邻域的突出程度
     "min_peak_distance_hz": 1e3,     # 两个候选峰最小频率间隔（亦作全局去重容差）
     "max_peak_count_per_segment": 30,  # 每段最多保留候选，减少精测/验证负担
+    # 门限抗污染（两道防线，纯软件处理、不占仪器时间）：
+    #  ① 门限基准取**低分位**而不是中位数：中位数会被占比大的宽带分量/大量杂散峰
+    #     整体抬高，门限随之上移 → 弱杂散被自遮蔽。20 分位在纯噪声下只比中位数低
+    #     约 1~2 dB（6 dB 余量覆盖得住），被污染时却能落在真实噪声上。
+    #  ② 选峰后把已选中的峰（± threshold_mask_bins）掩掉再重算基准，迭代到稳定，
+    #     处理"离散强峰把基准抬高"的情况。
+    "noise_floor_percentile": 20,   # 门限基准分位（越小越抗污染）
+    "threshold_mask_bins": None,    # None = 由 min_peak_distance_hz / bin 宽度自动推算
 }
 
 # ============================================================
@@ -202,10 +217,15 @@ validation = {
     # 源开关扫描到的杂散与候选的频率比对容差（仅 source_off_check 开启时使用）
     "ambient_freq_tolerance_hz": 100e3,
 
-    # 衰减器阶跃测试：改衰减后 dBc 不变才是真杂散
+    # 衰减器阶跃测试：改衰减后 dBc 不变才是真杂散（外接杂散）；内部杂散不经过
+    # 衰减器、但显示同样按衰减补偿 → dBc 会随衰减 1:1 移动。
+    # 每个阶跃点都会**强制重新采集一次**再读数（仪器停在单次态时改衰减不会自动
+    # 重扫，直接读 marker 只能拿到冻结迹线的值 —— 那曾是假验证）。
     "attenuator_step_check": True,
-    "attenuator_steps": [0, 2],   # 相对 attenuation_db 的阶跃量，只测当前值和 +2 dB
-    "attenuator_dbc_tolerance_db": 2.0,
+    # 阶跃量：30 dB ↔ 36 dB（本机衰减只能按 2 dB 网格设置，不能取奇数）
+    "attenuator_steps": [0, 6],
+    "attenuator_dbc_tolerance_db": 2.0,   # 外接≈0 dB 变化；内部≈6 dB 变化
+    "attenuator_settle_s": 0.2,           # 改衰减后的沉降时间（随后强制重采一次）
 
     # RBW 缩放测试：真 CW 杂散幅度不随 RBW 变化；噪声会涨
     "rbw_scaling_check": True,
@@ -267,6 +287,7 @@ def get_config():
     return {
         "reference_level_dbm": reference_level_dbm,
         "attenuation_db": attenuation_db,
+        "attenuation_step_db": attenuation_step_db,
         "input_coupling": input_coupling,
         "sa_settling_time_s": sa_settling_time_s,
         "preamp": preamp,

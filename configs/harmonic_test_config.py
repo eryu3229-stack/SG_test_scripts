@@ -24,8 +24,8 @@ TEST_DESCRIPTION = "测试信号源的二次谐波性能，记录基波和二次
 
 # 频率扫描配置
 FREQUENCY_SWEEP_CONFIG = {
-    'start_frequency': 3.6e9,       # 起始频率: 3 kHz
-    'end_frequency': 10e9,          # 结束频率: 100 kHz
+    'start_frequency': 1e9,       # 起始频率: 3 kHz
+    'end_frequency': 2e10,          # 结束频率: 100 kHz
     'step_frequency': 100e6,         # 频率步进: 1 kHz
     'fixed_power': 10,              # 固定输出功率: 10 dBm
     'frequency_settling_time': 0.8, # 频率切换稳定时间，单位：秒
@@ -37,18 +37,23 @@ FREQUENCY_SWEEP_CONFIG = {
 # 频谱仪测量配置
 SPECTRUM_ANALYZER_CONFIG = {
     'span': 10e3,                  # 频率跨度: 10 kHz
-    'rbw': 200,                   # 分辨率带宽: 200 Hz
-    'vbw': 200,                   # 视频带宽: 200 Hz
-    'reference_level': 30,        # 参考电平: 20 dBm
+    'rbw': 100,                   # 分辨率带宽: 200 Hz
+    'vbw': 100,                   # 视频带宽: 200 Hz
+    'reference_level': 15,        # 参考电平: 20 dBm
     'attenuation': 40,            # 衰减: 40dB
     'scale_div_db': 15,           # Y轴刻度: 15 dB/div
     'input_coupling': 'AC',        # 频率 >= dc_coupling_below_hz 时使用的耦合方式
     'dc_coupling_below_hz': 10e6,  # 低于该频率自动用 DC 耦合（AC 耦合有低频截止，会压低低频读数）
+    # 输入耦合能力：本机 N9030B 只支持 DC 耦合，下发 `INP:COUP AC` 会被固件拒绝
+    #（错误队列留下一条 -113）。置 False 后程序直接把 AC 折算成 DC —— 不影响读数
+    #（仪器本来就保持 DC），只是不再反复下发一条注定被拒的命令。
+    # 换用支持 AC 耦合的机器时改回 True。
+    'input_coupling_ac_supported': False,
     'sa_settling_time': 0.5,      # 频谱仪稳定等待时间: 0.5秒
-    # 谐波测试同步参数（仅控制程序等待，不设置仪器扫描时间）：
-    # 单次等待 = sweep_time×factor + margin + (sweep_time×1.2 + extra_margin)
-    # 若三次平均读数完全一致（疑似没扫够）可增大 margin
-    'sweep_sync_kwargs': {'factor': 1.5, 'margin': 0.15, 'extra_margin': 0.0},
+    # 采集方式：不再使用"等够时间"的同步参数。
+    # 每次读数 = acquire_once()（INIT:IMM + *OPC?），即一次完整扫描，
+    # 三次平均 = 三次独立完整扫描。原 sweep_sync_kwargs（factor/margin/extra_margin）
+    # 属于时间法盲等，已随采集原语拆分删除。
 }
 
 # ==================== 谐波测量配置 ====================
@@ -57,7 +62,9 @@ SPECTRUM_ANALYZER_CONFIG = {
 HARMONIC_MEASUREMENT_CONFIG = {
     'fundamental_marker': 1,       # 基波标记器编号
     'harmonic_order': 2,           # 谐波阶数: 2 (二次谐波)
-    'measurement_average': 3,      # 测量平均次数
+    'measurement_average': 3,      # 平均次数 = 独立单次采集次数（固定值，不做自适应）
+    'measurement_attempts': 3,     # 最多尝试次数（1 次原始 + 2 次重试）；用尽即判 FAIL 并中止
+    'retry_delay_s': 0.3,          # 两次尝试之间的等待秒数
     'harmonic_detection_margin_db': 10,   # 峰包络高于本地噪声底多少 dB 才判为"检出谐波"
     'harmonic_freq_tolerance_ratio': 0.25, # 频率冗余判据相对 span 的比例
 }
