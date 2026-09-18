@@ -57,6 +57,14 @@ class SignalGenerator:
     #: 脉冲调制源（手册 p461）
     PULM_SOURCES = ("INTERNAL", "EXTERNAL")
 
+    #: 调制种类 -> 开关状态回读指令（手册 p445/p450/p454/p461）
+    _MOD_STATE_QUERIES = {
+        "AM": "AM1:STAT?",
+        "FM": "FM1:STAT?",
+        "PM": "PM1:STAT?",
+        "PULM": "PULM:STAT?",
+    }
+
     def __init__(self, instrument):
         """初始化信号源
 
@@ -192,20 +200,34 @@ class SignalGenerator:
         text = "恢复上次的调制" if enable else "关闭全部调制"
         return self._write(f"SOUR{self.PATH}:MOD:ALL:STAT {self._onoff(enable)}", text)
 
-    def get_modulation_state(self):
-        """回读四种调制的开关状态（手册 p445/450/454/461）
+    def get_modulation_state(self, kinds=None, verbose=False):
+        """回读调制开关状态（手册 p445/450/454/461）
 
         下发后回读是唯一能发现"设置被仪器静默拒绝"的手段。
 
+        Args:
+            kinds: 要回读的种类，如 ``("AM",)``。
+                **调用方应按需传** —— 查询本身也是一次仪器交互：测 AM 时
+                没有任何理由去问 PM，而且无关节点一旦返回哨兵值，
+                那一行就会直接出现在终端里、与本次测量毫无关系。
+                ``None`` = 四种全查（只在确有全局意图时用）。
+            verbose: 是否逐条打印（默认关闭）。由调用方决定要不要显示，
+                避免"每设一次调制就刷四行状态"。
+
         Returns:
-            dict: {'AM': str|None, 'FM': ..., 'PM': ..., 'PULM': ...}
+            dict: ``{'AM': str|None, ...}``，**只含 `kinds` 点名的种类**。
         """
-        return {
-            "AM": self._query(f"SOUR{self.PATH}:AM1:STAT?", "AM 状态"),
-            "FM": self._query(f"SOUR{self.PATH}:FM1:STAT?", "FM 状态"),
-            "PM": self._query(f"SOUR{self.PATH}:PM1:STAT?", "PM 状态"),
-            "PULM": self._query(f"SOUR{self.PATH}:PULM:STAT?", "脉冲调制状态"),
-        }
+        wanted = tuple(self._MOD_STATE_QUERIES) if kinds is None else tuple(kinds)
+        state = {}
+        for kind in wanted:
+            key = str(kind).strip().upper()
+            query = self._MOD_STATE_QUERIES.get(key)
+            if query is None:
+                raise ValueError(
+                    f"未知调制种类 {kind!r}，可选 {tuple(self._MOD_STATE_QUERIES)}")
+            state[key] = self._query(f"SOUR{self.PATH}:{query}",
+                                     f"{key} 状态" if verbose else None)
+        return state
 
     # ==================== 内部调制源 LF1 / LF2 ====================
 

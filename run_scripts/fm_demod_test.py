@@ -87,7 +87,7 @@ def main():
     print(f"频偏: {fm_deviation_list_hz} Hz")
     print(f"调制速率: {mod_rate_list_hz} Hz")
     print(f"预计输出行数: {total_rows}")
-    print("注意: FM 与 PM 硬件互斥，流程每次设调制前会关闭 PM（不关 AM）")
+    print("注意: FM 与 PM 硬件互斥，流程每次设调制前会关闭并回读 PM（不关 AM）")
 
     for i, carrier_frequency in enumerate(frequencies):
         keep_output = i < len(frequencies) - 1

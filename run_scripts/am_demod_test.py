@@ -87,8 +87,8 @@ def main():
     print(f"调制深度: {am_depth_list_pct} %")
     print(f"调制速率: {mod_rate_list_hz} Hz")
     print(f"预计输出行数: {total_rows}")
-    print("注意: AM 与 FM/PM 无硬件互斥，流程不下发任何 FM/PM 指令"
-          "（残留调制只作回读告警，不主动关闭）")
+    print("注意: AM 与 FM/PM 无硬件互斥，流程不下发、也不回读任何 FM/PM 指令"
+          "（终端不会出现与 AM 无关的状态行）")
 
     for i, carrier_frequency in enumerate(frequencies):
         keep_output = i < len(frequencies) - 1

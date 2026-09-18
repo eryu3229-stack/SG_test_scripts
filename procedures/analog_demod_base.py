@@ -83,11 +83,12 @@ class AnalogDemodProcedureBase(BaseTestProcedure):
     #: 关 PM 不会把 FM 开回来）。
     #:
     #: ⚠ **AM 不在此表中，这是有意的**：AM 与 FM/PM 之间**没有硬件互斥**，
-    #: 信号源允许三者同时开启。所以测 AM 时**不下发任何 FM/PM 指令**
-    #: （用户 2026-09-18 明确要求"AM 完全不碰 FM/PM"）——
-    #: 不替用户改动本测量用不到的开关状态。
+    #: 信号源允许三者同时开启。所以测 AM 时**不下发、也不回读任何 FM/PM 指令**
+    #: （用户 2026-09-18 要求"AM 完全不碰 FM/PM"，并追加"回读 PM 也没必要"）——
+    #: 既不改动、也不去探问本测量用不到的开关状态。
     #: 代价：若上一轮/上一支脚本残留的 FM 还开着，AM 读数仍会被污染，
-    #: 程序**不再主动清理**，只由 `_prepare_modulation` 的回读告警提示。
+    #: 而程序**既不清除也不告警** —— 这是用户明确选择的口径：
+    #: 终端里不出现任何与 AM 无关的状态行，比"顺手多看一眼"更重要。
     _HARDWARE_EXCLUSIVE = {"FM": ("PM",), "PM": ("FM",)}
 
     def __init__(self, instrument_manager):
@@ -185,14 +186,19 @@ class AnalogDemodProcedureBase(BaseTestProcedure):
         - 测 **FM** → 关 PM（手册 p454：激活 PM 会自动关掉 FM，不主动关就会在
           设 FM 之后被上一轮的 PM 状态吃掉）；
         - 测 **PM** → 关 FM（同上，反向）；
-        - 测 **AM** → **不关任何东西**。AM 与 FM/PM 没有硬件互斥关系，
-          流程不替用户改动本测量用不到的开关状态（用户 2026-09-18 要求）。
+        - 测 **AM** → **不关、也不回读 FM/PM/PULM**。AM 与 FM/PM 没有硬件互斥
+          关系，流程不去改动、也不去探问本测量用不到的开关状态
+          （用户 2026-09-18 要求）。
 
-        设置完**必须读回**：下发成功 ≠ 生效（本项目反复踩过的坑）。
-        回读时若发现**非目标调制仍亮着**，只打印告警、不下发关闭指令 ——
-        这是测 AM 时残留 FM/PM 的唯一提示渠道（见类属性 `_HARDWARE_EXCLUSIVE` 的说明）。
+        设置完**必须回读**：下发成功 ≠ 生效（本项目反复踩过的坑）。
+        但回读范围严格限定为 **本调制自己 + 本次真正关过的那一个**：
+
+        - 测 AM → 只读 AM，终端里不会出现任何 FM/PM 行；
+        - 测 FM → 读 FM 与 PM（PM 是本次刚关掉的，要确认关闭真的生效）；
+        - 测 PM → 读 PM 与 FM（同上）。
         """
-        for other in self._HARDWARE_EXCLUSIVE.get(self.DEMOD_KIND, ()):
+        siblings = self._HARDWARE_EXCLUSIVE.get(self.DEMOD_KIND, ())
+        for other in siblings:
             getattr(signal_generator, self._MOD_SETTERS[other])(False)
 
         signal_generator.set_lf_shape(config.get("lf_shape", "SINE"))
@@ -204,20 +210,17 @@ class AnalogDemodProcedureBase(BaseTestProcedure):
             print("    信号源调制设置失败")
             return False
 
-        state = None
         if hasattr(signal_generator, "get_modulation_state"):
-            state = signal_generator.get_modulation_state() or {}
+            state = signal_generator.get_modulation_state(
+                kinds=(self.DEMOD_KIND,) + tuple(siblings)) or {}
             own = str(state.get(self.DEMOD_KIND) or "").strip()
             if own not in ("1", "ON"):
                 print(f"    ⚠ {self.DEMOD_KIND} 调制回读为 {own!r}，未生效")
                 return False
-            for kind in ("AM", "FM", "PM"):
-                if kind == self.DEMOD_KIND:
-                    continue
-                other = str(state.get(kind) or "").strip()
-                if other in ("1", "ON"):
-                    print(f"    ⚠ 非目标调制 {kind} 仍处于开启态，读数可能被污染"
-                          f"（本流程不主动关闭它）")
+            for other in siblings:
+                if str(state.get(other) or "").strip() in ("1", "ON"):
+                    print(f"    ⚠ {other} 回读仍为开启：{self.DEMOD_KIND} 与 {other} "
+                          f"硬件互斥，说明本次关闭未生效，读数不可信")
         return True
 
     # ------------------------------------------------------------------

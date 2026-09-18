@@ -33,9 +33,9 @@ use_attenuator = False        # 是否使用衰减器
 
 # 低频段频率步进配置
 frequency_ranges = [
-     {'start': 3e3, 'end': 100e3, 'step': 1e3},     # 3k-100kHz，步进10kHz
-     {'start': 100e3, 'end': 1e6, 'step': 100e3},    # 100kHz-1MHz，步进100kHz
-     {'start': 1e6, 'end': 50e6, 'step': 1e6},       # 1MHz-50MHz，步进1MHz
+     {'start': 9e3, 'end': 100e3, 'step': 1e3},     # 3k-100kHz，步进10kHz
+     {'start': 100e3, 'end': 1e6, 'step': 10e3},    # 100kHz-1MHz，步进100kHz
+     {'start': 1e6, 'end': 50e6, 'step': 100e3},       # 1MHz-50MHz，步进1MHz
 ]
 
 # 频谱仪配置
