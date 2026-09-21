@@ -24,9 +24,9 @@ TEST_DESCRIPTION = "测试信号源的二次谐波性能，记录基波和二次
 
 # 频率扫描配置
 FREQUENCY_SWEEP_CONFIG = {
-    'start_frequency': 1e9,       # 起始频率: 3 kHz
-    'end_frequency': 2e10,          # 结束频率: 100 kHz
-    'step_frequency': 100e6,         # 频率步进: 1 kHz
+    'start_frequency': 19e9,       # 起始频率: 3 kHz
+    'end_frequency': 20e9,          # 结束频率: 100 kHz
+    'step_frequency': 10e7,         # 频率步进: 1 kHz
     'fixed_power': 10,              # 固定输出功率: 10 dBm
     'frequency_settling_time': 0.8, # 频率切换稳定时间，单位：秒
     'settling_time': 0.5,           # 仪器稳定时间: 0.5秒
@@ -37,10 +37,10 @@ FREQUENCY_SWEEP_CONFIG = {
 # 频谱仪测量配置
 SPECTRUM_ANALYZER_CONFIG = {
     'span': 10e3,                  # 频率跨度: 10 kHz
-    'rbw': 100,                   # 分辨率带宽: 200 Hz
-    'vbw': 100,                   # 视频带宽: 200 Hz
+    'rbw': 10,                   # 分辨率带宽: 200 Hz
+    'vbw': 10,                   # 视频带宽: 200 Hz
     'reference_level': 15,        # 参考电平: 20 dBm
-    'attenuation': 40,            # 衰减: 40dB
+    'attenuation': 30,            # 衰减: 40dB
     'scale_div_db': 15,           # Y轴刻度: 15 dB/div
     'input_coupling': 'AC',        # 频率 >= dc_coupling_below_hz 时使用的耦合方式
     'dc_coupling_below_hz': 10e6,  # 低于该频率自动用 DC 耦合（AC 耦合有低频截止，会压低低频读数）

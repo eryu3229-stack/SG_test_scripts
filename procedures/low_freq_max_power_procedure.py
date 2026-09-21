@@ -5,7 +5,11 @@ from power_sweep_base import PowerSweepBaseProcedure
 
 
 class LowFreqMaxPowerProcedure(PowerSweepBaseProcedure):
-    """低频段最大功率测试流程类（用频谱仪读数，带 sa_* 采集条件列）"""
+    """低频段最大功率测试流程类（用频谱仪读数，带 sa_* 采集条件列）
+
+    字段说明：summary 的 `actual_power_dbm` = `measured_power_dbm` + `ext_att_db`
+    （折算到 DUT 端）。**detail 表不插该列**（2026-09-20 用户明确要求）。
+    """
 
     TEST_TYPE = "low_freq_max_power"
 
@@ -16,7 +20,7 @@ class LowFreqMaxPowerProcedure(PowerSweepBaseProcedure):
 
     SUMMARY_FIELDNAMES = (
         ["run_id", "test_type", "carrier_hz", "set_power_dbm",
-         "measured_power_dbm", "delta_db", "delta_ref"]
+         "actual_power_dbm", "measured_power_dbm", "delta_db", "delta_ref"]
         + SA_COLUMNS
         + ["ext_att_db", "saturated", "steps", "status", "note", "timestamp"]
     )

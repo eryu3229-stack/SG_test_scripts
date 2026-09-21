@@ -9,8 +9,8 @@ carrier_frequency_mode = "step"
 carrier_frequency_list = []
 
 # 步进式载波频率参数，单位 Hz
-carrier_start_frequency_hz = 4e9
-carrier_end_frequency_hz = 5e9
+carrier_start_frequency_hz = 1e9
+carrier_end_frequency_hz = 40e9
 carrier_step_frequency_hz = 200e6
 
 # 载波功率，单位 dBm
@@ -49,6 +49,7 @@ attenuation_db = 30
 attenuation_step_db = 2
 
 input_coupling = "DC"
+
 sa_settling_time_s = 0.5
 
 # 内置预放（本次不启用）。

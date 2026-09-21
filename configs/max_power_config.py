@@ -14,28 +14,28 @@ project_name = "最大功率测试"
 
 # 时间参数配置
 settling_time = 0.7           # 信号源稳定时间，单位：秒
-pm_settling_time = 0.5        # 功率计频率切换稳定时间，单位：秒
+pm_settling_time = 0.7        # 功率计频率切换稳定时间，单位：秒
 post_close_wait = 0.1         # 信号源关闭后等待时间，单位：秒
 measurement_times = 3         # 功率计测量次数
 
 # 功率扫描参数
 start_power = 10             # 起始功率，单位dBm
-stop_power = 21              # 扫描终止功率，单位dBm（达到此值后正常停止扫描）
+stop_power = 19              # 扫描终止功率，单位dBm（达到此值后正常停止扫描）
 power_step = 1.0              # 功率步进，单位dB
-max_set_power = 30            # 信号源最大设定功率硬限制，单位dBm（安全冗余，必须 >= stop_power）
+max_set_power = 20            # 信号源最大设定功率硬限制，单位dBm（安全冗余，必须 >= stop_power）
 max_measured_power = 20       # 功率计最大输入功率（测量值，未补偿衰减），单位dBm（保护功率计探头）
 power_tolerance = 0.5         # 功率测量容差，单位dB（用于检测饱和）
 max_power_drop = 1.0          # 最大功率下降值，单位dB（如果功率下降超过此值，则认为过载）
 
 # 衰减器配置
 attenuator_value = 30.0        # 衰减器衰减值，单位dB（正数表示衰减）
-use_attenuator = False        # 是否使用衰减器
+use_attenuator =False       # 是否使用衰减器
 
 # 分段频率步进配置
 frequency_ranges = [
-    #{'start': 50e6, 'end': 100e6, 'step': 10e6},     # 50-100MHz，步进1MHz
-     {'start': 110e6, 'end': 1e9, 'step': 100e6},    # 110MHz-1GHz，步进10MHz
-    # {'start': 1e9, 'end': 40e9, 'step': 50e6},  # 1.1GHz-40GHz，步进100MHz
+    {'start': 50e6, 'end': 100e6, 'step': 1e6},     # 50-100MHz，步进1MHz
+    {'start': 110e6, 'end': 1e9, 'step': 10e6},    # 110MHz-1GHz，步进10MHz
+    {'start': 1e9, 'end': 40e9, 'step': 100e6},  # 1.1GHz-40GHz，步进100MHz
 ]
 
 # 生成测试配置
