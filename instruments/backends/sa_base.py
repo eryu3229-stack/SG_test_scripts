@@ -177,7 +177,8 @@ class SpectrumAnalyzerBackend:
         except (TypeError, ValueError):
             return None
         if abs(f) >= 1e30:
-            print(f"    仪器返回哨兵值 {f:.4e}（无有效数据），按 None 处理")
+            # 静默处理：哨兵值只代表"本轮无有效数据"，调用方一律按 None 判重试/FAIL。
+            # 高频读点（如定时 trace 未就绪）逐次打印会刷屏，故不在此输出。
             return None
         return f
 
