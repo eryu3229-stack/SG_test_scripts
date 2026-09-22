@@ -52,6 +52,9 @@ class SignalGenerator:
 
     #: RF 输出路径编号。手册写作 SOURce<hw>，单路径机型固定 1。
     PATH = 1
+    #: 是否在前面加 `SOUR<n>:` 前缀。
+    #: 用户现场信号源不接受 `SOUR1:`，故默认 False；命令直接用 `AM1:` / `LFO1:` / `SOUR:MOD:ALL:STAT`。
+    USE_PATH = False
 
     #: 调制信号源 <Source>（AM/FM/PM 同用，手册 p445/p450/p455）
     MOD_SOURCES = ("LF1", "LF2", "EXT1", "NOISE", "INTERNAL", "EXTERNAL")
@@ -59,6 +62,8 @@ class SignalGenerator:
     LF_SHAPES = ("SINE", "SQUARE", "PULSE", "TRIANGLE", "TRAPEZE")
     #: 脉冲调制源（手册 p461）
     PULM_SOURCES = ("INTERNAL", "EXTERNAL")
+    #: AM 类型（手册 p443/444）
+    AM_TYPES = ("LIN", "EXP", "LINEAR", "EXPONENTIAL")
 
     #: 调制种类 -> 开关状态回读指令（手册 p445/p450/p454/p461）
     _MOD_STATE_QUERIES = {
@@ -141,6 +146,21 @@ class SignalGenerator:
         """布尔转 SCPI 的 1/0"""
         return "1" if enable else "0"
 
+    def _source_prefix(self):
+        """AM/FM/PM/LF/PULM 等子系统的前缀。
+
+        用户现场仪器不接受 `SOUR1:`，故默认空；保留 `USE_PATH=True` 可恢复
+        `SOUR1:AM1:` 写法。
+        """
+        return f"SOUR{self.PATH}:" if self.USE_PATH else ""
+
+    def _mod_all_prefix(self):
+        """`SOUR:MOD:ALL:STAT` 的前缀。
+
+        无路径号时仍需要 `SOUR:`；有路径号时为 `SOUR1:`。
+        """
+        return f"SOUR{self.PATH}:" if self.USE_PATH else "SOUR:"
+
     # ==================== 基础指令（原有） ====================
 
     def set_frequency(self, frequency):
@@ -201,7 +221,7 @@ class SignalGenerator:
             bool: 是否成功
         """
         text = "恢复上次的调制" if enable else "关闭全部调制"
-        return self._write(f"SOUR{self.PATH}:MOD:ALL:STAT {self._onoff(enable)}", text)
+        return self._write(f"{self._mod_all_prefix()}MOD:ALL:STAT {self._onoff(enable)}", text)
 
     def get_modulation_state(self, kinds=None, verbose=False):
         """回读调制开关状态（手册 p445/450/454/461）
@@ -228,7 +248,7 @@ class SignalGenerator:
             if query is None:
                 raise ValueError(
                     f"未知调制种类 {kind!r}，可选 {tuple(self._MOD_STATE_QUERIES)}")
-            state[key] = self._query(f"SOUR{self.PATH}:{query}",
+            state[key] = self._query(f"{self._source_prefix()}{query}",
                                      f"{key} 状态" if verbose else None)
         return state
 
@@ -246,7 +266,7 @@ class SignalGenerator:
         value = self._enum(shape, self.LF_SHAPES, "lf_shape")
         if value is None:
             return False
-        return self._write(f"SOUR{self.PATH}:LFO1:SHAP {value}",
+        return self._write(f"{self._source_prefix()}LFO1:SHAP {value}",
                            f"LF1 波形: {value}")
 
     def set_lf_frequency(self, frequency):
@@ -260,7 +280,7 @@ class SignalGenerator:
         Returns:
             bool: 是否成功
         """
-        return self._write(f"SOUR{self.PATH}:LFO1:FREQ {frequency}",
+        return self._write(f"{self._source_prefix()}LFO1:FREQ {frequency}",
                            f"LF1 调制频率: {frequency} Hz")
 
     def enable_lf_output(self, enable=True):
@@ -275,7 +295,7 @@ class SignalGenerator:
             bool: 是否成功
         """
         text = "开启 LF1 输出" if enable else "关闭 LF1 输出"
-        return self._write(f"SOUR{self.PATH}:LFO1:STAT {self._onoff(enable)}", text)
+        return self._write(f"{self._source_prefix()}LFO1:STAT {self._onoff(enable)}", text)
 
     # ==================== 幅度调制 AM（手册 p443-446） ====================
 
@@ -291,7 +311,7 @@ class SignalGenerator:
             bool: 是否成功
         """
         text = "开启 AM1（幅度调制）" if enable else "关闭 AM1"
-        return self._write(f"SOUR{self.PATH}:AM1:STAT {self._onoff(enable)}", text)
+        return self._write(f"{self._source_prefix()}AM1:STAT {self._onoff(enable)}", text)
 
     def set_am_source(self, source):
         """选择幅度调制的信号源（手册 p446）
@@ -306,7 +326,7 @@ class SignalGenerator:
         value = self._enum(source, self.MOD_SOURCES, "am_source")
         if value is None:
             return False
-        return self._write(f"SOUR{self.PATH}:AM1:SOUR {value}",
+        return self._write(f"{self._source_prefix()}AM1:SOUR {value}",
                            f"AM1 调制源: {value}")
 
     def set_am_depth(self, depth):
@@ -321,8 +341,61 @@ class SignalGenerator:
         if depth is None or not (0 <= depth <= 100):
             print(f"参数 am_depth={depth} 超出范围 [0, 100] %，未下发")
             return False
-        return self._write(f"SOUR{self.PATH}:AM1:DEPTH {depth}",
+        return self._write(f"{self._source_prefix()}AM1:DEPTH {depth}",
                            f"AM1 调幅深度: {depth} %")
+
+    def set_am_type(self, am_type):
+        """设置 AM 类型为线性 / 指数（手册 p443/444）
+
+        用户参考流程固定发 `AM:TYPE LIN`，故提供显式接口，不再依赖默认值。
+
+        Args:
+            am_type: LIN|LINEAR / EXP|EXPONENTIAL
+
+        Returns:
+            bool: 是否成功
+        """
+        value = self._enum(am_type, self.AM_TYPES, "am_type")
+        if value is None:
+            return False
+        # 下发用短写（与 SMB100B 示例一致）
+        scpi_value = "LIN" if value in ("LIN", "LINEAR") else "EXP"
+        return self._write(f"{self._source_prefix()}AM:TYPE {scpi_value}",
+                           f"AM 类型: {scpi_value}")
+
+    def set_am_depth_lin(self, depth):
+        """以线性方式设置调幅深度，单位 %（手册 p446）
+
+        对应用户参考流程中的 `AM1:DEPT:LIN 30`。
+
+        Args:
+            depth: 0 ~ 100（%）
+
+        Returns:
+            bool: 是否成功
+        """
+        if depth is None or not (0 <= depth <= 100):
+            print(f"参数 am_depth_lin={depth} 超出范围 [0, 100] %，未下发")
+            return False
+        return self._write(f"{self._source_prefix()}AM1:DEPT:LIN {depth}",
+                           f"AM1 线性调幅深度: {depth} %")
+
+    def get_am_type(self):
+        """回读 AM 类型（`AM:TYPE?`）"""
+        return self._query(f"{self._source_prefix()}AM:TYPE?", "AM 类型回读")
+
+    def get_am_depth_lin(self):
+        """回读线性调幅深度（`AM1:DEPT:LIN?`）"""
+        return self._query(f"{self._source_prefix()}AM1:DEPT:LIN?",
+                           "AM1 线性深度回读")
+
+    def get_lf_shape(self):
+        """回读 LF1 波形（`LFO1:SHAP?`）"""
+        return self._query(f"{self._source_prefix()}LFO1:SHAP?", "LF1 波形回读")
+
+    def get_lf_frequency(self):
+        """回读 LF1 频率（`LFO1:FREQ?`）"""
+        return self._query(f"{self._source_prefix()}LFO1:FREQ?", "LF1 频率回读")
 
     # ==================== 频率调制 FM（手册 p448-450） ====================
 
@@ -338,7 +411,7 @@ class SignalGenerator:
             bool: 是否成功
         """
         text = "开启 FM1（频率调制）" if enable else "关闭 FM1"
-        return self._write(f"SOUR{self.PATH}:FM1:STAT {self._onoff(enable)}", text)
+        return self._write(f"{self._source_prefix()}FM1:STAT {self._onoff(enable)}", text)
 
     def set_fm_source(self, source):
         """选择频率调制的信号源（手册 p450）
@@ -352,7 +425,7 @@ class SignalGenerator:
         value = self._enum(source, self.MOD_SOURCES, "fm_source")
         if value is None:
             return False
-        return self._write(f"SOUR{self.PATH}:FM1:SOUR {value}",
+        return self._write(f"{self._source_prefix()}FM1:SOUR {value}",
                            f"FM1 调制源: {value}")
 
     def set_fm_deviation(self, deviation):
@@ -367,7 +440,7 @@ class SignalGenerator:
         if deviation is None or deviation < 0:
             print(f"参数 fm_deviation={deviation} 非法，未下发")
             return False
-        return self._write(f"SOUR{self.PATH}:FM1:DEV {deviation}",
+        return self._write(f"{self._source_prefix()}FM1:DEV {deviation}",
                            f"FM1 调频偏差: {deviation} Hz")
 
     # ==================== 相位调制 PM / PhiM（手册 p453-457） ====================
@@ -387,7 +460,7 @@ class SignalGenerator:
             bool: 是否成功
         """
         text = "开启 PM1（相位调制）" if enable else "关闭 PM1"
-        return self._write(f"SOUR{self.PATH}:PM1:STAT {self._onoff(enable)}", text)
+        return self._write(f"{self._source_prefix()}PM1:STAT {self._onoff(enable)}", text)
 
     def set_pm_source(self, source):
         """选择相位调制的信号源（手册 p455）
@@ -401,7 +474,7 @@ class SignalGenerator:
         value = self._enum(source, self.MOD_SOURCES, "pm_source")
         if value is None:
             return False
-        return self._write(f"SOUR{self.PATH}:PM1:SOUR {value}",
+        return self._write(f"{self._source_prefix()}PM1:SOUR {value}",
                            f"PM1 调制源: {value}")
 
     def set_pm_deviation(self, deviation):
@@ -420,7 +493,7 @@ class SignalGenerator:
         if deviation is None or deviation < 0:
             print(f"参数 pm_deviation={deviation} 非法，未下发")
             return False
-        return self._write(f"SOUR{self.PATH}:PM1:DEV {deviation} RAD",
+        return self._write(f"{self._source_prefix()}PM1:DEV {deviation} RAD",
                            f"PM1 相位偏差: {deviation} rad")
 
     # ==================== 脉冲调制 PULM（手册 p458-462） ====================
@@ -435,7 +508,7 @@ class SignalGenerator:
             bool: 是否成功
         """
         text = "开启脉冲调制" if enable else "关闭脉冲调制"
-        return self._write(f"SOUR{self.PATH}:PULM:STAT {self._onoff(enable)}", text)
+        return self._write(f"{self._source_prefix()}PULM:STAT {self._onoff(enable)}", text)
 
     def set_pulse_source(self, source):
         """选择脉冲调制源（手册 p461）
@@ -449,7 +522,7 @@ class SignalGenerator:
         value = self._enum(source, self.PULM_SOURCES, "pulse_source")
         if value is None:
             return False
-        return self._write(f"SOUR{self.PATH}:PULM:SOUR {value}",
+        return self._write(f"{self._source_prefix()}PULM:SOUR {value}",
                            f"脉冲调制源: {value}")
 
     def set_pulse_period(self, period):
@@ -464,7 +537,7 @@ class SignalGenerator:
         if period is None or not (20e-9 <= period <= 100):
             print(f"参数 pulse_period={period} 超出范围 [2e-08, 100] s，未下发")
             return False
-        return self._write(f"SOUR{self.PATH}:PULM:PER {period} s",
+        return self._write(f"{self._source_prefix()}PULM:PER {period} s",
                            f"脉冲周期: {period} s")
 
     def set_pulse_width(self, width):
@@ -481,5 +554,5 @@ class SignalGenerator:
         if width is None or not (20e-9 <= width <= 100):
             print(f"参数 pulse_width={width} 超出范围 [2e-08, 100] s，未下发")
             return False
-        return self._write(f"SOUR{self.PATH}:PULM:WIDT {width} s",
+        return self._write(f"{self._source_prefix()}PULM:WIDT {width} s",
                            f"脉冲宽度: {width} s")
